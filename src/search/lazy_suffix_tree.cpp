@@ -28,12 +28,7 @@ using sequence_t = std::vector<seqan3::gapped<alphabet_t>>;
 template <seqan3::Alphabet alphabet_t = seqan3::dna5> class LazySuffixTree {
 
 public:
-  // TODO: Can we make the vectors bitcompressed, as we rarely need the full
-  // bytes per input??
-  std::vector<seqan3::gapped<alphabet_t>> sequence{};
-  std::vector<int> suffixes{};
-  std::vector<int> table{};
-  std::vector<Flag> flags{};
+  friend class LazySuffixTreeTest;
 
   void expand_all() {
     if (table.size() == 0) {
@@ -49,17 +44,6 @@ public:
 
       table_size = table.size();
     }
-  }
-
-  void expand_root() {
-    int lower_bound = 0;
-    int upper_bound = sequence.size();
-
-    auto counts = count_suffixes(lower_bound, upper_bound);
-
-    sort_suffixes(counts, lower_bound, upper_bound);
-
-    add_children(counts, lower_bound);
   }
 
   void expand_node(int node_index) {
@@ -82,6 +66,46 @@ public:
     add_children(counts, lower_bound);
 
     flags[node_index] = Flag(flags[node_index] & ~Flag::Unevaluated);
+  }
+
+  LazySuffixTree(std::vector<alphabet_t> sequence_) {
+    sequence = sequence_ | seqan3::view::convert<seqan3::gapped<alphabet_t>>;
+    sequence.push_back(seqan3::gap{});
+
+    suffixes = std::vector<int>(sequence.size());
+    std::iota(suffixes.begin(), suffixes.end(), 0);
+  }
+
+  std::vector<sequence_t<alphabet_t>> get_all_labels() {
+    std::vector<sequence_t<alphabet_t>> labels{};
+
+    breadth_first_iteration(
+        [&](int node_index, int lcp, int smallest_child_index) -> bool {
+          auto label = node_label(node_index, lcp, smallest_child_index);
+          labels.push_back(label);
+          return false;
+        });
+
+    return labels;
+  }
+
+private:
+  // TODO: Can we make the vectors bitcompressed, as we rarely need the full
+  // bytes per input??
+  std::vector<seqan3::gapped<alphabet_t>> sequence{};
+  std::vector<int> suffixes{};
+  std::vector<int> table{};
+  std::vector<Flag> flags{};
+
+  void expand_root() {
+    int lower_bound = 0;
+    int upper_bound = sequence.size();
+
+    auto counts = count_suffixes(lower_bound, upper_bound);
+
+    sort_suffixes(counts, lower_bound, upper_bound);
+
+    add_children(counts, lower_bound);
   }
 
   void add_children(alphabet_count<alphabet_t> counts, int lower_bound) {
@@ -110,19 +134,6 @@ public:
 
     flags[right_most_child_index] =
         Flag(flags[right_most_child_index] | Flag::RightMostChild);
-  }
-
-  void add_branching_node(int index, int count) {
-    table.push_back(index);
-    table.push_back(index + count);
-
-    flags.push_back(Flag::Unevaluated);
-    flags.push_back(Flag::None);
-  }
-
-  void add_leaf(int index) {
-    table.push_back(suffixes[index]);
-    flags.push_back(Flag::Leaf);
   }
 
   void sort_suffixes(alphabet_count<alphabet_t> counts, int lower_bound,
@@ -210,17 +221,20 @@ public:
     return -1;
   }
 
-  LazySuffixTree(std::vector<alphabet_t> sequence_) {
-    sequence = sequence_ | seqan3::view::convert<seqan3::gapped<alphabet_t>>;
-    sequence.push_back(seqan3::gap{});
+  void add_branching_node(int index, int count) {
+    table.push_back(index);
+    table.push_back(index + count);
 
-    suffixes = std::vector<int>(sequence.size());
-    std::iota(suffixes.begin(), suffixes.end(), 0);
+    flags.push_back(Flag::Unevaluated);
+    flags.push_back(Flag::None);
   }
 
-  std::vector<sequence_t<alphabet_t>> get_all_labels() {
-    std::vector<sequence_t<alphabet_t>> labels{};
+  void add_leaf(int index) {
+    table.push_back(suffixes[index]);
+    flags.push_back(Flag::Leaf);
+  }
 
+  void breadth_first_iteration(const std::function<bool(int, int, int)> &f) {
     if (table.size() == 0) {
       expand_root();
     }
@@ -237,26 +251,32 @@ public:
       i = next_child_index(i);
     }
 
-    while (queue.size() != 0) {
+    bool stop_looping = false;
+
+    while (queue.size() != 0 && !stop_looping) {
       auto [node_index, lcp] = queue.front();
       queue.pop();
 
-      auto label = evaluate_node(node_index, lcp, queue);
-      labels.push_back(label);
-    }
+      int smallest_child_index = evaluate_node(node_index);
 
-    return labels;
+      stop_looping = f(node_index, lcp, smallest_child_index);
+
+      if ((flags[node_index] & Flag::Leaf) != Flag::Leaf) {
+        int new_lcp = lcp + smallest_child_index - table[node_index];
+        child_iteration(node_index, [&](int index) {
+          queue.push(std::make_tuple(index, new_lcp));
+        });
+      }
+    }
   }
 
-  sequence_t<alphabet_t>
-  evaluate_node(int node_index, int lcp,
-                std::queue<std::tuple<int, int>> &queue) {
+  int evaluate_node(int node_index) {
     if ((flags[node_index] & Flag::Unevaluated) == Flag::Unevaluated) {
       expand_node(node_index);
     }
 
     if ((flags[node_index] & Flag::Leaf) == Flag::Leaf) {
-      return leaf_label(node_index, lcp);
+      return sequence.size();
     }
 
     child_iteration(node_index, [&](int index) {
@@ -267,18 +287,14 @@ public:
 
     int first_child = table[node_index + 1];
     int smallest_child_index = table[first_child];
+
     child_iteration(node_index, [&](int index) {
       if (table[index] < smallest_child_index) {
         smallest_child_index = table[index];
       }
     });
 
-    int new_lcp = lcp + smallest_child_index - table[node_index];
-    child_iteration(node_index, [&](int index) {
-      queue.push(std::make_tuple(index, new_lcp));
-    });
-
-    return node_label(node_index, lcp, smallest_child_index);
+    return smallest_child_index;
   }
 
   void child_iteration(int node_index, const std::function<void(int)> &f) {
@@ -294,16 +310,7 @@ public:
     }
   }
 
-  sequence_t<alphabet_t> leaf_label(int node_index, int lcp) {
-    int start_index = table[node_index] - lcp;
-    sequence_t<alphabet_t> label(sequence.begin() + start_index,
-                                 sequence.end());
-
-    return label;
-  }
-
   sequence_t<alphabet_t> edge_label(int node_index, int smallest_child_index) {
-    int first_child = table[node_index + 1];
 
     int edge_start = table[node_index];
     int edge_end = smallest_child_index;
@@ -313,13 +320,11 @@ public:
     return edge;
   }
 
-  sequence_t<alphabet_t> node_label(int node_index, int lcp,
-                                    int smallest_child) {
-    int first_child = table[node_index + 1];
+  sequence_t<alphabet_t> node_label(int node_index, int lcp, int end_index) {
 
     int node_start = table[node_index] - lcp;
     sequence_t<alphabet_t> label(sequence.begin() + node_start,
-                                 sequence.begin() + smallest_child);
+                                 sequence.begin() + end_index);
 
     return label;
   }
