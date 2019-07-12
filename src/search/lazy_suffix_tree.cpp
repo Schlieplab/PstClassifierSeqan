@@ -89,6 +89,36 @@ public:
     return labels;
   }
 
+  int count_occurrences(int node_index) {
+    if (node_index >= table.size()) {
+      throw std::invalid_argument("Given node index is too large.");
+    }
+
+    if ((flags[node_index] & Flag::Unevaluated) == Flag::Unevaluated) {
+      return table[node_index + 1] - table[node_index];
+    }
+
+    std::queue<int> queue{};
+
+    queue.push(node_index);
+
+    int count = 0;
+
+    while (queue.size() != 0) {
+      auto index = queue.front();
+      queue.pop();
+
+      if ((flags[index] & Flag::Leaf) == Flag::Leaf) {
+        count += 1;
+      } else if ((flags[index] & Flag::Unevaluated) == Flag::Unevaluated) {
+        count += table[index + 1] - table[index];
+      } else {
+        child_iteration(index, [&](int i) { queue.push(i); });
+      }
+    }
+    return count;
+  }
+
 private:
   // TODO: Can we make the vectors bitcompressed, as we rarely need the full
   // bytes per input??
@@ -171,7 +201,6 @@ private:
   }
 
   void add_lcp_to_suffixes(int lower_bound, int upper_bound) {
-
     std::vector<int> group(suffixes.begin() + lower_bound,
                            suffixes.begin() + upper_bound);
 

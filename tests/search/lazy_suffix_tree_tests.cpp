@@ -184,7 +184,6 @@ TEST_F(LazySuffixTreeTest, LongerTests) {
 }
 
 TEST_F(LazySuffixTreeTest, LabelSets) {
-
   std::vector<std::vector<seqan3::gapped<seqan3::dna5>>> expected_labels{
       make_gapped("AC"_dna5),          make_gapped("C"_dna5),
       make_gapped_with_gap(""_dna5),   make_gapped_with_gap("ACAC"_dna5),
@@ -206,4 +205,29 @@ TEST_F(LazySuffixTreeTest, LabelSets) {
   auto double_labels = double_tree.get_all_labels();
 
   EXPECT_EQ(double_labels, double_expected_labels);
+}
+
+TEST_F(LazySuffixTreeTest, Count) {
+  tree.expand_root();
+  int a_count = tree.count_occurrences(0);
+  EXPECT_EQ(a_count, 2);
+  int b_count = tree.count_occurrences(2);
+  EXPECT_EQ(b_count, 3);
+
+  tree.expand_all();
+  a_count = tree.count_occurrences(0);
+  EXPECT_EQ(a_count, 2);
+  b_count = tree.count_occurrences(2);
+  EXPECT_EQ(b_count, 3);
+
+  lst::LazySuffixTree<seqan3::dna4> double_tree{"ATAA"_dna4};
+  EXPECT_THROW(double_tree.count_occurrences(0), std::invalid_argument);
+
+  double_tree.expand_root();
+  a_count = double_tree.count_occurrences(0);
+  EXPECT_EQ(a_count, 3);
+
+  double_tree.expand_all();
+  a_count = double_tree.count_occurrences(0);
+  EXPECT_EQ(a_count, 3);
 }
