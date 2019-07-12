@@ -119,6 +119,58 @@ public:
     return count;
   }
 
+  bool contains(std::vector<alphabet_t> pattern) {
+    if (table.size() == 0) {
+      expand_root();
+    }
+
+    std::queue<std::tuple<int, int>> queue{};
+
+    for (int i = 0; i <= table.size();) {
+      queue.push(std::make_tuple(i, 0));
+
+      if ((flags[i] & Flag::RightMostChild) == Flag::RightMostChild) {
+        break;
+      }
+
+      i = next_child_index(i);
+    }
+
+    int pattern_lcp = 0;
+
+    while (!queue.empty()) {
+      auto [node_index, lcp] = queue.front();
+      queue.pop();
+
+      int smallest_child_index = evaluate_node(node_index);
+
+      sequence_t<alphabet_t> edge =
+          edge_label(node_index, smallest_child_index);
+
+      bool edge_match = edge_matches(node_index, pattern_lcp, pattern, edge);
+
+      if (!edge_match) {
+        continue;
+      }
+
+      pattern_lcp += edge.size();
+      if (pattern_lcp >= pattern.size()) {
+        return true;
+      }
+
+      empty_queue(queue);
+
+      if ((flags[node_index] & Flag::Leaf) != Flag::Leaf) {
+        int new_lcp = lcp + smallest_child_index - table[node_index];
+        child_iteration(node_index, [&](int index) {
+          queue.push(std::make_tuple(index, new_lcp));
+        });
+      }
+    }
+
+    return false;
+  }
+
 private:
   // TODO: Can we make the vectors bitcompressed, as we rarely need the full
   // bytes per input??
@@ -366,6 +418,27 @@ private:
     }
 
     return node_index;
+  }
+
+  bool edge_matches(int node_index, int pattern_lcp,
+                    std::vector<alphabet_t> pattern,
+                    sequence_t<alphabet_t> edge) {
+
+    for (int i = 0; pattern_lcp + i < pattern.size() && i < edge.size(); i++) {
+      int sequence_index = table[node_index] + i;
+
+      if (sequence[sequence_index] != pattern[pattern_lcp + i]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  template <typename T> void empty_queue(std::queue<T> &queue) {
+    while (!queue.empty()) {
+      queue.pop();
+    }
   }
 };
 } // namespace lst

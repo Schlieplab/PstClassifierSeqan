@@ -231,3 +231,14 @@ TEST_F(LazySuffixTreeTest, Count) {
   a_count = double_tree.count_occurrences(0);
   EXPECT_EQ(a_count, 3);
 }
+
+TEST_F(LazySuffixTreeTest, Contains) {
+  EXPECT_TRUE(tree.contains("AC"_dna5));
+  EXPECT_FALSE(tree.contains("ACGT"_dna5));
+
+  lst::LazySuffixTree<seqan3::dna4> tree4{"ACGTACGTACGTACGTACGTACGT"_dna4};
+  EXPECT_TRUE(tree4.contains("ACGT"_dna4));
+  EXPECT_TRUE(tree4.contains("ACGTACGTACGTACGTACGTACGT"_dna4));
+  EXPECT_FALSE(tree4.contains("CCCC"_dna4));
+  EXPECT_FALSE(tree4.contains("ACGTCT"_dna4));
+}
