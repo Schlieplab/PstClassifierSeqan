@@ -67,10 +67,6 @@ public:
     return labels;
   }
 
-  int count_occurrences(int node_index) {
-    return suffix_indicies(node_index, 0).size();
-  }
-
   std::vector<int> search(std::vector<alphabet_t> pattern) {
     auto [node_index, lcp] = find(pattern);
 
