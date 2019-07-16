@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "../../src/search/lazy_suffix_tree.cpp"
+#include "../../src/search/lazy_suffix_tree.hpp"
 
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 using seqan3::operator""_dna5;
@@ -233,6 +233,8 @@ TEST_F(LazySuffixTreeTest, Search) {
   EXPECT_EQ(c_indicies, (std::vector<int>{4, 0, 2}));
 
   EXPECT_EQ(tree.search("ACGT"_dna5), (std::vector<int>{}));
+
+  EXPECT_EQ(tree.search(""_dna5).size(), 6);
 
   lst::LazySuffixTree<seqan3::dna4> tree4{"ACGTACGTACGTACGTACGTACGT"_dna4};
   EXPECT_EQ(tree4.search("ACGT"_dna4), (std::vector<int>{20, 16, 12, 8, 0, 4}));
