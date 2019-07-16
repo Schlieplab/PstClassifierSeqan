@@ -62,9 +62,9 @@ public:
 
     breadth_first_iteration([&](int node_index, int lcp, int edge_lcp) -> bool {
       auto label = node_label(node_index, lcp, edge_lcp);
-      int counts = suffix_indicies(node_index, lcp).size();
+      int counts = count(node_index);
       labels.emplace_back(label, counts);
-      return false;
+      return true;
     });
 
     return labels;
