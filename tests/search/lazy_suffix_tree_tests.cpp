@@ -282,3 +282,17 @@ TEST_F(LazySuffixTreeTest, Find) {
   EXPECT_EQ(acgt_index, 0);
   EXPECT_EQ(acgt_lcp, 0);
 }
+
+TEST_F(LazySuffixTreeTest, Count) {
+  tree.expand_root();
+
+  EXPECT_EQ(tree.count(0), 2);
+
+  EXPECT_EQ(tree.count(2), 3);
+
+  tree.expand_all();
+
+  EXPECT_EQ(tree.count(0), 2);
+
+  EXPECT_EQ(tree.count(2), 3);
+}

@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <seqan3/alphabet/all.hpp>
+#include <seqan3/alphabet/composite/alphabet_variant.hpp>
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/range/view/convert.hpp>
 
@@ -87,6 +88,24 @@ public:
     } else {
       return suffix_indicies(node_index, lcp);
     }
+  }
+
+  void breadth_first_traversal(
+      const std::function<bool(std::vector<alphabet_t>, int)> &f) {
+    breadth_first_iteration([&](int node_index, int lcp, int edge_lcp) -> bool {
+      auto label = node_label(node_index, lcp, edge_lcp);
+
+      int counts = count(node_index);
+
+      std::vector<alphabet_t> out_label{};
+      for (auto c : label) {
+        if (c != seqan3::gap{}) {
+          out_label.push_back(c.template convert_to<alphabet_t>());
+        }
+      }
+
+      return f(out_label, counts);
+    });
   }
 
 private:
@@ -256,9 +275,7 @@ private:
     std::queue<std::tuple<int, int>> queue{};
     iterate_root_children([&](int index) { queue.emplace(index, 0); });
 
-    bool stop_looping = false;
-
-    while (queue.size() != 0 && !stop_looping) {
+    while (queue.size() != 0) {
       auto [node_index, lcp] = queue.front();
       queue.pop();
 
@@ -267,7 +284,11 @@ private:
       }
       int edge_lcp = get_edge_lcp(node_index);
 
-      stop_looping = f(node_index, lcp, edge_lcp);
+      bool consider_children = f(node_index, lcp, edge_lcp);
+
+      if (!consider_children) {
+        continue;
+      }
 
       if ((flags[node_index] & Flag::Leaf) != Flag::Leaf) {
         int new_lcp = lcp + edge_lcp - table[node_index];
@@ -305,6 +326,32 @@ private:
     }
 
     return start_indicies;
+  }
+
+  int count(int node_index) {
+    if (node_index >= table.size()) {
+      throw std::invalid_argument("Given node index is too large.");
+    }
+
+    int occurrences = 0;
+    std::queue<int> queue{};
+
+    queue.push(node_index);
+
+    while (queue.size() != 0) {
+      auto index = queue.front();
+      queue.pop();
+
+      if ((flags[index] & Flag::Leaf) == Flag::Leaf) {
+        occurrences += 1;
+      } else if ((flags[index] & Flag::Unevaluated) == Flag::Unevaluated) {
+        occurrences += table[index + 1] - table[index];
+      } else {
+        iterate_children(index, [&](int i) { queue.push(i); });
+      }
+    }
+
+    return occurrences;
   }
 
   std::tuple<int, int> find(std::vector<alphabet_t> pattern) {
