@@ -30,6 +30,14 @@ template <seqan3::Alphabet alphabet_t = seqan3::dna5> class LazySuffixTree {
 public:
   friend class LazySuffixTreeTest;
 
+  LazySuffixTree(std::vector<alphabet_t> sequence_) {
+    sequence = sequence_ | seqan3::view::convert<seqan3::gapped<alphabet_t>>;
+    sequence.push_back(seqan3::gap{});
+
+    suffixes = std::vector<int>(sequence.size());
+    std::iota(suffixes.begin(), suffixes.end(), 0);
+  }
+
   void expand_all() {
     if (table.size() == 0) {
       expand_root();
@@ -46,42 +54,13 @@ public:
     }
   }
 
-  void expand_node(int node_index) {
-    if ((flags[node_index] & Flag::Unevaluated) != Flag::Unevaluated) {
-      throw std::invalid_argument("Given node is already expanded");
-    }
-
-    int lower_bound = table[node_index];
-    int upper_bound = table[node_index + 1];
-
-    table[node_index] = suffixes[lower_bound];
-    table[node_index + 1] = table.size();
-
-    add_lcp_to_suffixes(lower_bound, upper_bound);
-
-    auto counts = count_suffixes(lower_bound, upper_bound);
-
-    sort_suffixes(counts, lower_bound, upper_bound);
-
-    add_children(counts, lower_bound);
-
-    flags[node_index] = Flag(flags[node_index] & ~Flag::Unevaluated);
-  }
-
-  LazySuffixTree(std::vector<alphabet_t> sequence_) {
-    sequence = sequence_ | seqan3::view::convert<seqan3::gapped<alphabet_t>>;
-    sequence.push_back(seqan3::gap{});
-
-    suffixes = std::vector<int>(sequence.size());
-    std::iota(suffixes.begin(), suffixes.end(), 0);
-  }
-
-  std::vector<sequence_t<alphabet_t>> get_all_labels() {
-    std::vector<sequence_t<alphabet_t>> labels{};
+  std::vector<std::tuple<sequence_t<alphabet_t>, int>> get_all_labels() {
+    std::vector<std::tuple<sequence_t<alphabet_t>, int>> labels{};
 
     breadth_first_iteration([&](int node_index, int lcp, int edge_lcp) -> bool {
       auto label = node_label(node_index, lcp, edge_lcp);
-      labels.push_back(label);
+      int counts = suffix_indicies(node_index, lcp).size();
+      labels.emplace_back(label, counts);
       return false;
     });
 
@@ -90,37 +69,6 @@ public:
 
   int count_occurrences(int node_index) {
     return suffix_indicies(node_index, 0).size();
-  }
-
-  std::vector<int> suffix_indicies(int node_index, int og_lcp) {
-    if (node_index >= table.size()) {
-      throw std::invalid_argument("Given node index is too large.");
-    }
-
-    std::vector<int> start_indicies{};
-    std::queue<std::tuple<int, int>> queue{};
-
-    queue.push(std::make_tuple(node_index, og_lcp));
-
-    while (queue.size() != 0) {
-      auto [index, lcp] = queue.front();
-      queue.pop();
-
-      if ((flags[index] & Flag::Leaf) == Flag::Leaf) {
-        start_indicies.push_back(table[index] - lcp);
-      } else if ((flags[index] & Flag::Unevaluated) == Flag::Unevaluated) {
-        for (int i = table[index]; i < table[index + 1]; i++) {
-          start_indicies.push_back(suffixes[i] - lcp);
-        }
-      } else {
-        int edge_lcp = get_edge_lcp(index);
-        int new_lcp = lcp + edge_lcp - table[index];
-        iterate_children(
-            index, [&](int i) { queue.push(std::make_tuple(i, new_lcp)); });
-      }
-    }
-
-    return start_indicies;
   }
 
   std::vector<int> search(std::vector<alphabet_t> pattern) {
@@ -150,6 +98,28 @@ private:
     sort_suffixes(counts, lower_bound, upper_bound);
 
     add_children(counts, lower_bound);
+  }
+
+  void expand_node(int node_index) {
+    if ((flags[node_index] & Flag::Unevaluated) != Flag::Unevaluated) {
+      throw std::invalid_argument("Given node is already expanded");
+    }
+
+    int lower_bound = table[node_index];
+    int upper_bound = table[node_index + 1];
+
+    table[node_index] = suffixes[lower_bound];
+    table[node_index + 1] = table.size();
+
+    add_lcp_to_suffixes(lower_bound, upper_bound);
+
+    auto counts = count_suffixes(lower_bound, upper_bound);
+
+    sort_suffixes(counts, lower_bound, upper_bound);
+
+    add_children(counts, lower_bound);
+
+    flags[node_index] = Flag(flags[node_index] & ~Flag::Unevaluated);
   }
 
   void add_children(alphabet_count<alphabet_t> counts, int lower_bound) {
@@ -276,8 +246,7 @@ private:
 
   void breadth_first_iteration(const std::function<bool(int, int, int)> &f) {
     std::queue<std::tuple<int, int>> queue{};
-    iterate_root_children(
-        [&](int index) { queue.push(std::make_tuple(index, 0)); });
+    iterate_root_children([&](int index) { queue.emplace(index, 0); });
 
     bool stop_looping = false;
 
@@ -294,18 +263,46 @@ private:
 
       if ((flags[node_index] & Flag::Leaf) != Flag::Leaf) {
         int new_lcp = lcp + edge_lcp - table[node_index];
-        iterate_children(node_index, [&](int index) {
-          queue.push(std::make_tuple(index, new_lcp));
-        });
+        iterate_children(node_index,
+                         [&](int index) { queue.emplace(index, new_lcp); });
       }
     }
+  }
+
+  std::vector<int> suffix_indicies(int node_index, int og_lcp) {
+    if (node_index >= table.size()) {
+      throw std::invalid_argument("Given node index is too large.");
+    }
+
+    std::vector<int> start_indicies{};
+    std::queue<std::tuple<int, int>> queue{};
+
+    queue.emplace(node_index, og_lcp);
+
+    while (queue.size() != 0) {
+      auto [index, lcp] = queue.front();
+      queue.pop();
+
+      if ((flags[index] & Flag::Leaf) == Flag::Leaf) {
+        start_indicies.push_back(table[index] - lcp);
+      } else if ((flags[index] & Flag::Unevaluated) == Flag::Unevaluated) {
+        for (int i = table[index]; i < table[index + 1]; i++) {
+          start_indicies.push_back(suffixes[i] - lcp);
+        }
+      } else {
+        int edge_lcp = get_edge_lcp(index);
+        int new_lcp = lcp + edge_lcp - table[index];
+        iterate_children(index, [&](int i) { queue.emplace(i, new_lcp); });
+      }
+    }
+
+    return start_indicies;
   }
 
   std::tuple<int, int> find(std::vector<alphabet_t> pattern) {
     std::queue<std::tuple<int, int>> queue{};
 
-    iterate_root_children(
-        [&](int index) { queue.push(std::make_tuple(index, 0)); });
+    iterate_root_children([&](int index) { queue.emplace(index, 0); });
 
     int pattern_lcp = 0;
 
@@ -335,9 +332,8 @@ private:
 
       if ((flags[node_index] & Flag::Leaf) != Flag::Leaf) {
         int new_lcp = lcp + edge_lcp - table[node_index];
-        iterate_children(node_index, [&](int index) {
-          queue.push(std::make_tuple(index, new_lcp));
-        });
+        iterate_children(node_index,
+                         [&](int index) { queue.emplace(index, new_lcp); });
       }
     }
 

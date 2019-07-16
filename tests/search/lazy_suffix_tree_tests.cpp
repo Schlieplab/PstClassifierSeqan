@@ -186,26 +186,30 @@ TEST_F(LazySuffixTreeTest, LongerTests) {
 }
 
 TEST_F(LazySuffixTreeTest, LabelSets) {
-  std::vector<std::vector<seqan3::gapped<seqan3::dna5>>> expected_labels{
-      make_gapped("AC"_dna5),          make_gapped("C"_dna5),
-      make_gapped_with_gap(""_dna5),   make_gapped_with_gap("ACAC"_dna5),
-      make_gapped_with_gap("AC"_dna5), make_gapped("CAC"_dna5),
-      make_gapped_with_gap("C"_dna5),  make_gapped_with_gap("CACAC"_dna5),
-      make_gapped_with_gap("CAC"_dna5)};
+  std::vector<std::tuple<std::vector<seqan3::gapped<seqan3::dna5>>, int>>
+      expected_labels{std::make_tuple(make_gapped("AC"_dna5), 2),
+                      std::make_tuple(make_gapped("C"_dna5), 3),
+                      std::make_tuple(make_gapped_with_gap(""_dna5), 1),
+                      std::make_tuple(make_gapped_with_gap("ACAC"_dna5), 1),
+                      std::make_tuple(make_gapped_with_gap("AC"_dna5), 1),
+                      std::make_tuple(make_gapped("CAC"_dna5), 2),
+                      std::make_tuple(make_gapped_with_gap("C"_dna5), 1),
+                      std::make_tuple(make_gapped_with_gap("CACAC"_dna5), 1),
+                      std::make_tuple(make_gapped_with_gap("CAC"_dna5), 1)};
   auto labels = tree.get_all_labels();
   EXPECT_EQ(labels, expected_labels);
 
-  std::vector<std::vector<seqan3::gapped<seqan3::dna4>>> double_expected_labels{
-      make_gapped<seqan3::dna4>("A"_dna4),
-      make_gapped_with_gap<seqan3::dna4>("TAA"_dna4),
-      make_gapped_with_gap<seqan3::dna4>(""_dna4),
-      make_gapped_with_gap<seqan3::dna4>("AA"_dna4),
-      make_gapped_with_gap<seqan3::dna4>("ATAA"_dna4),
-      make_gapped_with_gap<seqan3::dna4>("A"_dna4)};
+  std::vector<std::tuple<std::vector<seqan3::gapped<seqan3::dna4>>, int>>
+      double_expected_labels{
+          std::make_tuple(make_gapped<seqan3::dna4>("A"_dna4), 3),
+          std::make_tuple(make_gapped_with_gap<seqan3::dna4>("TAA"_dna4), 1),
+          std::make_tuple(make_gapped_with_gap<seqan3::dna4>(""_dna4), 1),
+          std::make_tuple(make_gapped_with_gap<seqan3::dna4>("AA"_dna4), 1),
+          std::make_tuple(make_gapped_with_gap<seqan3::dna4>("ATAA"_dna4), 1),
+          std::make_tuple(make_gapped_with_gap<seqan3::dna4>("A"_dna4), 1)};
 
   lst::LazySuffixTree<seqan3::dna4> double_tree{"ATAA"_dna4};
   auto double_labels = double_tree.get_all_labels();
-
   EXPECT_EQ(double_labels, double_expected_labels);
 }
 
@@ -300,6 +304,13 @@ TEST_F(LazySuffixTreeTest, Search) {
 
   tree4.expand_all();
   EXPECT_EQ(tree4.search("ACGT"_dna4), (std::vector<int>{20, 16, 12, 8, 0, 4}));
+
+  lst::LazySuffixTree<seqan3::dna5> tree5{
+      "ACTAGCTAGCTACGCGCTATCATCATTTACGACTAGCAGCCTACTACATTATATAGCGCTAGCATCAGTCAGCACTACTACAGCAGCAGCATCACGACTAGCTACGATCAGCATCGATCGATCATTATCGACTAG"_dna5};
+  EXPECT_EQ(tree5.search("TAG"_dna5).size(), 7);
+  EXPECT_EQ(tree5.search("GAC"_dna5).size(), 3);
+  EXPECT_EQ(tree5.search("ATTAT"_dna5).size(), 2);
+  EXPECT_EQ(tree5.search("AT"_dna5).size(), 14);
 }
 
 TEST_F(LazySuffixTreeTest, Find) {
