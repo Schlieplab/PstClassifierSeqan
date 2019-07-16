@@ -70,12 +70,14 @@ TEST_F(LazySuffixTreeTest, CountSuffixes) {
 }
 
 TEST_F(LazySuffixTreeTest, LongestCommonPrefix) {
-  EXPECT_EQ(tree.longest_common_prefix({1, 3}), 2);
-  EXPECT_EQ(tree.longest_common_prefix({0, 2}), 3);
-  EXPECT_EQ(tree.longest_common_prefix({0, 2, 4}), 1);
+  tree.expand_root();
+  EXPECT_EQ(tree.longest_common_prefix(1, 2), 2);
+  EXPECT_EQ(tree.longest_common_prefix(2, 4), 3);
+  EXPECT_EQ(tree.longest_common_prefix(3, 5), 1);
 
   lst::LazySuffixTree<seqan3::dna5> tree2{"ACGTTACGACGTTATTT"_dna5};
-  EXPECT_EQ(tree2.longest_common_prefix({0, 5, 8}), 3);
+  tree2.expand_root();
+  EXPECT_EQ(tree2.longest_common_prefix(0, 2), 3);
 }
 
 TEST_F(LazySuffixTreeTest, ConstructorTest) {
@@ -211,14 +213,14 @@ TEST_F(LazySuffixTreeTest, Count) {
   tree.expand_root();
   int a_count = tree.count_occurrences(0);
   EXPECT_EQ(a_count, 2);
-  int b_count = tree.count_occurrences(2);
-  EXPECT_EQ(b_count, 3);
+  int c_count = tree.count_occurrences(2);
+  EXPECT_EQ(c_count, 3);
 
   tree.expand_all();
   a_count = tree.count_occurrences(0);
   EXPECT_EQ(a_count, 2);
-  b_count = tree.count_occurrences(2);
-  EXPECT_EQ(b_count, 3);
+  c_count = tree.count_occurrences(2);
+  EXPECT_EQ(c_count, 3);
 
   lst::LazySuffixTree<seqan3::dna4> double_tree{"ATAA"_dna4};
   EXPECT_THROW(double_tree.count_occurrences(0), std::invalid_argument);
@@ -232,13 +234,92 @@ TEST_F(LazySuffixTreeTest, Count) {
   EXPECT_EQ(a_count, 3);
 }
 
-TEST_F(LazySuffixTreeTest, Contains) {
-  EXPECT_TRUE(tree.contains("AC"_dna5));
-  EXPECT_FALSE(tree.contains("ACGT"_dna5));
+TEST_F(LazySuffixTreeTest, SuffixIndicies) {
+  tree.expand_root();
+
+  auto ac_indicies = tree.suffix_indicies(0, 0);
+  std::vector<int> expected_ac_indicies{1, 3};
+  EXPECT_EQ(ac_indicies, expected_ac_indicies);
+
+  auto c_indicies = tree.suffix_indicies(2, 0);
+  std::vector<int> expected_c_indicies{0, 2, 4};
+  EXPECT_EQ(c_indicies, expected_c_indicies);
+
+  tree.expand_all();
+
+  ac_indicies = tree.suffix_indicies(0, 0);
+  EXPECT_EQ(ac_indicies, expected_ac_indicies);
+
+  c_indicies = tree.suffix_indicies(2, 0);
+  std::vector<int> expected_c_indicies_reordered{4, 0, 2};
+  EXPECT_EQ(c_indicies, expected_c_indicies_reordered);
+
+  lst::LazySuffixTree<seqan3::dna4> tree4{"ACGTACGTACGT"_dna4};
+  tree4.expand_root();
+
+  auto acgt_indicies = tree4.suffix_indicies(0, 0);
+  EXPECT_EQ(acgt_indicies, (std::vector<int>{0, 4, 8}));
+
+  tree4.expand_node(0);
+
+  acgt_indicies = tree4.suffix_indicies(0, 0);
+  EXPECT_EQ(acgt_indicies, (std::vector<int>{8, 0, 4}));
+}
+
+TEST_F(LazySuffixTreeTest, Search) {
+  tree.expand_root();
+
+  auto ac_indicies = tree.search("A"_dna5);
+  std::vector<int> expected_ac_indicies{1, 3};
+  EXPECT_EQ(ac_indicies, expected_ac_indicies);
+
+  auto c_indicies = tree.search("C"_dna5);
+  std::vector<int> expected_c_indicies{4, 0, 2};
+  EXPECT_EQ(c_indicies, expected_c_indicies);
+
+  tree.expand_all();
+
+  ac_indicies = tree.search("AC"_dna5);
+  EXPECT_EQ(ac_indicies, expected_ac_indicies);
+
+  c_indicies = tree.search("C"_dna5);
+  EXPECT_EQ(c_indicies, (std::vector<int>{4, 0, 2}));
+
+  EXPECT_EQ(tree.search("ACGT"_dna5), (std::vector<int>{}));
 
   lst::LazySuffixTree<seqan3::dna4> tree4{"ACGTACGTACGTACGTACGTACGT"_dna4};
-  EXPECT_TRUE(tree4.contains("ACGT"_dna4));
-  EXPECT_TRUE(tree4.contains("ACGTACGTACGTACGTACGTACGT"_dna4));
-  EXPECT_FALSE(tree4.contains("CCCC"_dna4));
-  EXPECT_FALSE(tree4.contains("ACGTCT"_dna4));
+  EXPECT_EQ(tree4.search("ACGT"_dna4), (std::vector<int>{20, 16, 12, 8, 0, 4}));
+
+  EXPECT_EQ(tree4.search("ACGTACGTACGTACGTACGTACGT"_dna4),
+            (std::vector<int>{0}));
+  EXPECT_EQ(tree4.search("CGTACGTACGTACGTACGTACGT"_dna4),
+            (std::vector<int>{1}));
+  EXPECT_EQ(tree4.search("GTACGTACGTACGTACGTACGT"_dna4), (std::vector<int>{2}));
+  EXPECT_EQ(tree4.search("CCCC"_dna4), (std::vector<int>{}));
+  EXPECT_EQ(tree4.search("ACGTCT"_dna4), (std::vector<int>{}));
+
+  tree4.expand_all();
+  EXPECT_EQ(tree4.search("ACGT"_dna4), (std::vector<int>{20, 16, 12, 8, 0, 4}));
+}
+
+TEST_F(LazySuffixTreeTest, Find) {
+  tree.expand_root();
+
+  auto [a_index, a_lcp] = tree.find("A"_dna5);
+  EXPECT_EQ(a_index, 0);
+  EXPECT_EQ(a_lcp, 0);
+
+  auto [c_index, c_lcp] = tree.find("C"_dna5);
+  EXPECT_EQ(c_index, 2);
+  EXPECT_EQ(c_lcp, 0);
+
+  auto [tt_index, tt_lcp] = tree.find("TT"_dna5);
+  EXPECT_EQ(tt_index, -1);
+  EXPECT_EQ(tt_lcp, -1);
+
+  lst::LazySuffixTree<seqan3::dna4> tree4{"ACGTACGTACGTACGTACGTACGT"_dna4};
+  tree4.expand_root();
+  auto [acgt_index, acgt_lcp] = tree4.find("ACGT"_dna4);
+  EXPECT_EQ(acgt_index, 0);
+  EXPECT_EQ(acgt_lcp, 0);
 }

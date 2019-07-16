@@ -79,96 +79,58 @@ public:
   std::vector<sequence_t<alphabet_t>> get_all_labels() {
     std::vector<sequence_t<alphabet_t>> labels{};
 
-    breadth_first_iteration(
-        [&](int node_index, int lcp, int smallest_child_index) -> bool {
-          auto label = node_label(node_index, lcp, smallest_child_index);
-          labels.push_back(label);
-          return false;
-        });
+    breadth_first_iteration([&](int node_index, int lcp, int edge_lcp) -> bool {
+      auto label = node_label(node_index, lcp, edge_lcp);
+      labels.push_back(label);
+      return false;
+    });
 
     return labels;
   }
 
   int count_occurrences(int node_index) {
+    return suffix_indicies(node_index, 0).size();
+  }
+
+  std::vector<int> suffix_indicies(int node_index, int og_lcp) {
     if (node_index >= table.size()) {
       throw std::invalid_argument("Given node index is too large.");
     }
 
-    if ((flags[node_index] & Flag::Unevaluated) == Flag::Unevaluated) {
-      return table[node_index + 1] - table[node_index];
-    }
+    std::vector<int> start_indicies{};
+    std::queue<std::tuple<int, int>> queue{};
 
-    std::queue<int> queue{};
-
-    queue.push(node_index);
-
-    int count = 0;
+    queue.push(std::make_tuple(node_index, og_lcp));
 
     while (queue.size() != 0) {
-      auto index = queue.front();
+      auto [index, lcp] = queue.front();
       queue.pop();
 
       if ((flags[index] & Flag::Leaf) == Flag::Leaf) {
-        count += 1;
+        start_indicies.push_back(table[index] - lcp);
       } else if ((flags[index] & Flag::Unevaluated) == Flag::Unevaluated) {
-        count += table[index + 1] - table[index];
+        for (int i = table[index]; i < table[index + 1]; i++) {
+          start_indicies.push_back(suffixes[i] - lcp);
+        }
       } else {
-        child_iteration(index, [&](int i) { queue.push(i); });
+        int edge_lcp = get_edge_lcp(index);
+        int new_lcp = lcp + edge_lcp - table[index];
+        iterate_children(
+            index, [&](int i) { queue.push(std::make_tuple(i, new_lcp)); });
       }
     }
-    return count;
+
+    return start_indicies;
   }
 
-  bool contains(std::vector<alphabet_t> pattern) {
-    if (table.size() == 0) {
-      expand_root();
+  std::vector<int> search(std::vector<alphabet_t> pattern) {
+    auto [node_index, lcp] = find(pattern);
+
+    if (node_index == -1) {
+      return std::vector<int>{};
+    } else {
+      return suffix_indicies(node_index, lcp);
     }
-
-    std::queue<std::tuple<int, int>> queue{};
-
-    for (int i = 0; i <= table.size();) {
-      queue.push(std::make_tuple(i, 0));
-
-      if ((flags[i] & Flag::RightMostChild) == Flag::RightMostChild) {
-        break;
-      }
-
-      i = next_child_index(i);
-    }
-
-    int pattern_lcp = 0;
-
-    while (!queue.empty()) {
-      auto [node_index, lcp] = queue.front();
-      queue.pop();
-
-      int smallest_child_index = evaluate_node(node_index);
-
-      sequence_t<alphabet_t> edge =
-          edge_label(node_index, smallest_child_index);
-
-      bool edge_match = edge_matches(node_index, pattern_lcp, pattern, edge);
-
-      if (!edge_match) {
-        continue;
-      }
-
-      pattern_lcp += edge.size();
-      if (pattern_lcp >= pattern.size()) {
-        return true;
-      }
-
-      empty_queue(queue);
-
-      if ((flags[node_index] & Flag::Leaf) != Flag::Leaf) {
-        int new_lcp = lcp + smallest_child_index - table[node_index];
-        child_iteration(node_index, [&](int index) {
-          queue.push(std::make_tuple(index, new_lcp));
-        });
-      }
-    }
-
-    return false;
   }
 
 private:
@@ -220,7 +182,6 @@ private:
 
   void sort_suffixes(alphabet_count<alphabet_t> counts, int lower_bound,
                      int upper_bound) {
-
     std::vector<int> temp_suffixes(suffixes.begin() + lower_bound,
                                    suffixes.begin() + upper_bound);
 
@@ -240,7 +201,6 @@ private:
 
   alphabet_count<alphabet_t>
   suffix_pointers(alphabet_count<alphabet_t> counts) {
-
     alphabet_count<alphabet_t> pointers{};
 
     int counter = 0;
@@ -253,10 +213,7 @@ private:
   }
 
   void add_lcp_to_suffixes(int lower_bound, int upper_bound) {
-    std::vector<int> group(suffixes.begin() + lower_bound,
-                           suffixes.begin() + upper_bound);
-
-    int lcp = longest_common_prefix(group);
+    int lcp = longest_common_prefix(lower_bound, upper_bound);
 
     for (int i = lower_bound; i < upper_bound; i++) {
       suffixes[i] += lcp;
@@ -284,7 +241,9 @@ private:
     return count;
   }
 
-  int longest_common_prefix(std::vector<int> group) {
+  int longest_common_prefix(int lower_bound, int upper_bound) {
+    std::vector<int> group(suffixes.begin() + lower_bound,
+                           suffixes.begin() + upper_bound);
     for (int prefix_length = 0;; prefix_length++) {
       if (prefix_length + group.back() >= sequence.size()) {
         return prefix_length - 1;
@@ -316,21 +275,9 @@ private:
   }
 
   void breadth_first_iteration(const std::function<bool(int, int, int)> &f) {
-    if (table.size() == 0) {
-      expand_root();
-    }
-
     std::queue<std::tuple<int, int>> queue{};
-
-    for (int i = 0; i <= table.size();) {
-      queue.push(std::make_tuple(i, 0));
-
-      if ((flags[i] & Flag::RightMostChild) == Flag::RightMostChild) {
-        break;
-      }
-
-      i = next_child_index(i);
-    }
+    iterate_root_children(
+        [&](int index) { queue.push(std::make_tuple(index, 0)); });
 
     bool stop_looping = false;
 
@@ -338,50 +285,106 @@ private:
       auto [node_index, lcp] = queue.front();
       queue.pop();
 
-      int smallest_child_index = evaluate_node(node_index);
+      if ((flags[node_index] & Flag::Unevaluated) == Flag::Unevaluated) {
+        expand_node(node_index);
+      }
+      int edge_lcp = get_edge_lcp(node_index);
 
-      stop_looping = f(node_index, lcp, smallest_child_index);
+      stop_looping = f(node_index, lcp, edge_lcp);
 
       if ((flags[node_index] & Flag::Leaf) != Flag::Leaf) {
-        int new_lcp = lcp + smallest_child_index - table[node_index];
-        child_iteration(node_index, [&](int index) {
+        int new_lcp = lcp + edge_lcp - table[node_index];
+        iterate_children(node_index, [&](int index) {
           queue.push(std::make_tuple(index, new_lcp));
         });
       }
     }
   }
 
-  int evaluate_node(int node_index) {
-    if ((flags[node_index] & Flag::Unevaluated) == Flag::Unevaluated) {
-      expand_node(node_index);
+  std::tuple<int, int> find(std::vector<alphabet_t> pattern) {
+    std::queue<std::tuple<int, int>> queue{};
+
+    iterate_root_children(
+        [&](int index) { queue.push(std::make_tuple(index, 0)); });
+
+    int pattern_lcp = 0;
+
+    while (!queue.empty()) {
+      auto [node_index, lcp] = queue.front();
+      queue.pop();
+
+      if ((flags[node_index] & Flag::Unevaluated) == Flag::Unevaluated) {
+        expand_node(node_index);
+      }
+      int edge_lcp = get_edge_lcp(node_index);
+
+      sequence_t<alphabet_t> edge = edge_label(node_index, edge_lcp);
+
+      bool edge_match = edge_matches(node_index, pattern_lcp, pattern, edge);
+
+      if (!edge_match) {
+        continue;
+      }
+
+      pattern_lcp += edge.size();
+      if (pattern_lcp >= pattern.size()) {
+        return std::make_tuple(node_index, lcp);
+      }
+
+      empty_queue(queue);
+
+      if ((flags[node_index] & Flag::Leaf) != Flag::Leaf) {
+        int new_lcp = lcp + edge_lcp - table[node_index];
+        iterate_children(node_index, [&](int index) {
+          queue.push(std::make_tuple(index, new_lcp));
+        });
+      }
     }
 
+    return std::make_tuple(-1, -1);
+  }
+
+  int get_edge_lcp(int node_index) {
     if ((flags[node_index] & Flag::Leaf) == Flag::Leaf) {
       return sequence.size();
     }
 
-    child_iteration(node_index, [&](int index) {
+    if ((flags[node_index] & Flag::Unevaluated) == Flag::Unevaluated) {
+      return longest_common_prefix(table[node_index], table[node_index + 1]);
+    }
+
+    iterate_children(node_index, [&](int index) {
       if ((flags[index] & Flag::Unevaluated) == Flag::Unevaluated) {
         expand_node(index);
       }
     });
 
     int first_child = table[node_index + 1];
-    int smallest_child_index = table[first_child];
-
-    child_iteration(node_index, [&](int index) {
-      if (table[index] < smallest_child_index) {
-        smallest_child_index = table[index];
+    int edge_lcp = table[first_child];
+    iterate_children(node_index, [&](int index) {
+      if (table[index] < edge_lcp) {
+        edge_lcp = table[index];
       }
     });
 
-    return smallest_child_index;
+    return edge_lcp;
   }
 
-  void child_iteration(int node_index, const std::function<void(int)> &f) {
+  void iterate_children(int node_index, const std::function<void(int)> &f) {
     int first_child = table[node_index + 1];
 
-    for (int i = first_child; i <= table.size();) {
+    iterate(first_child, f);
+  }
+
+  void iterate_root_children(const std::function<void(int)> f) {
+    if (table.size() == 0) {
+      expand_root();
+    }
+    iterate(0, f);
+  }
+
+  void iterate(int start_index, const std::function<void(int)> f) {
+    for (int i = start_index; i <= table.size();) {
       f(i);
 
       if ((flags[i] & Flag::RightMostChild) == Flag::RightMostChild) {
@@ -391,12 +394,11 @@ private:
     }
   }
 
-  sequence_t<alphabet_t> edge_label(int node_index, int smallest_child_index) {
+  sequence_t<alphabet_t> edge_label(int node_index, int edge_lcp) {
 
     int edge_start = table[node_index];
-    int edge_end = smallest_child_index;
     sequence_t<alphabet_t> edge(sequence.begin() + edge_start,
-                                sequence.begin() + edge_end);
+                                sequence.begin() + edge_lcp);
 
     return edge;
   }
@@ -423,7 +425,6 @@ private:
   bool edge_matches(int node_index, int pattern_lcp,
                     std::vector<alphabet_t> pattern,
                     sequence_t<alphabet_t> edge) {
-
     for (int i = 0; pattern_lcp + i < pattern.size() && i < edge.size(); i++) {
       int sequence_index = table[node_index] + i;
 
