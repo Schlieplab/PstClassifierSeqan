@@ -70,6 +70,16 @@ public:
   }
 
   std::vector<int> search(std::vector<alphabet_t> pattern) {
+    if (pattern.size() == 0) {
+      std::vector<int> all_suffixes{};
+      iterate_root_children([&](int index) {
+        auto suffixes = suffix_indicies(index, 0);
+        all_suffixes.insert(all_suffixes.end(), suffixes.begin(),
+                            suffixes.end());
+      });
+      return all_suffixes;
+    }
+
     auto [node_index, lcp] = find(pattern);
 
     if (node_index == -1) {
