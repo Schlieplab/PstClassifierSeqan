@@ -60,12 +60,16 @@ public:
   std::vector<std::tuple<sequence_t<alphabet_t>, int>> get_all_labels() {
     std::vector<std::tuple<sequence_t<alphabet_t>, int>> labels{};
 
-    breadth_first_iteration([&](int node_index, int lcp, int edge_lcp) -> bool {
-      auto label = node_label(node_index, lcp, edge_lcp);
-      int counts = count(node_index);
-      labels.emplace_back(label, counts);
-      return true;
-    });
+    breadth_first_iteration(
+        [&](int node_index, int lcp, int edge_lcp, int occurrences) -> bool {
+          auto label = node_label(node_index, lcp, edge_lcp);
+          if ((flags[node_index] & Flag::Leaf) == Flag::Leaf) {
+            label = leaf_label(node_index, lcp);
+          }
+
+          labels.emplace_back(label, occurrences);
+          return true;
+        });
 
     return labels;
   }
@@ -90,22 +94,18 @@ public:
     }
   }
 
-  void breadth_first_traversal(
-      const std::function<bool(std::vector<alphabet_t>, int)> &f) {
-    breadth_first_iteration([&](int node_index, int lcp, int edge_lcp) -> bool {
-      auto label = node_label(node_index, lcp, edge_lcp);
+  void breadth_first_traversal(const std::function<bool(int, int, int)> &f) {
+    breadth_first_iteration(
+        [&](int node_index, int lcp, int edge_lcp, int occurrences) -> bool {
+          int node_start = table[node_index] - lcp;
+          int node_end = table[node_index] + edge_lcp;
 
-      int counts = count(node_index);
+          if ((flags[node_index] & Flag::Leaf) == Flag::Leaf) {
+            node_end = suffixes.size() - 1;
+          }
 
-      std::vector<alphabet_t> out_label{};
-      for (auto c : label) {
-        if (c != seqan3::gap{}) {
-          out_label.push_back(c.template convert_to<alphabet_t>());
-        }
-      }
-
-      return f(out_label, counts);
-    });
+          return f(node_start, node_end, occurrences);
+        });
   }
 
 private:
@@ -127,7 +127,7 @@ private:
     add_children(counts, lower_bound);
   }
 
-  void expand_node(int node_index) {
+  std::tuple<int, int> expand_node(int node_index) {
     if ((flags[node_index] & Flag::Unevaluated) != Flag::Unevaluated) {
       throw std::invalid_argument("Given node is already expanded");
     }
@@ -138,7 +138,7 @@ private:
     table[node_index] = suffixes[lower_bound];
     table[node_index + 1] = table.size();
 
-    add_lcp_to_suffixes(lower_bound, upper_bound);
+    int lcp = add_lcp_to_suffixes(lower_bound, upper_bound);
 
     auto counts = count_suffixes(lower_bound, upper_bound);
 
@@ -147,6 +147,10 @@ private:
     add_children(counts, lower_bound);
 
     flags[node_index] = Flag(flags[node_index] & ~Flag::Unevaluated);
+
+    int occurrences = upper_bound - lower_bound;
+
+    return std::make_tuple(occurrences, lcp);
   }
 
   void add_children(alphabet_count<alphabet_t> counts, int lower_bound) {
@@ -209,12 +213,14 @@ private:
     return pointers;
   }
 
-  void add_lcp_to_suffixes(int lower_bound, int upper_bound) {
+  int add_lcp_to_suffixes(int lower_bound, int upper_bound) {
     int lcp = longest_common_prefix(lower_bound, upper_bound);
 
     for (int i = lower_bound; i < upper_bound; i++) {
       suffixes[i] += lcp;
     }
+
+    return lcp;
   }
 
   alphabet_count<alphabet_t> count_suffixes(int lower_bound, int upper_bound) {
@@ -227,10 +233,8 @@ private:
 
     alphabet_count<alphabet_t> count{};
 
-    std::vector<int> group(suffixes.begin() + lower_bound,
-                           suffixes.begin() + upper_bound);
-
-    for (auto character_i : group) {
+    for (int i = lower_bound; i < upper_bound; i++) {
+      int character_i = suffixes[i];
       int character_rank = seqan3::to_rank(sequence[character_i]);
       count[character_rank] += 1;
     }
@@ -239,17 +243,16 @@ private:
   }
 
   int longest_common_prefix(int lower_bound, int upper_bound) {
-    std::vector<int> group(suffixes.begin() + lower_bound,
-                           suffixes.begin() + upper_bound);
     for (int prefix_length = 0;; prefix_length++) {
-      if (prefix_length + group.back() >= sequence.size()) {
+      if (prefix_length + suffixes[upper_bound - 1] >= sequence.size()) {
         return prefix_length - 1;
       }
 
-      seqan3::gapped<alphabet_t> character = sequence[group[0] + prefix_length];
+      seqan3::gapped<alphabet_t> &character =
+          sequence[suffixes[lower_bound] + prefix_length];
 
-      for (int i = 1; i < group.size(); i++) {
-        if (sequence[group[i] + prefix_length] != character) {
+      for (int i = lower_bound + 1; i < upper_bound; i++) {
+        if (sequence[suffixes[i] + prefix_length] != character) {
           return prefix_length;
         }
       }
@@ -271,7 +274,8 @@ private:
     flags.push_back(Flag::Leaf);
   }
 
-  void breadth_first_iteration(const std::function<bool(int, int, int)> &f) {
+  void
+  breadth_first_iteration(const std::function<bool(int, int, int, int)> &f) {
     std::queue<std::tuple<int, int>> queue{};
     iterate_root_children([&](int index) { queue.emplace(index, 0); });
 
@@ -279,19 +283,25 @@ private:
       auto [node_index, lcp] = queue.front();
       queue.pop();
 
-      if ((flags[node_index] & Flag::Unevaluated) == Flag::Unevaluated) {
-        expand_node(node_index);
-      }
-      int edge_lcp = get_edge_lcp(node_index);
+      int edge_lcp;
+      int occurrences;
 
-      bool consider_children = f(node_index, lcp, edge_lcp);
+      if ((flags[node_index] & Flag::Unevaluated) == Flag::Unevaluated) {
+        std::tie(occurrences, edge_lcp) = expand_node(node_index);
+
+      } else {
+        edge_lcp = get_edge_lcp(node_index);
+        occurrences = node_occurrences(node_index);
+      }
+
+      bool consider_children = f(node_index, lcp, edge_lcp, occurrences);
 
       if (!consider_children) {
         continue;
       }
 
       if ((flags[node_index] & Flag::Leaf) != Flag::Leaf) {
-        int new_lcp = lcp + edge_lcp - table[node_index];
+        int new_lcp = lcp + edge_lcp;
         iterate_children(node_index,
                          [&](int index) { queue.emplace(index, new_lcp); });
       }
@@ -320,7 +330,7 @@ private:
         }
       } else {
         int edge_lcp = get_edge_lcp(index);
-        int new_lcp = lcp + edge_lcp - table[index];
+        int new_lcp = lcp + edge_lcp;
         iterate_children(index, [&](int i) { queue.emplace(i, new_lcp); });
       }
     }
@@ -328,7 +338,7 @@ private:
     return start_indicies;
   }
 
-  int count(int node_index) {
+  int node_occurrences(int node_index) {
     if (node_index >= table.size()) {
       throw std::invalid_argument("Given node index is too large.");
     }
@@ -386,7 +396,7 @@ private:
       empty_queue(queue);
 
       if ((flags[node_index] & Flag::Leaf) != Flag::Leaf) {
-        int new_lcp = lcp + edge_lcp - table[node_index];
+        int new_lcp = lcp + edge_lcp;
         iterate_children(node_index,
                          [&](int index) { queue.emplace(index, new_lcp); });
       }
@@ -411,14 +421,14 @@ private:
     });
 
     int first_child = table[node_index + 1];
-    int edge_lcp = table[first_child];
+    int smallest_child_index = table[first_child];
     iterate_children(node_index, [&](int index) {
-      if (table[index] < edge_lcp) {
-        edge_lcp = table[index];
+      if (table[index] < smallest_child_index) {
+        smallest_child_index = table[index];
       }
     });
 
-    return edge_lcp;
+    return smallest_child_index - table[node_index];
   }
 
   void iterate_children(int node_index, const std::function<void(int)> &f) {
@@ -446,19 +456,25 @@ private:
   }
 
   sequence_t<alphabet_t> edge_label(int node_index, int edge_lcp) {
-
     int edge_start = table[node_index];
     sequence_t<alphabet_t> edge(sequence.begin() + edge_start,
-                                sequence.begin() + edge_lcp);
+                                sequence.begin() + edge_start + edge_lcp);
 
     return edge;
   }
 
-  sequence_t<alphabet_t> node_label(int node_index, int lcp, int end_index) {
-
+  sequence_t<alphabet_t> node_label(int node_index, int lcp, int edge_lcp) {
     int node_start = table[node_index] - lcp;
+    int node_end = table[node_index] + edge_lcp;
     sequence_t<alphabet_t> label(sequence.begin() + node_start,
-                                 sequence.begin() + end_index);
+                                 sequence.begin() + node_end);
+
+    return label;
+  }
+
+  sequence_t<alphabet_t> leaf_label(int node_index, int lcp) {
+    int node_start = table[node_index] - lcp;
+    sequence_t<alphabet_t> label(sequence.begin() + node_start, sequence.end());
 
     return label;
   }
