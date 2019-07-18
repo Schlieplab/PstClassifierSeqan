@@ -12,21 +12,11 @@
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/range/view/convert.hpp>
 
+#include "lazy_suffix_tree_construction.hpp"
+
+using namespace lst::details;
+
 namespace lst {
-
-enum Flag : unsigned char {
-  None = 0,
-  RightMostChild = 1 << 0,
-  Leaf = 1 << 1,
-  Unevaluated = 1 << 2,
-};
-
-template <seqan3::Alphabet alphabet_t = seqan3::dna5>
-using alphabet_count =
-    std::array<int, seqan3::alphabet_size<seqan3::gapped<alphabet_t>>>;
-
-template <seqan3::Alphabet alphabet_t = seqan3::dna5>
-using sequence_t = std::vector<seqan3::gapped<alphabet_t>>;
 
 template <seqan3::Alphabet alphabet_t = seqan3::dna5> class LazySuffixTree {
 
@@ -39,18 +29,20 @@ public:
 
     suffixes = std::vector<int>(sequence.size());
     std::iota(suffixes.begin(), suffixes.end(), 0);
+
+    lst::details::expand_root(sequence, suffixes, table, flags);
   }
 
   void expand_all() {
     if (table.size() == 0) {
-      expand_root();
+      lst::details::expand_root(sequence, suffixes, table, flags);
     }
 
     int table_size = table.size();
     for (int i = 0; i <= table_size; i++) {
 
       if ((flags[i] & Flag::Unevaluated) == Flag::Unevaluated) {
-        expand_node(i);
+        lst::details::expand_node(i, sequence, suffixes, table, flags);
       }
 
       table_size = table.size();
@@ -94,7 +86,8 @@ public:
     }
   }
 
-  void breadth_first_traversal(const std::function<bool(int, int, int)> &f) {
+  void
+  breadth_first_traversal(const std::function<bool(int, int, int, int)> &f) {
     breadth_first_iteration(
         [&](int node_index, int lcp, int edge_lcp, int occurrences) -> bool {
           int node_start = table[node_index] - lcp;
@@ -104,7 +97,7 @@ public:
             node_end = suffixes.size() - 1;
           }
 
-          return f(node_start, node_end, occurrences);
+          return f(node_start, node_end, edge_lcp, occurrences);
         });
   }
 
@@ -116,164 +109,6 @@ private:
   std::vector<int> table{};
   std::vector<Flag> flags{};
 
-  void expand_root() {
-    int lower_bound = 0;
-    int upper_bound = sequence.size();
-
-    auto counts = count_suffixes(lower_bound, upper_bound);
-
-    sort_suffixes(counts, lower_bound, upper_bound);
-
-    add_children(counts, lower_bound);
-  }
-
-  std::tuple<int, int> expand_node(int node_index) {
-    if ((flags[node_index] & Flag::Unevaluated) != Flag::Unevaluated) {
-      throw std::invalid_argument("Given node is already expanded");
-    }
-
-    int lower_bound = table[node_index];
-    int upper_bound = table[node_index + 1];
-
-    table[node_index] = suffixes[lower_bound];
-    table[node_index + 1] = table.size();
-
-    int lcp = add_lcp_to_suffixes(lower_bound, upper_bound);
-
-    auto counts = count_suffixes(lower_bound, upper_bound);
-
-    sort_suffixes(counts, lower_bound, upper_bound);
-
-    add_children(counts, lower_bound);
-
-    flags[node_index] = Flag(flags[node_index] & ~Flag::Unevaluated);
-
-    int occurrences = upper_bound - lower_bound;
-
-    return std::make_tuple(occurrences, lcp);
-  }
-
-  void add_children(alphabet_count<alphabet_t> counts, int lower_bound) {
-    bool last_added_leaf = false;
-    int index = lower_bound;
-
-    for (auto count : counts) {
-      if (count == 0) {
-        continue;
-      } else if (count == 1) {
-        add_leaf(index);
-        last_added_leaf = true;
-      } else {
-        add_branching_node(index, count);
-        last_added_leaf = false;
-      }
-
-      index += count;
-    }
-
-    int right_most_child_index = flags.size() - 2;
-
-    if (last_added_leaf) {
-      right_most_child_index = flags.size() - 1;
-    }
-
-    flags[right_most_child_index] =
-        Flag(flags[right_most_child_index] | Flag::RightMostChild);
-  }
-
-  void sort_suffixes(alphabet_count<alphabet_t> counts, int lower_bound,
-                     int upper_bound) {
-    std::vector<int> temp_suffixes(suffixes.begin() + lower_bound,
-                                   suffixes.begin() + upper_bound);
-
-    auto pointers = suffix_pointers(counts);
-
-    for (int i = lower_bound; i < upper_bound; i++) {
-      int character_rank =
-          seqan3::to_rank(sequence[temp_suffixes[i - lower_bound]]);
-
-      int suffix_index = pointers[character_rank] + lower_bound;
-
-      suffixes[suffix_index] = temp_suffixes[i - lower_bound];
-
-      pointers[character_rank] += 1;
-    }
-  }
-
-  alphabet_count<alphabet_t>
-  suffix_pointers(alphabet_count<alphabet_t> counts) {
-    alphabet_count<alphabet_t> pointers{};
-
-    int counter = 0;
-    for (int i = 0; i < counts.size(); i++) {
-      pointers[i] = counter;
-      counter += counts[i];
-    }
-
-    return pointers;
-  }
-
-  int add_lcp_to_suffixes(int lower_bound, int upper_bound) {
-    int lcp = longest_common_prefix(lower_bound, upper_bound);
-
-    for (int i = lower_bound; i < upper_bound; i++) {
-      suffixes[i] += lcp;
-    }
-
-    return lcp;
-  }
-
-  alphabet_count<alphabet_t> count_suffixes(int lower_bound, int upper_bound) {
-    if (upper_bound > suffixes.size())
-      throw std::invalid_argument(
-          "Upper bound is larger than the size of the sequence.");
-
-    if (lower_bound < 0)
-      throw std::invalid_argument("Lower bound is less than 0.");
-
-    alphabet_count<alphabet_t> count{};
-
-    for (int i = lower_bound; i < upper_bound; i++) {
-      int character_i = suffixes[i];
-      int character_rank = seqan3::to_rank(sequence[character_i]);
-      count[character_rank] += 1;
-    }
-
-    return count;
-  }
-
-  int longest_common_prefix(int lower_bound, int upper_bound) {
-    for (int prefix_length = 0;; prefix_length++) {
-      if (prefix_length + suffixes[upper_bound - 1] >= sequence.size()) {
-        return prefix_length - 1;
-      }
-
-      seqan3::gapped<alphabet_t> &character =
-          sequence[suffixes[lower_bound] + prefix_length];
-
-      for (int i = lower_bound + 1; i < upper_bound; i++) {
-        if (sequence[suffixes[i] + prefix_length] != character) {
-          return prefix_length;
-        }
-      }
-    }
-
-    return -1;
-  }
-
-  void add_branching_node(int index, int count) {
-    table.push_back(index);
-    table.push_back(index + count);
-
-    flags.push_back(Flag::Unevaluated);
-    flags.push_back(Flag::None);
-  }
-
-  void add_leaf(int index) {
-    table.push_back(suffixes[index]);
-    flags.push_back(Flag::Leaf);
-  }
-
   void
   breadth_first_iteration(const std::function<bool(int, int, int, int)> &f) {
     std::queue<std::tuple<int, int>> queue{};
@@ -283,12 +118,11 @@ private:
       auto [node_index, lcp] = queue.front();
       queue.pop();
 
-      int edge_lcp;
-      int occurrences;
+      int edge_lcp, occurrences;
 
       if ((flags[node_index] & Flag::Unevaluated) == Flag::Unevaluated) {
-        std::tie(occurrences, edge_lcp) = expand_node(node_index);
-
+        std::tie(occurrences, edge_lcp) = lst::details::expand_node(
+            node_index, sequence, suffixes, table, flags);
       } else {
         edge_lcp = get_edge_lcp(node_index);
         occurrences = node_occurrences(node_index);
@@ -375,10 +209,13 @@ private:
       auto [node_index, lcp] = queue.front();
       queue.pop();
 
+      int edge_lcp, occurrences;
       if ((flags[node_index] & Flag::Unevaluated) == Flag::Unevaluated) {
-        expand_node(node_index);
+        std::tie(occurrences, edge_lcp) = lst::details::expand_node(
+            node_index, sequence, suffixes, table, flags);
+      } else {
+        edge_lcp = get_edge_lcp(node_index);
       }
-      int edge_lcp = get_edge_lcp(node_index);
 
       sequence_t<alphabet_t> edge = edge_label(node_index, edge_lcp);
 
@@ -411,12 +248,13 @@ private:
     }
 
     if ((flags[node_index] & Flag::Unevaluated) == Flag::Unevaluated) {
-      return longest_common_prefix(table[node_index], table[node_index + 1]);
+      return lst::details::longest_common_prefix(
+          table[node_index], table[node_index + 1], sequence, suffixes);
     }
 
     iterate_children(node_index, [&](int index) {
       if ((flags[index] & Flag::Unevaluated) == Flag::Unevaluated) {
-        expand_node(index);
+        lst::details::expand_node(index, sequence, suffixes, table, flags);
       }
     });
 
@@ -439,7 +277,7 @@ private:
 
   void iterate_root_children(const std::function<void(int)> f) {
     if (table.size() == 0) {
-      expand_root();
+      lst::details::expand_root(sequence, suffixes, table, flags);
     }
     iterate(0, f);
   }

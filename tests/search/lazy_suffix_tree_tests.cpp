@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "../../src/search/lazy_suffix_tree.hpp"
+#include "../../src/search/lazy_suffix_tree_construction.hpp"
 
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 using seqan3::operator""_dna5;
@@ -9,6 +10,8 @@ using seqan3::operator""_dna4;
 #include <seqan3/range/view/convert.hpp>
 
 #include <seqan3/core/debug_stream.hpp>
+
+using namespace lst::details;
 
 class LazySuffixTreeTest : public ::testing::Test {
 protected:
@@ -42,46 +45,23 @@ TEST_F(LazySuffixTreeTest, SimpleTest) {
   std::vector<int> expected_suffixes{3, 5, 3, 5, 5, 5};
   EXPECT_EQ(tree.suffixes, expected_suffixes);
 
-  std::vector<lst::Flag> expected_flags{
-      lst::Flag::None,
-      lst::Flag::None,
-      lst::Flag::None,
-      lst::Flag::None,
-      lst::Flag(lst::Flag::Leaf | lst::Flag::RightMostChild),
-      lst::Flag::Leaf,
-      lst::Flag(lst::Flag::Leaf | lst::Flag::RightMostChild),
-      lst::Flag::None,
-      lst::Flag::None,
-      lst::Flag(lst::Flag::Leaf | lst::Flag::RightMostChild),
-      lst::Flag::Leaf,
-      lst::Flag(lst::Flag::Leaf | lst::Flag::RightMostChild)};
+  std::vector<Flag> expected_flags{Flag::None,
+                                   Flag::None,
+                                   Flag::None,
+                                   Flag::None,
+                                   Flag(Flag::Leaf | Flag::RightMostChild),
+                                   Flag::Leaf,
+                                   Flag(Flag::Leaf | Flag::RightMostChild),
+                                   Flag::None,
+                                   Flag::None,
+                                   Flag(Flag::Leaf | Flag::RightMostChild),
+                                   Flag::Leaf,
+                                   Flag(Flag::Leaf | Flag::RightMostChild)};
   EXPECT_EQ(tree.flags, expected_flags);
 }
 
-TEST_F(LazySuffixTreeTest, CountSuffixes) {
-  std::array<int, 6> expected_counts{2, 3, 0, 0, 0, 1};
-  EXPECT_EQ(tree.count_suffixes(0, 6), expected_counts);
-
-  lst::LazySuffixTree<seqan3::dna5> tree2{"ACGACGACGTNNNN"_dna5};
-  expected_counts = {3, 3, 3, 4, 1, 1};
-  EXPECT_EQ(tree2.count_suffixes(0, 15), expected_counts);
-  EXPECT_THROW(tree2.count_suffixes(0, 16), std::invalid_argument);
-  EXPECT_THROW(tree2.count_suffixes(-1, 13), std::invalid_argument);
-}
-
-TEST_F(LazySuffixTreeTest, LongestCommonPrefix) {
-  tree.expand_root();
-  EXPECT_EQ(tree.longest_common_prefix(1, 2), 2);
-  EXPECT_EQ(tree.longest_common_prefix(2, 4), 3);
-  EXPECT_EQ(tree.longest_common_prefix(3, 5), 1);
-
-  lst::LazySuffixTree<seqan3::dna5> tree2{"ACGTTACGACGTTATTT"_dna5};
-  tree2.expand_root();
-  EXPECT_EQ(tree2.longest_common_prefix(0, 2), 3);
-}
-
 TEST_F(LazySuffixTreeTest, ConstructorTest) {
-  std::vector<int> expected_suffixes{0, 1, 2, 3, 4, 5};
+  std::vector<int> expected_suffixes{1, 3, 0, 2, 4, 5};
 
   std::vector<seqan3::gapped<seqan3::dna5>> seq{};
   seq.push_back('C'_dna5);
@@ -93,86 +73,6 @@ TEST_F(LazySuffixTreeTest, ConstructorTest) {
 
   EXPECT_EQ(tree.sequence, seq);
   EXPECT_EQ(tree.suffixes, expected_suffixes);
-}
-
-TEST_F(LazySuffixTreeTest, SuffixPointers) {
-  std::array<int, 6> counts{2, 3, 0, 0, 0, 1};
-  auto actual_pointers = tree.suffix_pointers(counts);
-
-  std::array<int, 6> expected_pointers{0, 2, 5, 5, 5, 5};
-  EXPECT_EQ(actual_pointers, expected_pointers);
-}
-
-TEST_F(LazySuffixTreeTest, SortSuffixes) {
-  int lower_bound = 0;
-  int upper_bound = 6;
-  std::array<int, 6> counts = tree.count_suffixes(lower_bound, upper_bound);
-  tree.sort_suffixes(counts, lower_bound, upper_bound);
-
-  std::vector<int> expected_suffixes{1, 3, 0, 2, 4, 5};
-  EXPECT_EQ(tree.suffixes, expected_suffixes);
-}
-
-TEST_F(LazySuffixTreeTest, AddLcpToSuffixes) {
-  int lower_bound = 0;
-  int upper_bound = 6;
-  auto counts = tree.count_suffixes(lower_bound, upper_bound);
-  tree.sort_suffixes(counts, lower_bound, upper_bound);
-  tree.add_lcp_to_suffixes(lower_bound, upper_bound);
-
-  std::vector<int> expected_suffixes{1, 3, 0, 2, 4, 5};
-  EXPECT_EQ(tree.suffixes, expected_suffixes);
-
-  tree.add_lcp_to_suffixes(0, 2);
-  expected_suffixes = {3, 5, 0, 2, 4, 5};
-  EXPECT_EQ(tree.suffixes, expected_suffixes);
-}
-
-TEST_F(LazySuffixTreeTest, AddChildren) {
-  std::array<int, 6> counts = tree.count_suffixes(0, 6);
-  tree.add_children(counts, 0);
-
-  std::vector<int> expected_table{0, 2, 2, 5, 5};
-  EXPECT_EQ(tree.table, expected_table);
-
-  std::vector<lst::Flag> expected_flags{
-      lst::Flag::Unevaluated, lst::Flag::None, lst::Flag::Unevaluated,
-      lst::Flag::None, lst::Flag(lst::Flag::Leaf | lst::Flag::RightMostChild)};
-  EXPECT_EQ(tree.flags, expected_flags);
-}
-
-TEST_F(LazySuffixTreeTest, ExpandRoot) {
-  tree.expand_root();
-
-  std::vector<int> expected_table{0, 2, 2, 5, 5};
-  EXPECT_EQ(tree.table, expected_table);
-
-  std::vector<lst::Flag> expected_flags{
-      lst::Flag::Unevaluated, lst::Flag::None, lst::Flag::Unevaluated,
-      lst::Flag::None, lst::Flag(lst::Flag::Leaf | lst::Flag::RightMostChild)};
-  EXPECT_EQ(tree.flags, expected_flags);
-
-  std::vector<int> expected_suffixes{1, 3, 0, 2, 4, 5};
-  EXPECT_EQ(tree.suffixes, expected_suffixes);
-}
-
-TEST_F(LazySuffixTreeTest, ExpandTest) {
-  tree.expand_root();
-  tree.expand_node(0);
-
-  std::vector<int> expected_table{1, 5, 2, 5, 5, 3, 5};
-
-  std::vector<lst::Flag> expected_flags{
-      lst::Flag::None,
-      lst::Flag::None,
-      lst::Flag::Unevaluated,
-      lst::Flag::None,
-      lst::Flag(lst::Flag::Leaf | lst::Flag::RightMostChild),
-      lst::Flag::Leaf,
-      lst::Flag(lst::Flag::Leaf | lst::Flag::RightMostChild)};
-
-  EXPECT_EQ(tree.table, expected_table);
-  EXPECT_EQ(tree.flags, expected_flags);
 }
 
 TEST_F(LazySuffixTreeTest, LongerTests) {
@@ -214,8 +114,6 @@ TEST_F(LazySuffixTreeTest, LabelSets) {
 }
 
 TEST_F(LazySuffixTreeTest, Search) {
-  tree.expand_root();
-
   auto ac_indicies = tree.search("A"_dna5);
   std::vector<int> expected_ac_indicies{1, 3};
   EXPECT_EQ(ac_indicies, expected_ac_indicies);
@@ -262,8 +160,6 @@ TEST_F(LazySuffixTreeTest, Search) {
 }
 
 TEST_F(LazySuffixTreeTest, Find) {
-  tree.expand_root();
-
   auto [a_index, a_lcp] = tree.find("A"_dna5);
   EXPECT_EQ(a_index, 0);
   EXPECT_EQ(a_lcp, 0);
@@ -277,15 +173,12 @@ TEST_F(LazySuffixTreeTest, Find) {
   EXPECT_EQ(tt_lcp, -1);
 
   lst::LazySuffixTree<seqan3::dna4> tree4{"ACGTACGTACGTACGTACGTACGT"_dna4};
-  tree4.expand_root();
   auto [acgt_index, acgt_lcp] = tree4.find("ACGT"_dna4);
   EXPECT_EQ(acgt_index, 0);
   EXPECT_EQ(acgt_lcp, 0);
 }
 
 TEST_F(LazySuffixTreeTest, NodeOccurrences) {
-  tree.expand_root();
-
   EXPECT_EQ(tree.node_occurrences(0), 2);
 
   EXPECT_EQ(tree.node_occurrences(2), 3);
