@@ -172,32 +172,6 @@ private:
     return start_indicies;
   }
 
-  int node_occurrences(int node_index) {
-    if (node_index >= table.size()) {
-      throw std::invalid_argument("Given node index is too large.");
-    }
-
-    int occurrences = 0;
-    std::queue<int> queue{};
-
-    queue.push(node_index);
-
-    while (queue.size() != 0) {
-      auto index = queue.front();
-      queue.pop();
-
-      if ((flags[index] & Flag::Leaf) == Flag::Leaf) {
-        occurrences += 1;
-      } else if ((flags[index] & Flag::Unevaluated) == Flag::Unevaluated) {
-        occurrences += table[index + 1] - table[index];
-      } else {
-        iterate_children(index, [&](int i) { queue.push(i); });
-      }
-    }
-
-    return occurrences;
-  }
-
   std::tuple<int, int> find(std::vector<alphabet_t> pattern) {
     std::queue<std::tuple<int, int>> queue{};
 
@@ -240,6 +214,32 @@ private:
     }
 
     return std::make_tuple(-1, -1);
+  }
+
+  int node_occurrences(int node_index) {
+    if (node_index >= table.size()) {
+      throw std::invalid_argument("Given node index is too large.");
+    }
+
+    int occurrences = 0;
+    std::queue<int> queue{};
+
+    queue.push(node_index);
+
+    while (queue.size() != 0) {
+      auto index = queue.front();
+      queue.pop();
+
+      if ((flags[index] & Flag::Leaf) == Flag::Leaf) {
+        occurrences += 1;
+      } else if ((flags[index] & Flag::Unevaluated) == Flag::Unevaluated) {
+        occurrences += table[index + 1] - table[index];
+      } else {
+        iterate_children(index, [&](int i) { queue.push(i); });
+      }
+    }
+
+    return occurrences;
   }
 
   int get_edge_lcp(int node_index) {
@@ -328,8 +328,8 @@ private:
   }
 
   bool edge_matches(int node_index, int pattern_lcp,
-                    std::vector<alphabet_t> pattern,
-                    sequence_t<alphabet_t> edge) {
+                    std::vector<alphabet_t> &pattern,
+                    sequence_t<alphabet_t> &edge) {
     for (int i = 0; pattern_lcp + i < pattern.size() && i < edge.size(); i++) {
       int sequence_index = table[node_index] + i;
 
