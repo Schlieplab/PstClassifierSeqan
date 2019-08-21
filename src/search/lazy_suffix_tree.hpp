@@ -119,7 +119,7 @@ public:
 
       int edge_lcp = get_edge_lcp(node_index);
       if (edge_lcp > 1) {
-        add_implicit_nodes(node_index, edge_lcp);
+        lst::details::add_implicit_nodes(node_index, edge_lcp, table, flags);
       }
     }
   }
@@ -370,29 +370,6 @@ private:
   template <typename T> void empty_queue(std::queue<T> &queue) {
     while (!queue.empty()) {
       queue.pop();
-    }
-  }
-
-  void add_implicit_nodes(int node_index, int edge_lcp) {
-    int previous_child = table[node_index + 1];
-    table[node_index + 1] = table.size();
-
-    int start = table[node_index];
-    for (int i = start + 1; i < start + edge_lcp; i++) {
-      table.push_back(i);
-      table.push_back(table.size() + 1);
-
-      flags.push_back(Flag::RightMostChild);
-      flags.push_back(Flag::None);
-    }
-
-    if ((flags[node_index] & Flag::Leaf) == Flag::Leaf) {
-      flags[node_index] = Flag(flags[node_index] & ~Flag::Leaf);
-      flags[flags.size() - 2] = Flag(flags[flags.size() - 2] | Flag::Leaf);
-
-      table[table.size() - 1] = 0;
-    } else {
-      table[table.size() - 1] = previous_child;
     }
   }
 };

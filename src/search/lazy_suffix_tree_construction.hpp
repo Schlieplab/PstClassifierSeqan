@@ -205,4 +205,28 @@ expand_node(int node_index, sequence_t<alphabet_t> &sequence,
   return std::make_tuple(occurrences, lcp);
 }
 
+void add_implicit_nodes(int node_index, int edge_lcp, std::vector<int> &table,
+                        std::vector<Flag> &flags) {
+  int previous_child = table[node_index + 1];
+  table[node_index + 1] = table.size();
+
+  int start = table[node_index];
+  for (int i = start + 1; i < start + edge_lcp; i++) {
+    table.push_back(i);
+    table.push_back(table.size() + 1);
+
+    flags.push_back(Flag::RightMostChild);
+    flags.push_back(Flag::None);
+  }
+
+  if ((flags[node_index] & Flag::Leaf) == Flag::Leaf) {
+    flags[node_index] = Flag(flags[node_index] & ~Flag::Leaf);
+    flags[flags.size() - 2] = Flag(flags[flags.size() - 2] | Flag::Leaf);
+
+    table[table.size() - 1] = 0;
+  } else {
+    table[table.size() - 1] = previous_child;
+  }
+}
+
 } // namespace lst::details
