@@ -33,7 +33,12 @@ void add_branching_node(int index, int count, std::vector<int> &table,
 void add_leaf(int index, std::vector<int> &table, std::vector<Flag> &flags,
               std::vector<int> &suffixes) {
   table.push_back(suffixes[index]);
+  // Add extra index for leaves to allow for explicit nodes.
+  // It's not technically needed.
+  table.push_back(0);
+
   flags.push_back(Flag::Leaf);
+  flags.push_back(Flag::None);
 }
 
 void add_lcp_to_suffixes(int lower_bound, int upper_bound, int lcp,
@@ -89,7 +94,9 @@ void add_children(alphabet_count<alphabet_t> &counts, int lower_bound,
   int right_most_child_index = flags.size() - 2;
 
   if (last_added_leaf) {
-    right_most_child_index = flags.size() - 1;
+    // Should be 1, but I've addded a value to leaves to allow for
+    // explicit nodes.
+    right_most_child_index = flags.size() - 2;
   }
 
   flags[right_most_child_index] =

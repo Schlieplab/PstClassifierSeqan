@@ -101,6 +101,29 @@ public:
         });
   }
 
+  void expand_implicit_nodes() {
+    std::queue<int> queue{};
+    iterate_root_children([&](int index) { queue.emplace(index); });
+
+    while (queue.size() != 0) {
+      int node_index = queue.front();
+      queue.pop();
+
+      if ((flags[node_index] & Flag::Unevaluated) == Flag::Unevaluated) {
+        continue;
+      }
+
+      if ((flags[node_index] & Flag::Leaf) != Flag::Leaf) {
+        iterate_children(node_index, [&](int index) { queue.emplace(index); });
+      }
+
+      int edge_lcp = get_edge_lcp(node_index);
+      if (edge_lcp > 1) {
+        add_implicit_nodes(node_index, edge_lcp);
+      }
+    }
+  }
+
 private:
   // TODO: Can we make the vectors bitcompressed, as we rarely need the full
   // bytes per input??
@@ -244,7 +267,7 @@ private:
 
   int get_edge_lcp(int node_index) {
     if ((flags[node_index] & Flag::Leaf) == Flag::Leaf) {
-      return sequence.size();
+      return sequence.size() - table[node_index];
     }
 
     if ((flags[node_index] & Flag::Unevaluated) == Flag::Unevaluated) {
@@ -319,7 +342,10 @@ private:
 
   int next_child_index(int node_index) {
     if ((flags[node_index] & Flag::Leaf) == Flag::Leaf) {
-      node_index += 1;
+      // Should be 1, but I've addded a value to leaves to allow for
+      // explicit nodes.
+      node_index += 2;
+
     } else {
       node_index += 2;
     }
@@ -344,6 +370,29 @@ private:
   template <typename T> void empty_queue(std::queue<T> &queue) {
     while (!queue.empty()) {
       queue.pop();
+    }
+  }
+
+  void add_implicit_nodes(int node_index, int edge_lcp) {
+    int previous_child = table[node_index + 1];
+    table[node_index + 1] = table.size();
+
+    int start = table[node_index];
+    for (int i = start + 1; i < start + edge_lcp; i++) {
+      table.push_back(i);
+      table.push_back(table.size() + 1);
+
+      flags.push_back(Flag::RightMostChild);
+      flags.push_back(Flag::None);
+    }
+
+    if ((flags[node_index] & Flag::Leaf) == Flag::Leaf) {
+      flags[node_index] = Flag(flags[node_index] & ~Flag::Leaf);
+      flags[flags.size() - 2] = Flag(flags[flags.size() - 2] | Flag::Leaf);
+
+      table[table.size() - 1] = 0;
+    } else {
+      table[table.size() - 1] = previous_child;
     }
   }
 };

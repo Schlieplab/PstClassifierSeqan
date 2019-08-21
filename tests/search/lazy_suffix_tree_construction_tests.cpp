@@ -87,12 +87,18 @@ TEST_F(LazySuffixTreeTest, AddChildren) {
   std::array<int, 6> counts = count_suffixes(0, 6, sequence, suffixes);
   add_children<seqan3::dna5>(counts, 0, suffixes, table, flags);
 
-  std::vector<int> expected_table{0, 2, 2, 5, 5};
+  // Changed to allow for explicit labels in the tree
+  std::vector<int> expected_table{0, 2, 2, 5, 5, 0};
   EXPECT_EQ(table, expected_table);
 
-  std::vector<Flag> expected_flags{Flag::Unevaluated, Flag::None,
-                                   Flag::Unevaluated, Flag::None,
-                                   Flag(Flag::Leaf | Flag::RightMostChild)};
+  std::vector<Flag> expected_flags{
+      Flag::Unevaluated,
+      Flag::None,
+      Flag::Unevaluated,
+      Flag::None,
+      Flag(Flag::Leaf | Flag::RightMostChild),
+      Flag::None, // Added to allow for explicit labels in the tree
+  };
   EXPECT_EQ(flags, expected_flags);
 }
 
@@ -101,12 +107,18 @@ TEST_F(LazySuffixTreeTest, ExpandRoot) {
   flags = std::vector<Flag>{};
   expand_root(sequence, suffixes, table, flags);
 
-  std::vector<int> expected_table{0, 2, 2, 5, 5};
+  // Changed to allow for explicit labels in the tree
+  std::vector<int> expected_table{0, 2, 2, 5, 5, 0};
   EXPECT_EQ(table, expected_table);
 
-  std::vector<Flag> expected_flags{Flag::Unevaluated, Flag::None,
-                                   Flag::Unevaluated, Flag::None,
-                                   Flag(Flag::Leaf | Flag::RightMostChild)};
+  std::vector<Flag> expected_flags{
+      Flag::Unevaluated,
+      Flag::None,
+      Flag::Unevaluated,
+      Flag::None,
+      Flag(Flag::Leaf | Flag::RightMostChild),
+      Flag::None, // Added to allow for explicit labels in the tree
+  };
   EXPECT_EQ(flags, expected_flags);
 
   std::vector<int> expected_suffixes{1, 3, 0, 2, 4, 5};
@@ -119,15 +131,21 @@ TEST_F(LazySuffixTreeTest, ExpandTest) {
   expand_root(sequence, suffixes, table, flags);
   expand_node(0, sequence, suffixes, table, flags);
 
-  std::vector<int> expected_table{1, 5, 2, 5, 5, 3, 5};
+  // Changed to allow for explicit labels in the tree
+  std::vector<int> expected_table{1, 6, 2, 5, 5, 0, 3, 0, 5, 0};
 
-  std::vector<Flag> expected_flags{Flag::None,
-                                   Flag::None,
-                                   Flag::Unevaluated,
-                                   Flag::None,
-                                   Flag(Flag::Leaf | Flag::RightMostChild),
-                                   Flag::Leaf,
-                                   Flag(Flag::Leaf | Flag::RightMostChild)};
+  std::vector<Flag> expected_flags{
+      Flag::None,
+      Flag::None,
+      Flag::Unevaluated,
+      Flag::None,
+      Flag(Flag::Leaf | Flag::RightMostChild),
+      Flag::None, // Added to allow for explicit labels in the tree
+      Flag::Leaf,
+      Flag::None, // Added to allow for explicit labels in the tree
+      Flag(Flag::Leaf | Flag::RightMostChild),
+      Flag::None, // Added to allow for explicit labels in the tree
+  };
 
   EXPECT_EQ(table, expected_table);
   EXPECT_EQ(flags, expected_flags);

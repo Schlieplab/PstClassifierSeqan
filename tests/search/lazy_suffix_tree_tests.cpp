@@ -39,24 +39,37 @@ protected:
 
 TEST_F(LazySuffixTreeTest, SimpleTest) {
   tree.expand_all();
-  std::vector<int> expected_table{1, 5, 0, 7, 5, 3, 5, 1, 10, 5, 3, 5};
+
+  // Changed to allow for explicit lables in the tree
+  // std::vector<int> expected_table{1, 5, 0, 7, 5, 3, 5, 1, 10, 5, 3, 5};
+  std::vector<int> expected_table{1, 6, 0,  10, 5, 0, 3, 0, 5,
+                                  0, 1, 14, 5,  0, 3, 0, 5, 0};
   EXPECT_EQ(tree.table, expected_table);
 
   std::vector<int> expected_suffixes{3, 5, 3, 5, 5, 5};
   EXPECT_EQ(tree.suffixes, expected_suffixes);
 
-  std::vector<Flag> expected_flags{Flag::None,
-                                   Flag::None,
-                                   Flag::None,
-                                   Flag::None,
-                                   Flag(Flag::Leaf | Flag::RightMostChild),
-                                   Flag::Leaf,
-                                   Flag(Flag::Leaf | Flag::RightMostChild),
-                                   Flag::None,
-                                   Flag::None,
-                                   Flag(Flag::Leaf | Flag::RightMostChild),
-                                   Flag::Leaf,
-                                   Flag(Flag::Leaf | Flag::RightMostChild)};
+  std::vector<Flag> expected_flags{
+      Flag::None,
+      Flag::None,
+      Flag::None,
+      Flag::None,
+      Flag(Flag::Leaf | Flag::RightMostChild),
+      Flag::None, // Added to allow for explicit labels in the tree
+      Flag::Leaf,
+      Flag::None, // Added to allow for explicit labels in the tree
+      Flag(Flag::Leaf | Flag::RightMostChild),
+      Flag::None, // Added to allow for explicit labels in the tree
+      Flag::None,
+      Flag::None,
+      Flag(Flag::Leaf | Flag::RightMostChild),
+      Flag::None, // Added to allow for explicit labels in the tree
+      Flag::Leaf,
+      Flag::None, // Added to allow for explicit labels in the tree
+      Flag(Flag::Leaf | Flag::RightMostChild),
+      Flag::None, // Added to allow for explicit labels in the tree
+  };
+
   EXPECT_EQ(tree.flags, expected_flags);
 }
 
@@ -97,6 +110,7 @@ TEST_F(LazySuffixTreeTest, LabelSets) {
                       std::make_tuple(make_gapped_with_gap("CACAC"_dna5), 1),
                       std::make_tuple(make_gapped_with_gap("CAC"_dna5), 1)};
   auto labels = tree.get_all_labels();
+
   EXPECT_EQ(labels, expected_labels);
 
   std::vector<std::tuple<std::vector<seqan3::gapped<seqan3::dna4>>, int>>
@@ -188,4 +202,34 @@ TEST_F(LazySuffixTreeTest, NodeOccurrences) {
   EXPECT_EQ(tree.node_occurrences(0), 2);
 
   EXPECT_EQ(tree.node_occurrences(2), 3);
+}
+
+TEST_F(LazySuffixTreeTest, ExpandImplicitNodes) {
+  tree.expand_all();
+  seqan3::debug_stream << tree.table << std::endl;
+  tree.expand_implicit_nodes();
+
+  std::vector<std::tuple<std::vector<seqan3::gapped<seqan3::dna5>>, int>>
+      expected_labels{std::make_tuple(make_gapped("A"_dna5), 2),
+                      std::make_tuple(make_gapped("C"_dna5), 3),
+                      std::make_tuple(make_gapped_with_gap(""_dna5), 1),
+                      std::make_tuple(make_gapped("AC"_dna5), 2),
+                      std::make_tuple(make_gapped("CA"_dna5), 2),
+                      std::make_tuple(make_gapped_with_gap("C"_dna5), 1),
+                      std::make_tuple(make_gapped("ACA"_dna5), 1),
+                      std::make_tuple(make_gapped_with_gap("AC"_dna5), 1),
+                      std::make_tuple(make_gapped("CAC"_dna5), 2),
+                      std::make_tuple(make_gapped("ACAC"_dna5), 1),
+                      std::make_tuple(make_gapped("CACA"_dna5), 1),
+                      std::make_tuple(make_gapped_with_gap("CAC"_dna5), 1),
+                      std::make_tuple(make_gapped_with_gap("ACAC"_dna5), 1),
+                      std::make_tuple(make_gapped("CACAC"_dna5), 1),
+                      std::make_tuple(make_gapped_with_gap("CACAC"_dna5), 1)};
+
+  seqan3::debug_stream << tree.table << std::endl;
+
+  auto labels = tree.get_all_labels();
+  seqan3::debug_stream << labels << std::endl;
+  seqan3::debug_stream << expected_labels << std::endl;
+  EXPECT_EQ(labels, expected_labels);
 }
