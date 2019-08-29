@@ -159,7 +159,8 @@ private:
 
   std::vector<int> suffix_indicies(int node_index, int og_lcp) {
     if (node_index >= table.size()) {
-      throw std::invalid_argument("Given node index is too large.");
+      throw std::invalid_argument(
+          "[SUFFIX INDICIES] Given node index is too large.");
     }
 
     std::vector<int> start_indicies{};
@@ -232,8 +233,9 @@ private:
   }
 
   int node_occurrences(int node_index) {
-    if (node_index >= table.size()) {
-      throw std::invalid_argument("Given node index is too large.");
+    if (node_index > table.size()) {
+      throw std::invalid_argument(
+          "[NODE OCCURRENCES] Given node index is too large.");
     }
 
     int occurrences = 0;

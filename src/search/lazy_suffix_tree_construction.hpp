@@ -142,11 +142,11 @@ alphabet_count<alphabet_t> count_suffixes(int lower_bound, int upper_bound,
                                           sequence_t<alphabet_t> &sequence,
                                           std::vector<int> &suffixes) {
   if (upper_bound > suffixes.size())
-    throw std::invalid_argument(
-        "Upper bound is larger than the size of the sequence.");
+    throw std::invalid_argument("[COUNT SUFFIXES] Upper bound is larger than "
+                                "the size of the sequence.");
 
   if (lower_bound < 0)
-    throw std::invalid_argument("Lower bound is less than 0.");
+    throw std::invalid_argument("[COUNT SUFFIXES] Lower bound is less than 0.");
 
   alphabet_count<alphabet_t> count{};
 
@@ -178,7 +178,7 @@ expand_node(int node_index, sequence_t<alphabet_t> &sequence,
             std::vector<int> &suffixes, std::vector<int> &table,
             std::vector<Flag> &flags) {
   if ((flags[node_index] & Flag::Unevaluated) != Flag::Unevaluated) {
-    throw std::invalid_argument("Given node is already expanded");
+    throw std::invalid_argument("[EXPAND NODE] Given node is already expanded");
   }
 
   int lower_bound = table[node_index];
