@@ -15,7 +15,25 @@ using namespace lst::details;
 
 class LazySuffixTreeTest : public ::testing::Test {
 protected:
-  lst::LazySuffixTree<seqan3::dna5> tree{"CACAC"_dna5};
+  void SetUp() override {
+    sequence = "CACAC"_dna5;
+    tree = lst::LazySuffixTree<seqan3::dna5>{sequence};
+
+    dna_sequence = "ACGATCGCT"_dna5;
+    dna_tree = lst::LazySuffixTree<seqan3::dna5>{dna_sequence};
+
+    sequence4 = "ACGTACGTACGTACGTACGTACGT"_dna4;
+    tree4 = lst::LazySuffixTree{sequence4};
+  }
+
+  seqan3::dna5_vector sequence{};
+  lst::LazySuffixTree<seqan3::dna5> tree{sequence};
+
+  seqan3::dna5_vector dna_sequence{};
+  lst::LazySuffixTree<seqan3::dna5> dna_tree{dna_sequence};
+
+  seqan3::dna4_vector sequence4{};
+  lst::LazySuffixTree<seqan3::dna4> tree4{sequence4};
 
   template <seqan3::Alphabet alphabet_t = seqan3::dna5>
   std::vector<seqan3::gapped<alphabet_t>>
@@ -91,11 +109,11 @@ TEST_F(LazySuffixTreeTest, ConstructorTest) {
 }
 
 TEST_F(LazySuffixTreeTest, LongerTests) {
-  lst::LazySuffixTree<seqan3::dna5> tree{"CACACACACACACACACACACACAGT"_dna5};
+  seqan3::dna5_vector longer_sequence = "CACACACACACACACACACACACAGT"_dna5;
+  lst::LazySuffixTree<seqan3::dna5> tree{longer_sequence};
   tree.expand_all();
   EXPECT_TRUE(tree.table.size() != 0);
 
-  lst::LazySuffixTree<seqan3::dna4> tree4{"ACGTACGTACGTACGTACGTACGT"_dna4};
   tree4.expand_all();
   EXPECT_TRUE(tree4.table.size() != 0);
 }
@@ -124,7 +142,8 @@ TEST_F(LazySuffixTreeTest, LabelSets) {
           std::make_tuple(make_gapped_with_gap<seqan3::dna4>("ATAA"_dna4), 1),
           std::make_tuple(make_gapped_with_gap<seqan3::dna4>("A"_dna4), 1)};
 
-  lst::LazySuffixTree<seqan3::dna4> double_tree{"ATAA"_dna4};
+  seqan3::dna4_vector double_sequence{"ATAA"_dna4};
+  lst::LazySuffixTree<seqan3::dna4> double_tree{double_sequence};
   auto double_labels = double_tree.get_all_labels();
   EXPECT_EQ(double_labels, double_expected_labels);
 }
@@ -150,7 +169,6 @@ TEST_F(LazySuffixTreeTest, Search) {
 
   EXPECT_EQ(tree.search(""_dna5).size(), 6);
 
-  lst::LazySuffixTree<seqan3::dna4> tree4{"ACGTACGTACGTACGTACGTACGT"_dna4};
   EXPECT_EQ(tree4.search("ACGT"_dna4), (std::vector<int>{20, 16, 12, 8, 0, 4}));
 
   EXPECT_EQ(tree4.search("ACGTACGTACGTACGTACGTACGT"_dna4),
@@ -164,8 +182,9 @@ TEST_F(LazySuffixTreeTest, Search) {
   tree4.expand_all();
   EXPECT_EQ(tree4.search("ACGT"_dna4), (std::vector<int>{20, 16, 12, 8, 0, 4}));
 
-  lst::LazySuffixTree<seqan3::dna5> tree5{
-      "ACTAGCTAGCTACGCGCTATCATCATTTACGACTAGCAGCCTACTACATTATATAGCGCTAGCATCAGTCAGCACTACTACAGCAGCAGCATCACGACTAGCTACGATCAGCATCGATCGATCATTATCGACTAG"_dna5};
+  seqan3::dna5_vector long_sequence =
+      "ACTAGCTAGCTACGCGCTATCATCATTTACGACTAGCAGCCTACTACATTATATAGCGCTAGCATCAGTCAGCACTACTACAGCAGCAGCATCACGACTAGCTACGATCAGCATCGATCGATCATTATCGACTAG"_dna5;
+  lst::LazySuffixTree<seqan3::dna5> tree5{long_sequence};
   EXPECT_EQ(tree5.search("TAG"_dna5).size(), 7);
   EXPECT_EQ(tree5.search("GAC"_dna5).size(), 3);
   EXPECT_EQ(tree5.search("ATTAT"_dna5).size(), 2);
@@ -188,7 +207,6 @@ TEST_F(LazySuffixTreeTest, Find) {
   EXPECT_EQ(tt_index, -1);
   EXPECT_EQ(tt_lcp, -1);
 
-  lst::LazySuffixTree<seqan3::dna4> tree4{"ACGTACGTACGTACGTACGTACGT"_dna4};
   auto [acgt_index, acgt_lcp] = tree4.find("ACGT"_dna4);
   EXPECT_EQ(acgt_index, 2);
   EXPECT_EQ(acgt_lcp, 0);
@@ -208,7 +226,6 @@ TEST_F(LazySuffixTreeTest, NodeOccurrences) {
 
 TEST_F(LazySuffixTreeTest, ExpandImplicitNodes) {
   tree.expand_all();
-  seqan3::debug_stream << tree.table << std::endl;
   tree.expand_implicit_nodes();
 
   std::vector<std::tuple<std::vector<seqan3::gapped<seqan3::dna5>>, int>>

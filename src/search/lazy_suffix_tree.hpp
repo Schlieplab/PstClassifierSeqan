@@ -23,7 +23,7 @@ template <seqan3::Alphabet alphabet_t = seqan3::dna5> class LazySuffixTree {
 public:
   friend class LazySuffixTreeTest;
 
-  LazySuffixTree(std::vector<alphabet_t> sequence_) {
+  LazySuffixTree(std::vector<alphabet_t> &sequence_) {
     sequence = sequence_ | seqan3::view::convert<seqan3::gapped<alphabet_t>>;
     sequence.push_back(seqan3::gap{});
 
