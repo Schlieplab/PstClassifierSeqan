@@ -1,6 +1,7 @@
 cmake_minimum_required (VERSION 3.4)
 project (pst_classifier_tests CXX)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
 set(SeqAn3_DIR "${CMAKE_SOURCE_DIR}/../seqan3/build_system")
