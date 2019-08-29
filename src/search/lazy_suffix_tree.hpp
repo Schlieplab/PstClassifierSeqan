@@ -34,18 +34,10 @@ public:
   }
 
   void expand_all() {
-    if (table.size() == 0) {
-      lst::details::expand_root(sequence, suffixes, table, flags);
-    }
-
-    int table_size = table.size();
-    for (int i = 0; i <= table_size; i++) {
-
+    for (int i = 0; i < table.size(); i++) {
       if ((flags[i] & Flag::Unevaluated) == Flag::Unevaluated) {
         lst::details::expand_node(i, sequence, suffixes, table, flags);
       }
-
-      table_size = table.size();
     }
   }
 
@@ -69,7 +61,7 @@ public:
   std::vector<int> search(std::vector<alphabet_t> pattern) {
     if (pattern.size() == 0) {
       std::vector<int> all_suffixes{};
-      iterate_root_children([&](int index) {
+      iterate_children(0, [&](int index) {
         auto suffixes = suffix_indicies(index, 0);
         all_suffixes.insert(all_suffixes.end(), suffixes.begin(),
                             suffixes.end());
@@ -103,9 +95,9 @@ public:
 
   void expand_implicit_nodes() {
     std::queue<int> queue{};
-    iterate_root_children([&](int index) { queue.emplace(index); });
+    queue.push(0);
 
-    while (queue.size() != 0) {
+    while (!queue.empty()) {
       int node_index = queue.front();
       queue.pop();
 
@@ -114,7 +106,7 @@ public:
       }
 
       if ((flags[node_index] & Flag::Leaf) != Flag::Leaf) {
-        iterate_children(node_index, [&](int index) { queue.emplace(index); });
+        iterate_children(node_index, [&](int index) { queue.push(index); });
       }
 
       int edge_lcp = get_edge_lcp(node_index);
@@ -129,15 +121,15 @@ private:
   // bytes per input??
   std::vector<seqan3::gapped<alphabet_t>> sequence{};
   std::vector<int> suffixes{};
-  std::vector<int> table{};
-  std::vector<Flag> flags{};
+  std::vector<int> table{0, 2};
+  std::vector<Flag> flags{Flag::RightMostChild, Flag::None};
 
   void
   breadth_first_iteration(const std::function<bool(int, int, int, int)> &f) {
     std::queue<std::tuple<int, int>> queue{};
-    iterate_root_children([&](int index) { queue.emplace(index, 0); });
+    queue.emplace(0, 0);
 
-    while (queue.size() != 0) {
+    while (!queue.empty()) {
       auto [node_index, lcp] = queue.front();
       queue.pop();
 
@@ -175,7 +167,7 @@ private:
 
     queue.emplace(node_index, og_lcp);
 
-    while (queue.size() != 0) {
+    while (!queue.empty()) {
       auto [index, lcp] = queue.front();
       queue.pop();
 
@@ -198,7 +190,7 @@ private:
   std::tuple<int, int> find(std::vector<alphabet_t> pattern) {
     std::queue<std::tuple<int, int>> queue{};
 
-    iterate_root_children([&](int index) { queue.emplace(index, 0); });
+    queue.emplace(0, 0);
 
     int pattern_lcp = 0;
 
@@ -249,7 +241,7 @@ private:
 
     queue.push(node_index);
 
-    while (queue.size() != 0) {
+    while (!queue.empty()) {
       auto index = queue.front();
       queue.pop();
 
@@ -293,26 +285,17 @@ private:
   }
 
   void iterate_children(int node_index, const std::function<void(int)> &f) {
-    int first_child = table[node_index + 1];
+    if ((flags[node_index] & Flag::Leaf) != Flag::Leaf) {
+      int first_child = table[node_index + 1];
 
-    iterate(first_child, f);
-  }
+      for (int i = first_child; i <= table.size();) {
+        f(i);
 
-  void iterate_root_children(const std::function<void(int)> f) {
-    if (table.size() == 0) {
-      lst::details::expand_root(sequence, suffixes, table, flags);
-    }
-    iterate(0, f);
-  }
-
-  void iterate(int start_index, const std::function<void(int)> f) {
-    for (int i = start_index; i <= table.size();) {
-      f(i);
-
-      if ((flags[i] & Flag::RightMostChild) == Flag::RightMostChild) {
-        break;
+        if ((flags[i] & Flag::RightMostChild) == Flag::RightMostChild) {
+          break;
+        }
+        i = next_child_index(i);
       }
-      i = next_child_index(i);
     }
   }
 

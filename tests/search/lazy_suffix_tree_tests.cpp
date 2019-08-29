@@ -42,14 +42,16 @@ TEST_F(LazySuffixTreeTest, SimpleTest) {
 
   // Changed to allow for explicit lables in the tree
   // std::vector<int> expected_table{1, 5, 0, 7, 5, 3, 5, 1, 10, 5, 3, 5};
-  std::vector<int> expected_table{1, 6, 0,  10, 5, 0, 3, 0, 5,
-                                  0, 1, 14, 5,  0, 3, 0, 5, 0};
+  std::vector<int> expected_table{0, 2, 1, 8,  0, 12, 5, 0, 3, 0,
+                                  5, 0, 1, 16, 5, 0,  3, 0, 5, 0};
   EXPECT_EQ(tree.table, expected_table);
 
   std::vector<int> expected_suffixes{3, 5, 3, 5, 5, 5};
   EXPECT_EQ(tree.suffixes, expected_suffixes);
 
   std::vector<Flag> expected_flags{
+      Flag::RightMostChild,
+      Flag::None,
       Flag::None,
       Flag::None,
       Flag::None,
@@ -175,11 +177,11 @@ TEST_F(LazySuffixTreeTest, Search) {
 
 TEST_F(LazySuffixTreeTest, Find) {
   auto [a_index, a_lcp] = tree.find("A"_dna5);
-  EXPECT_EQ(a_index, 0);
+  EXPECT_EQ(a_index, 2);
   EXPECT_EQ(a_lcp, 0);
 
   auto [c_index, c_lcp] = tree.find("C"_dna5);
-  EXPECT_EQ(c_index, 2);
+  EXPECT_EQ(c_index, 4);
   EXPECT_EQ(c_lcp, 0);
 
   auto [tt_index, tt_lcp] = tree.find("TT"_dna5);
@@ -188,7 +190,7 @@ TEST_F(LazySuffixTreeTest, Find) {
 
   lst::LazySuffixTree<seqan3::dna4> tree4{"ACGTACGTACGTACGTACGTACGT"_dna4};
   auto [acgt_index, acgt_lcp] = tree4.find("ACGT"_dna4);
-  EXPECT_EQ(acgt_index, 0);
+  EXPECT_EQ(acgt_index, 2);
   EXPECT_EQ(acgt_lcp, 0);
 }
 
