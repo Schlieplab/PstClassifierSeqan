@@ -160,6 +160,34 @@ public:
     }
   }
 
+  void print() {
+    lst::details::breadth_first_iteration(
+        sequence, suffixes, table, flags, false,
+        [&](int node_index, int lcp, int edge_lcp, int occurrences) -> bool {
+          auto label = node_label(node_index, lcp, edge_lcp);
+
+          if (is_leaf(node_index)) {
+            label = leaf_label(node_index, lcp);
+          }
+
+          seqan3::debug_stream << label << "\t" << node_index << "\t"
+                               << table[node_index] << "\t"
+                               << table[node_index + 1];
+
+          if (suffix_links.size() > node_index / 2) {
+            seqan3::debug_stream << "\t" << suffix_links[node_index / 2];
+          }
+
+          if (reverse_suffix_links.size() > node_index / 2) {
+            seqan3::debug_stream << "\t"
+                                 << reverse_suffix_links[node_index / 2];
+          }
+
+          seqan3::debug_stream << std::endl;
+          return true;
+        });
+  }
+
 protected:
   // TODO: Can we make the vectors bitcompressed, as we rarely need the full
   // bytes per input??
