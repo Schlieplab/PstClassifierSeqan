@@ -11,7 +11,7 @@ template <seqan3::Alphabet alphabet_t = seqan3::dna5>
 using sequence_t = std::vector<seqan3::gapped<alphabet_t>>;
 
 template <seqan3::Alphabet alphabet_t = seqan3::dna5>
-using alphabet_count =
+using alphabet_array =
     std::array<int, seqan3::alphabet_size<seqan3::gapped<alphabet_t>>>;
 
 enum Flag : unsigned char {
@@ -20,6 +20,18 @@ enum Flag : unsigned char {
   Leaf = 1 << 1,
   Unevaluated = 1 << 2,
 };
+
+bool is_leaf(int node_index, std::vector<Flag> &flags) {
+  return (flags[node_index] & Flag::Leaf) == Flag::Leaf;
+}
+
+bool is_unevaluated(int node_index, std::vector<Flag> &flags) {
+  return (flags[node_index] & Flag::Unevaluated) == Flag::Unevaluated;
+}
+
+bool is_rightmostchild(int node_index, std::vector<Flag> &flags) {
+  return (flags[node_index] & Flag::RightMostChild) == Flag::RightMostChild;
+}
 
 void add_branching_node(int index, int count, std::vector<int> &table,
                         std::vector<Flag> &flags) {
@@ -71,7 +83,7 @@ int longest_common_prefix(int lower_bound, int upper_bound,
 }
 
 template <seqan3::Alphabet alphabet_t>
-void add_children(alphabet_count<alphabet_t> &counts, int lower_bound,
+void add_children(alphabet_array<alphabet_t> &counts, int lower_bound,
                   std::vector<int> &suffixes, std::vector<int> &table,
                   std::vector<Flag> &flags) {
   bool last_added_leaf = false;
@@ -104,8 +116,8 @@ void add_children(alphabet_count<alphabet_t> &counts, int lower_bound,
 }
 
 template <seqan3::Alphabet alphabet_t>
-alphabet_count<alphabet_t> suffix_pointers(alphabet_count<alphabet_t> counts) {
-  alphabet_count<alphabet_t> pointers{};
+alphabet_array<alphabet_t> suffix_pointers(alphabet_array<alphabet_t> counts) {
+  alphabet_array<alphabet_t> pointers{};
 
   int counter = 0;
   for (int i = 0; i < counts.size(); i++) {
@@ -117,7 +129,7 @@ alphabet_count<alphabet_t> suffix_pointers(alphabet_count<alphabet_t> counts) {
 }
 
 template <seqan3::Alphabet alphabet_t>
-void sort_suffixes(alphabet_count<alphabet_t> counts, int lower_bound,
+void sort_suffixes(alphabet_array<alphabet_t> counts, int lower_bound,
                    int upper_bound, sequence_t<alphabet_t> &sequence,
                    std::vector<int> &suffixes) {
   std::vector<int> temp_suffixes(suffixes.begin() + lower_bound,
@@ -138,7 +150,7 @@ void sort_suffixes(alphabet_count<alphabet_t> counts, int lower_bound,
 }
 
 template <seqan3::Alphabet alphabet_t>
-alphabet_count<alphabet_t> count_suffixes(int lower_bound, int upper_bound,
+alphabet_array<alphabet_t> count_suffixes(int lower_bound, int upper_bound,
                                           sequence_t<alphabet_t> &sequence,
                                           std::vector<int> &suffixes) {
   if (upper_bound > suffixes.size())
@@ -148,7 +160,7 @@ alphabet_count<alphabet_t> count_suffixes(int lower_bound, int upper_bound,
   if (lower_bound < 0)
     throw std::invalid_argument("[COUNT SUFFIXES] Lower bound is less than 0.");
 
-  alphabet_count<alphabet_t> count{};
+  alphabet_array<alphabet_t> count{};
 
   for (int i = lower_bound; i < upper_bound; i++) {
     int character_i = suffixes[i];
@@ -177,7 +189,7 @@ std::tuple<int, int>
 expand_node(int node_index, sequence_t<alphabet_t> &sequence,
             std::vector<int> &suffixes, std::vector<int> &table,
             std::vector<Flag> &flags) {
-  if ((flags[node_index] & Flag::Unevaluated) != Flag::Unevaluated) {
+  if (!is_unevaluated(node_index, flags)) {
     throw std::invalid_argument("[EXPAND NODE] Given node is already expanded");
   }
 
@@ -191,7 +203,7 @@ expand_node(int node_index, sequence_t<alphabet_t> &sequence,
 
   add_lcp_to_suffixes(lower_bound, upper_bound, lcp, suffixes);
 
-  alphabet_count<alphabet_t> counts =
+  alphabet_array<alphabet_t> counts =
       count_suffixes(lower_bound, upper_bound, sequence, suffixes);
 
   sort_suffixes(counts, lower_bound, upper_bound, sequence, suffixes);
@@ -219,7 +231,7 @@ void add_implicit_nodes(int node_index, int edge_lcp, std::vector<int> &table,
     flags.push_back(Flag::None);
   }
 
-  if ((flags[node_index] & Flag::Leaf) == Flag::Leaf) {
+  if (is_leaf(node_index, flags)) {
     flags[node_index] = Flag(flags[node_index] & ~Flag::Leaf);
     flags[flags.size() - 2] = Flag(flags[flags.size() - 2] | Flag::Leaf);
 

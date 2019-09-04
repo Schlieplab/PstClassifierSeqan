@@ -1,2 +1,1 @@
 test_case(lazy_suffix_tree_tests.cpp)
-test_case(lazy_suffix_tree_construction_tests.cpp)
