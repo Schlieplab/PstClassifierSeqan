@@ -160,7 +160,7 @@ public:
     }
   }
 
-private:
+protected:
   // TODO: Can we make the vectors bitcompressed, as we rarely need the full
   // bytes per input??
   std::vector<seqan3::gapped<alphabet_t>> sequence{};
