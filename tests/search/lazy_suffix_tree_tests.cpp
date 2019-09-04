@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "../../src/search/lazy_suffix_tree.hpp"
-#include "../../src/search/lazy_suffix_tree_construction.hpp"
+#include "../../src/search/lazy_suffix_tree/construction.hpp"
 
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 using seqan3::operator""_dna5;
@@ -27,13 +27,13 @@ protected:
   }
 
   seqan3::dna5_vector sequence{};
-  lst::LazySuffixTree<seqan3::dna5> tree{sequence};
+  lst::LazySuffixTree<seqan3::dna5> tree{};
 
   seqan3::dna5_vector dna_sequence{};
-  lst::LazySuffixTree<seqan3::dna5> dna_tree{dna_sequence};
+  lst::LazySuffixTree<seqan3::dna5> dna_tree{};
 
   seqan3::dna4_vector sequence4{};
-  lst::LazySuffixTree<seqan3::dna4> tree4{sequence4};
+  lst::LazySuffixTree<seqan3::dna4> tree4{};
 
   template <seqan3::Alphabet alphabet_t = seqan3::dna5>
   std::vector<seqan3::gapped<alphabet_t>>
@@ -58,8 +58,6 @@ protected:
 TEST_F(LazySuffixTreeTest, SimpleTest) {
   tree.expand_all();
 
-  // Changed to allow for explicit lables in the tree
-  // std::vector<int> expected_table{1, 5, 0, 7, 5, 3, 5, 1, 10, 5, 3, 5};
   std::vector<int> expected_table{0, 2, 1, 8,  0, 12, 5, 0, 3, 0,
                                   5, 0, 1, 16, 5, 0,  3, 0, 5, 0};
   EXPECT_EQ(tree.table, expected_table);
@@ -154,7 +152,7 @@ TEST_F(LazySuffixTreeTest, Search) {
   EXPECT_EQ(ac_indicies, expected_ac_indicies);
 
   auto c_indicies = tree.search("C"_dna5);
-  std::vector<int> expected_c_indicies{4, 0, 2};
+  std::vector<int> expected_c_indicies{0, 2, 4};
   EXPECT_EQ(c_indicies, expected_c_indicies);
 
   tree.expand_all();
@@ -169,7 +167,7 @@ TEST_F(LazySuffixTreeTest, Search) {
 
   EXPECT_EQ(tree.search(""_dna5).size(), 6);
 
-  EXPECT_EQ(tree4.search("ACGT"_dna4), (std::vector<int>{20, 16, 12, 8, 0, 4}));
+  EXPECT_EQ(tree4.search("ACGT"_dna4), (std::vector<int>{0, 4, 8, 12, 16, 20}));
 
   EXPECT_EQ(tree4.search("ACGTACGTACGTACGTACGTACGT"_dna4),
             (std::vector<int>{0}));
@@ -212,18 +210,6 @@ TEST_F(LazySuffixTreeTest, Find) {
   EXPECT_EQ(acgt_lcp, 0);
 }
 
-TEST_F(LazySuffixTreeTest, NodeOccurrences) {
-  EXPECT_EQ(tree.node_occurrences(0), 2);
-
-  EXPECT_EQ(tree.node_occurrences(2), 3);
-
-  tree.expand_all();
-
-  EXPECT_EQ(tree.node_occurrences(0), 2);
-
-  EXPECT_EQ(tree.node_occurrences(2), 3);
-}
-
 TEST_F(LazySuffixTreeTest, ExpandImplicitNodes) {
   tree.expand_all();
   tree.expand_implicit_nodes();
@@ -245,10 +231,59 @@ TEST_F(LazySuffixTreeTest, ExpandImplicitNodes) {
                       std::make_tuple(make_gapped("CACAC"_dna5), 1),
                       std::make_tuple(make_gapped_with_gap("CACAC"_dna5), 1)};
 
-  seqan3::debug_stream << tree.table << std::endl;
-
   auto labels = tree.get_all_labels();
-  seqan3::debug_stream << labels << std::endl;
-  seqan3::debug_stream << expected_labels << std::endl;
+
   EXPECT_EQ(labels, expected_labels);
+}
+
+TEST_F(LazySuffixTreeTest, SuffixLinks) {
+  tree.expand_all();
+
+  tree.add_suffix_links();
+  std::vector<int> expected_links{-1, 4, 0, 0, 18, 14, 2, 6, 8, 10};
+
+  EXPECT_EQ(tree.suffix_links, expected_links);
+
+  tree.expand_implicit_nodes();
+  tree.add_suffix_links();
+
+  std::vector<int> implicit_expected_links{-1, 0,  0, 0,  12, 14, 2,  6,
+                                           8,  10, 4, 26, 18, 20, 22, 24};
+
+  EXPECT_EQ(tree.suffix_links, implicit_expected_links);
+
+  dna_tree.expand_all();
+  dna_tree.expand_implicit_nodes();
+  dna_tree.add_suffix_links();
+
+  std::vector<int> implicit_expected_dna_links{
+      -1, 0,  0,  0,  0,  0,  4,  8,  6,  8,  2,  4,  4,  10, 20, 22, 16,
+      28, 84, 86, 88, 90, 92, 94, 24, 76, 78, 80, 82, 26, 14, 48, 50, 52,
+      54, 56, 18, 58, 16, 30, 96, 98, 60, 62, 64, 66, 68, 70, 72, 74};
+
+  EXPECT_EQ(dna_tree.suffix_links, implicit_expected_dna_links);
+}
+
+TEST_F(LazySuffixTreeTest, UnevaluatedSuffixLinks) {
+  tree4.search("AC"_dna4);
+  tree4.add_suffix_links();
+  std::vector<int> expected_tree4_links{-1, 4, 6, 8, 0, 0, -1, -1};
+  EXPECT_EQ(tree4.suffix_links, expected_tree4_links);
+}
+
+TEST_F(LazySuffixTreeTest, ReverseSuffixLinks) {
+  dna_tree.expand_all();
+  dna_tree.add_reverse_suffix_links();
+
+  std::vector<
+      std::array<int, seqan3::alphabet_size<seqan3::gapped<seqan3::dna5>>>>
+      expected_reverse_links{
+          {2, 4, 6, 0, 8, 10}, {0, 0, 0, 0, 0, 0},  {0, 0, 0, 0, 0, 0},
+          {0, 0, 16, 0, 0, 0}, {0, 0, 0, 0, 0, 0},  {0, 0, 0, 0, 0, 26},
+          {0, 0, 0, 0, 0, 0},  {20, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0},
+          {0, 22, 0, 0, 0, 0}, {28, 0, 0, 0, 0, 0}, {0, 30, 0, 0, 0, 0},
+          {0, 0, 0, 0, 14, 0}, {0, 0, 0, 0, 18, 0}, {0, 12, 0, 0, 0, 0},
+          {0, 24, 0, 0, 0, 0}};
+
+  EXPECT_EQ(dna_tree.reverse_suffix_links, expected_reverse_links);
 }

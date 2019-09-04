@@ -54,3 +54,4 @@ macro(test_case unit_test)
 endmacro(test_case)
 
 add_subdirectory(search)
+add_subdirectory(search/lazy_suffix_tree)
