@@ -94,13 +94,9 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
 
     int edge_lcp, occurrences;
 
-    if (is_unevaluated(node_index, flags)) {
-      if (!expand_nodes) {
-        continue;
-      } else {
-        std::tie(occurrences, edge_lcp) = lst::details::expand_node(
-            node_index, sequence, suffixes, table, flags);
-      }
+    if (is_unevaluated(node_index, flags) && expand_nodes) {
+      std::tie(occurrences, edge_lcp) = lst::details::expand_node(
+          node_index, sequence, suffixes, table, flags);
     } else {
       edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
       occurrences = node_occurrences(node_index, table, flags);
@@ -131,14 +127,13 @@ int get_edge_lcp(int node_index, sequence_t<alphabet_t> &sequence,
         table[node_index], table[node_index + 1], sequence, suffixes);
   }
 
-  int first_child = table[node_index + 1];
   int smallest_child_index = sequence.size();
 
   iterate_children(node_index, table, flags, [&](int index) {
     int table_index = table[index];
 
     if (is_unevaluated(index, flags)) {
-      table_index = suffixes[table_index];
+      table_index = suffixes[table[index]];
     }
 
     if (table_index < smallest_child_index) {

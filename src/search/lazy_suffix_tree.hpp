@@ -302,6 +302,9 @@ protected:
   lst::details::sequence_t<alphabet_t> edge_label(int node_index,
                                                   int edge_lcp) {
     int edge_start = table[node_index];
+    if (is_unevaluated(node_index)) {
+      edge_start = suffixes[table[node_index]];
+    }
     lst::details::sequence_t<alphabet_t> edge(sequence.begin() + edge_start,
                                               sequence.begin() + edge_start +
                                                   edge_lcp);
@@ -313,6 +316,11 @@ protected:
                                                   int edge_lcp) {
     int node_start = table[node_index] - lcp;
     int node_end = table[node_index] + edge_lcp;
+
+    if (is_unevaluated(node_index)) {
+      node_start = suffixes[table[node_index]] - lcp;
+      node_end = suffixes[table[node_index]] + edge_lcp;
+    }
     lst::details::sequence_t<alphabet_t> label(sequence.begin() + node_start,
                                                sequence.begin() + node_end);
 
