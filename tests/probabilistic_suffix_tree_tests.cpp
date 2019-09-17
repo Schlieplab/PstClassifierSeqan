@@ -14,7 +14,7 @@ using seqan3::operator""_dna4;
 class ProbabilisticSuffixTreeTest : public ::testing::Test {
   void SetUp() override {
     sequence = "GATTATA"_dna4;
-    pst = pst::ProbabilisticSuffixTree{sequence, 3, 2, 0.0, "KL"};
+    pst = pst::ProbabilisticSuffixTree{"TEST", sequence, 3, 2, 0.0, "KL"};
   }
   seqan3::dna4_vector sequence;
   pst::ProbabilisticSuffixTree<seqan3::dna4> pst;
@@ -107,7 +107,7 @@ TEST_F(ProbabilisticSuffixTreeTest, ConstructorProbabilities) {
 }
 
 TEST_F(ProbabilisticSuffixTreeTest, PrunedKL) {
-  pst = pst::ProbabilisticSuffixTree{sequence, 3, 2, 1.2, "KL"};
+  pst = pst::ProbabilisticSuffixTree{"TEST", sequence, 3, 2, 1.2, "KL"};
   std::vector<pst::Status> expected_status{
       pst::Status::Included, // root
       pst::Status::Included, // A
@@ -128,7 +128,7 @@ TEST_F(ProbabilisticSuffixTreeTest, PrunedKL) {
 }
 
 TEST_F(ProbabilisticSuffixTreeTest, PrunedPS) {
-  pst = pst::ProbabilisticSuffixTree{sequence, 3, 2, 0.0, "PS"};
+  pst = pst::ProbabilisticSuffixTree{"TEST", sequence, 3, 2, 0.0, "PS"};
   std::vector<pst::Status> expected_status{
       pst::Status::Included, // root
       pst::Status::Excluded, // A
@@ -150,7 +150,7 @@ TEST_F(ProbabilisticSuffixTreeTest, PrunedPS) {
 
 TEST_F(ProbabilisticSuffixTreeTest, PrunedParameters) {
   pst =
-      pst::ProbabilisticSuffixTree{sequence, 3, 2, 0.0, 6, "parameters", "KL"};
+      pst::ProbabilisticSuffixTree{"TEST", sequence, 3, 2, 0.0, 6, "parameters", "KL"};
   std::vector<pst::Status> expected_status{
       pst::Status::Included, // root
       pst::Status::Included, // A
@@ -172,7 +172,7 @@ TEST_F(ProbabilisticSuffixTreeTest, PrunedParameters) {
 
 TEST_F(ProbabilisticSuffixTreeTest, Print) {
   pst::ProbabilisticSuffixTree<seqan3::dna4> pst_unpruned =
-      pst::ProbabilisticSuffixTree{sequence, 10, 0, 0.0, "KL"};
+      pst::ProbabilisticSuffixTree{"TEST", sequence, 10, 0, 0.0, "KL"};
   pst_unpruned.print();
   seqan3::debug_stream << std::endl;
 
@@ -180,7 +180,7 @@ TEST_F(ProbabilisticSuffixTreeTest, Print) {
   seqan3::debug_stream << std::endl;
 
   pst::ProbabilisticSuffixTree<seqan3::dna4> pst_pruned =
-      pst::ProbabilisticSuffixTree{sequence, 3, 2, 1.2, "KL"};
+      pst::ProbabilisticSuffixTree{"TEST", sequence, 3, 2, 1.2, "KL"};
   pst_pruned.print();
   seqan3::debug_stream << std::endl;
 }
@@ -189,7 +189,7 @@ TEST(ProbabilisticSuffixTreeTestPS, PSPruning) {
   seqan3::dna4_vector long_sequence =
       "AATAATAATAATAATAATAATAATCGCGCGCGCGCGCATATATAT"_dna4;
   pst::ProbabilisticSuffixTree<seqan3::dna4> pst_ps =
-      pst::ProbabilisticSuffixTree{long_sequence, 3, 2};
+      pst::ProbabilisticSuffixTree{"TEST", long_sequence, 3, 2};
   pst_ps.print();
   seqan3::debug_stream << std::endl;
 }

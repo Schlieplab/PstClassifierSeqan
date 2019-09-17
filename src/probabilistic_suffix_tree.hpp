@@ -25,30 +25,31 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
 
   ProbabilisticSuffixTree() {}
 
-  ProbabilisticSuffixTree(std::vector<alphabet_t> &sequence)
-      : ProbabilisticSuffixTree(sequence, 15, 100, 1.2, 0, "cutoff", "PS") {}
+  ProbabilisticSuffixTree(std::string id, std::vector<alphabet_t> &sequence)
+      : ProbabilisticSuffixTree(id, sequence, 15, 100, 1.2, 0, "cutoff", "PS") {
+  }
 
-  ProbabilisticSuffixTree(std::vector<alphabet_t> &sequence, size_t max_depth,
-                          size_t freq, float cutoff_value)
-      : ProbabilisticSuffixTree(sequence, max_depth, freq, cutoff_value, 0,
+  ProbabilisticSuffixTree(std::string id, std::vector<alphabet_t> &sequence,
+                          size_t max_depth, size_t freq, float cutoff_value)
+      : ProbabilisticSuffixTree(id, sequence, max_depth, freq, cutoff_value, 0,
                                 "cutoff", "KL") {}
 
-  ProbabilisticSuffixTree(std::vector<alphabet_t> &sequence, size_t max_depth,
-                          size_t freq)
-      : ProbabilisticSuffixTree(sequence, max_depth, freq, cutoff_value, 0,
+  ProbabilisticSuffixTree(std::string id, std::vector<alphabet_t> &sequence,
+                          size_t max_depth, size_t freq)
+      : ProbabilisticSuffixTree(id, sequence, max_depth, freq, cutoff_value, 0,
                                 "cutoff", "PS") {}
 
-  ProbabilisticSuffixTree(std::vector<alphabet_t> &sequence, size_t max_depth,
-                          size_t freq, float cutoff_value,
+  ProbabilisticSuffixTree(std::string id, std::vector<alphabet_t> &sequence,
+                          size_t max_depth, size_t freq, float cutoff_value,
                           std::string estimator)
-      : ProbabilisticSuffixTree(sequence, max_depth, freq, cutoff_value, 0,
+      : ProbabilisticSuffixTree(id, sequence, max_depth, freq, cutoff_value, 0,
                                 "cutoff", estimator) {}
 
-  ProbabilisticSuffixTree(std::vector<alphabet_t> &sequence_, size_t max_depth_,
-                          size_t freq_, float cutoff_value_,
+  ProbabilisticSuffixTree(std::string id_, std::vector<alphabet_t> &sequence_,
+                          size_t max_depth_, size_t freq_, float cutoff_value_,
                           size_t number_of_parameters_,
                           std::string pruning_method_, std::string estimator_)
-      : lst::LazySuffixTree<alphabet_t>(sequence_), freq(freq_),
+      : lst::LazySuffixTree<alphabet_t>(sequence_), id(id_), freq(freq_),
         max_depth(max_depth_), cutoff_value(cutoff_value_),
         number_of_parameters(number_of_parameters_),
         pruning_method(pruning_method_), estimator(estimator_) {
@@ -101,7 +102,41 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
         });
   }
 
+  std::string to_tree() {
+    std::ostringstream tree_string;
+
+    auto now = std::chrono::system_clock::now();
+    std::time_t time = std::chrono::system_clock::to_time_t(now);
+
+    tree_string << "Name: " << this->id << std::endl;
+    tree_string << "Date: " << std::ctime(&time);
+    tree_string << "Tree: PST" << std::endl;
+    tree_string << "Alphabet: " << typeid(alphabet_t).name() << std::endl;
+    tree_string << "Number(nodes): " << nodes_in_tree() << std::endl;
+
+    int n_parameters =
+        get_terminal_nodes().size() * (seqan3::alphabet_size<alphabet_t> - 1);
+    tree_string << "Number(parameters): " << n_parameters << std::endl;
+
+    this->append_node_string(0, 0, 0, tree_string);
+
+    lst::details::breadth_first_iteration(
+        this->sequence, this->suffixes, this->table, this->flags, false,
+        [&](int node_index, int lcp, int edge_lcp) -> bool {
+          if (this->is_excluded(node_index)) {
+            return false;
+          }
+          this->append_node_string(node_index, lcp, edge_lcp, tree_string);
+
+          return true;
+        });
+
+    return tree_string.str();
+  }
+
 protected:
+  std::string id;
+
   std::unordered_set<seqan3::gapped<alphabet_t>> valid_characters{};
   size_t freq;
   size_t max_depth;
@@ -189,10 +224,7 @@ protected:
 
   void assign_probabilities(int node_index, int child_index, int child_sum) {
 
-    int sequence_index = this->table[child_index];
-    if (this->is_unevaluated(child_index)) {
-      sequence_index = this->suffixes[this->table[child_index]];
-    }
+    int sequence_index = this->get_sequence_index(node_index);
     if (this->sequence[sequence_index] == seqan3::gap{}) {
       return;
     }
@@ -209,10 +241,7 @@ protected:
     int child_sum = 0;
     lst::details::iterate_children(
         node_index, this->table, this->flags, [&](int index) {
-          int sequence_index = this->table[index];
-          if (this->is_unevaluated(index)) {
-            sequence_index = this->suffixes[this->table[index]];
-          }
+          int sequence_index = this->get_sequence_index(index);
           if (this->sequence[sequence_index] == seqan3::gap{}) {
             return;
           }
@@ -391,10 +420,8 @@ protected:
 
     lst::details::iterate_children(
         node_index, this->table, this->flags, [&](int child_index) {
-          int sequence_index = this->table[child_index];
-          if (this->is_unevaluated(child_index)) {
-            sequence_index = this->suffixes[this->table[child_index]];
-          }
+          int sequence_index = this->get_sequence_index(child_index);
+
           if (this->sequence[sequence_index] == seqan3::gap{}) {
             return;
           }
@@ -420,7 +447,6 @@ protected:
       if (this->is_unevaluated(node_index) || this->is_excluded(node_index)) {
         continue;
       }
-
       if (this->is_terminal(node_index)) {
         terminal_nodes.push_back(node_index);
       }
@@ -461,6 +487,93 @@ protected:
 
   bool is_excluded(int node_index) {
     return (status[node_index / 2] & Status::Excluded) == Status::Excluded;
+  }
+
+  void append_node_string(int node_index, int lcp, int edge_lcp,
+                          std::ostringstream &tree_string) {
+    auto label_ = this->node_label(node_index, lcp, edge_lcp);
+
+    if (this->is_leaf(node_index)) {
+      label_ = this->leaf_label(node_index, lcp);
+    }
+    std::string label = label_ | seqan3::view::to_char;
+    if (node_index == 0) {
+      label = "#";
+    }
+
+    tree_string << "Node: " << node_index / 2 << " " << label << " ";
+
+    append_reverse_child_counts(node_index, tree_string);
+
+    tree_string << " " << get_counts(node_index) << " ";
+
+    append_child_counts(node_index, tree_string);
+
+    tree_string << " ";
+
+    append_reverse_children(node_index, tree_string);
+
+    tree_string << std::endl;
+  }
+
+  void append_child_counts(int node_index, std::ostringstream &tree_string) {
+    tree_string << "[ ";
+
+    auto child_counts = get_child_counts(node_index);
+    for (auto c : child_counts) {
+      tree_string << c << " ";
+    }
+
+    tree_string << "]";
+  }
+
+  void append_reverse_child_counts(int node_index,
+                                   std::ostringstream &tree_string) {
+    tree_string << "[ ";
+    auto reverse_children = this->reverse_suffix_links[node_index / 2];
+    for (int i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
+      int reverse_child = reverse_children[i];
+      int count = get_counts(reverse_child);
+
+      if (reverse_child == 0) {
+        count = 0;
+      }
+
+      tree_string << count << " ";
+    }
+    tree_string << "]";
+  }
+
+  void append_reverse_children(int node_index,
+                               std::ostringstream &tree_string) {
+    tree_string << "[ ";
+    auto reverse_children = this->reverse_suffix_links[node_index / 2];
+    for (int i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
+      int reverse_child = reverse_children[i];
+
+      if (reverse_child == 0 || this->is_excluded(reverse_child)) {
+        reverse_child = -2;
+      }
+
+      tree_string << reverse_child / 2 << " ";
+    }
+    tree_string << "]";
+  }
+
+  int nodes_in_tree() {
+    int n_nodes = 0;
+    lst::details::breadth_first_iteration(
+        this->sequence, this->suffixes, this->table, this->flags, false,
+        [&](int node_index, int lcp, int edge_lcp) -> bool {
+          if (is_excluded(node_index)) {
+            return false;
+          } else {
+            n_nodes += 1;
+            return true;
+          }
+        });
+
+    return n_nodes;
   }
 };
 } // namespace pst
