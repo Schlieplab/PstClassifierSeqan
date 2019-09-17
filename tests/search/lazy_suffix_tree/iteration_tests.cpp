@@ -87,12 +87,11 @@ TEST_F(LazySuffixTreeTest, IterateChildren) {
 
 TEST_F(LazySuffixTreeTest, BreadthFirstIteration) {
   std::vector<int> visited{};
-  breadth_first_iteration(
-      sequence, suffixes, table, flags,
-      [&](int index, int lcp, int edge_lcp, int occurrences) -> bool {
-        visited.push_back(index);
-        return true;
-      });
+  breadth_first_iteration(sequence, suffixes, table, flags,
+                          [&](int index, int lcp, int edge_lcp) -> bool {
+                            visited.push_back(index);
+                            return true;
+                          });
 
   std::vector<int> expected_visited{2, 4, 6, 8, 10, 12, 14, 16, 18};
 

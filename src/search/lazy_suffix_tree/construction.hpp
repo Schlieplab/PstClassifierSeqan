@@ -185,10 +185,9 @@ void expand_root(sequence_t<alphabet_t> &sequence, std::vector<int> &suffixes,
 }
 
 template <seqan3::Alphabet alphabet_t>
-std::tuple<int, int>
-expand_node(int node_index, sequence_t<alphabet_t> &sequence,
-            std::vector<int> &suffixes, std::vector<int> &table,
-            std::vector<Flag> &flags) {
+int expand_node(int node_index, sequence_t<alphabet_t> &sequence,
+                std::vector<int> &suffixes, std::vector<int> &table,
+                std::vector<Flag> &flags) {
   if (!is_unevaluated(node_index, flags)) {
     throw std::invalid_argument("[EXPAND NODE] Given node is already expanded");
   }
@@ -212,9 +211,7 @@ expand_node(int node_index, sequence_t<alphabet_t> &sequence,
 
   flags[node_index] = Flag(flags[node_index] & ~Flag::Unevaluated);
 
-  int occurrences = upper_bound - lower_bound;
-
-  return std::make_tuple(occurrences, lcp);
+  return lcp;
 }
 
 void add_implicit_nodes(int node_index, int edge_lcp, std::vector<int> &table,

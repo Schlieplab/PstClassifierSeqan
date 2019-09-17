@@ -74,7 +74,7 @@ template <seqan3::Alphabet alphabet_t>
 void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
                              std::vector<int> &suffixes,
                              std::vector<int> &table, std::vector<Flag> &flags,
-                             const std::function<bool(int, int, int, int)> &f) {
+                             const std::function<bool(int, int, int)> &f) {
   breadth_first_iteration(sequence, suffixes, table, flags, true, f);
 }
 
@@ -83,7 +83,7 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
                              std::vector<int> &suffixes,
                              std::vector<int> &table, std::vector<Flag> &flags,
                              bool expand_nodes,
-                             const std::function<bool(int, int, int, int)> &f) {
+                             const std::function<bool(int, int, int)> &f) {
   std::queue<std::tuple<int, int>> queue{};
   iterate_children(0, table, flags,
                    [&](int index) { queue.emplace(index, 0); });
@@ -92,17 +92,16 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
     auto [node_index, lcp] = queue.front();
     queue.pop();
 
-    int edge_lcp, occurrences;
+    int edge_lcp;
 
     if (is_unevaluated(node_index, flags) && expand_nodes) {
-      std::tie(occurrences, edge_lcp) = lst::details::expand_node(
-          node_index, sequence, suffixes, table, flags);
+      edge_lcp = lst::details::expand_node(node_index, sequence, suffixes,
+                                           table, flags);
     } else {
       edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
-      occurrences = node_occurrences(node_index, table, flags);
     }
 
-    bool consider_children = f(node_index, lcp, edge_lcp, occurrences);
+    bool consider_children = f(node_index, lcp, edge_lcp);
 
     if (!consider_children) {
       continue;
