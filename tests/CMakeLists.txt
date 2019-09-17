@@ -53,5 +53,7 @@ macro(test_case unit_test)
   unset (target)
 endmacro(test_case)
 
+test_case(probabilistic_suffix_tree_tests.cpp)
+
 add_subdirectory(search)
 add_subdirectory(search/lazy_suffix_tree)

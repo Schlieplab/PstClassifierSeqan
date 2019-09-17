@@ -247,7 +247,9 @@ void compute_implicit_suffix_links(
     auto [suffix_link_destination, distance] =
         closest_suffix_link_destination[node_index];
 
-    if (suffix_link_destination != 0) {
+    if (suffix_link_destination == -1) {
+      suffix_links[node_index / 2] = -1;
+    } else if (suffix_link_destination != 0) {
       int destination_parent = parent_links[suffix_link_destination / 2];
       for (int i = 0; i < distance; i++) {
         destination_parent = parent_links[destination_parent / 2];

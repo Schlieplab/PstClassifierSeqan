@@ -50,8 +50,10 @@ public:
 
     lst::details::breadth_first_iteration(
         sequence, suffixes, table, flags,
-        [&](int node_index, int lcp, int edge_lcp, int occurrences) -> bool {
+        [&](int node_index, int lcp, int edge_lcp) -> bool {
           auto label = node_label(node_index, lcp, edge_lcp);
+          int occurrences =
+              lst::details::node_occurrences(node_index, table, flags);
 
           if (is_leaf(node_index)) {
             label = leaf_label(node_index, lcp);
@@ -90,13 +92,17 @@ public:
   breadth_first_traversal(const std::function<bool(int, int, int, int)> &f) {
     lst::details::breadth_first_iteration(
         sequence, suffixes, table, flags,
-        [&](int node_index, int lcp, int edge_lcp, int occurrences) -> bool {
-          int node_start = table[node_index] - lcp;
-          int node_end = table[node_index] + edge_lcp;
+        [&](int node_index, int lcp, int edge_lcp) -> bool {
+          int sequence_index = get_sequence_index(node_index);
+
+          int node_start = sequence_index - lcp;
+          int node_end = sequence_index + edge_lcp;
 
           if (is_leaf(node_index)) {
             node_end = suffixes.size() - 1;
           }
+          int occurrences =
+              lst::details::node_occurrences(node_index, table, flags);
 
           return f(node_start, node_end, edge_lcp, occurrences);
         });
@@ -138,32 +144,41 @@ public:
   }
 
   void add_reverse_suffix_links() {
+    if (suffix_links.size() != table.size() / 2) {
+      add_suffix_links();
+    }
+
     reverse_suffix_links.resize(table.size() / 2);
 
-    add_suffix_links();
+    lst::details::breadth_first_iteration(
+        sequence, suffixes, table, flags, false,
+        [&](int node_index, int lcp, int edge_lcp) -> bool {
+          int sequence_index = get_sequence_index(node_index);
+          int node_start = sequence_index - lcp;
 
-    std::queue<int> queue{};
-    queue.push(0);
+          int suffix_parent = suffix_links[node_index / 2];
 
-    while (!queue.empty()) {
-      int node_index = queue.front();
-      queue.pop();
+          int character_rank = seqan3::to_rank(this->sequence[node_start]);
+
+          reverse_suffix_links[suffix_parent / 2][character_rank] = node_index;
+          return true;
+        });
+
+    lst::details::iterate_children(0, table, flags, [&](int node_index) {
+      int node_start = get_sequence_index(node_index);
 
       int suffix_parent = suffix_links[node_index / 2];
 
-      int character_rank = seqan3::to_rank(sequence[table[node_index]]);
+      int character_rank = seqan3::to_rank(this->sequence[node_start]);
 
       reverse_suffix_links[suffix_parent / 2][character_rank] = node_index;
-
-      lst::details::iterate_children(node_index, table, flags,
-                                     [&](int index) { queue.push(index); });
-    }
+    });
   }
 
   void print() {
     lst::details::breadth_first_iteration(
         sequence, suffixes, table, flags, false,
-        [&](int node_index, int lcp, int edge_lcp, int occurrences) -> bool {
+        [&](int node_index, int lcp, int edge_lcp) -> bool {
           auto label = node_label(node_index, lcp, edge_lcp);
 
           if (is_leaf(node_index)) {
@@ -243,10 +258,10 @@ protected:
       auto [node_index, lcp] = queue.front();
       queue.pop();
 
-      int edge_lcp, occurrences;
+      int edge_lcp;
       if (is_unevaluated(node_index)) {
-        std::tie(occurrences, edge_lcp) = lst::details::expand_node(
-            node_index, sequence, suffixes, table, flags);
+        edge_lcp = lst::details::expand_node(node_index, sequence, suffixes,
+                                             table, flags);
       } else {
         edge_lcp = lst::details::get_edge_lcp(node_index, sequence, suffixes,
                                               table, flags);
@@ -301,10 +316,7 @@ protected:
 
   lst::details::sequence_t<alphabet_t> edge_label(int node_index,
                                                   int edge_lcp) {
-    int edge_start = table[node_index];
-    if (is_unevaluated(node_index)) {
-      edge_start = suffixes[table[node_index]];
-    }
+    int edge_start = get_sequence_index(node_index);
     lst::details::sequence_t<alphabet_t> edge(sequence.begin() + edge_start,
                                               sequence.begin() + edge_start +
                                                   edge_lcp);
@@ -314,13 +326,10 @@ protected:
 
   lst::details::sequence_t<alphabet_t> node_label(int node_index, int lcp,
                                                   int edge_lcp) {
-    int node_start = table[node_index] - lcp;
-    int node_end = table[node_index] + edge_lcp;
+    int sequence_index = get_sequence_index(node_index);
 
-    if (is_unevaluated(node_index)) {
-      node_start = suffixes[table[node_index]] - lcp;
-      node_end = suffixes[table[node_index]] + edge_lcp;
-    }
+    int node_start = sequence_index - lcp;
+    int node_end = sequence_index + edge_lcp;
     lst::details::sequence_t<alphabet_t> label(sequence.begin() + node_start,
                                                sequence.begin() + node_end);
 
@@ -333,6 +342,14 @@ protected:
                                                sequence.end());
 
     return label;
+  }
+
+  int get_sequence_index(int node_index) {
+    if (is_unevaluated(node_index)) {
+      return suffixes[table[node_index]];
+    } else {
+      return table[node_index];
+    }
   }
 
   bool is_leaf(int node_index) {
