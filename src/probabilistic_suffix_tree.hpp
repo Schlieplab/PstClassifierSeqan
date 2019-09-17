@@ -224,7 +224,7 @@ protected:
 
   void assign_probabilities(int node_index, int child_index, int child_sum) {
 
-    int sequence_index = this->get_sequence_index(node_index);
+    int sequence_index = this->get_sequence_index(child_index);
     if (this->sequence[sequence_index] == seqan3::gap{}) {
       return;
     }
