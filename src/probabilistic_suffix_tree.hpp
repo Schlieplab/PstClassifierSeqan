@@ -1,11 +1,19 @@
+#pragma once
+
 #include <array>
+#include <chrono>
 #include <cmath>
+#include <ctime>
 #include <functional>
+#include <sstream>
+#include <string>
 #include <tuple>
 #include <unordered_set>
 #include <vector>
 
 #include <seqan3/alphabet/all.hpp>
+#include <seqan3/range/view/to_char.hpp>
+
 using seqan3::operator""_dna4;
 
 #include "search/lazy_suffix_tree.hpp"
@@ -344,7 +352,7 @@ protected:
 
       int parent_index = this->suffix_links[node_index / 2];
       if (this->is_terminal(parent_index)) {
-        queue.emplace(parent_index, -this->calculate_delta(node_index));
+        queue.emplace(parent_index, -this->calculate_delta(parent_index));
       }
     }
   }
@@ -399,7 +407,7 @@ protected:
         get_child_counts(node_index);
 
     std::array<int, seqan3::alphabet_size<alphabet_t>> parent_child_counts =
-        get_child_counts(node_index);
+        get_child_counts(parent_index);
 
     for (int i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
       float new_delta =
