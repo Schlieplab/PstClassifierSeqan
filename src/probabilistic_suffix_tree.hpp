@@ -227,21 +227,15 @@ protected:
         continue;
       }
 
-      this->add_pseudo_counts(node_index);
-
-      int child_sum = sum_child_counts(node_index);
-
-      lst::details::iterate_children(
-          node_index, this->table, this->flags, [&](int index) {
-            assign_probabilities(node_index, index, child_sum);
-          });
+      this->assign_node_probabilities(node_index);
 
       lst::details::iterate_children(node_index, this->table, this->flags,
                                      [&](int index) { queue.push(index); });
     }
   }
 
-  void assign_probabilities(int node_index, int child_index, int child_sum) {
+  void assign_child_probabilities(int node_index, int child_index,
+                                  int child_sum, bool add_pseudo_counts) {
     int sequence_index = this->get_sequence_index(child_index);
     if (this->sequence[sequence_index] == seqan3::gap{}) {
       return;
@@ -249,10 +243,41 @@ protected:
 
     int character_rank = seqan3::to_rank(this->sequence[sequence_index]);
 
-    float child_count = get_counts(child_index);
+    int child_count = get_counts(child_index);
+
+    if (add_pseudo_counts) {
+      child_count += 1;
+    }
 
     this->probabilities[node_index / 2][character_rank] =
-        child_count / child_sum;
+        float(child_count) / child_sum;
+  }
+
+  void assign_node_probabilities(int node_index) {
+
+    bool add_pseudo_counts = this->add_pseudo_counts(node_index);
+
+    int child_sum = sum_child_counts(node_index);
+    if (add_pseudo_counts) {
+      child_sum += this->valid_characters.size();
+    }
+
+    lst::details::iterate_children(
+        node_index, this->table, this->flags, [&](int child_index) {
+          assign_child_probabilities(node_index, child_index, child_sum,
+                                     add_pseudo_counts);
+        });
+
+    if (add_pseudo_counts) {
+      for (auto c : this->valid_characters) {
+
+        int character_rank = seqan3::to_rank(c);
+
+        if (this->probabilities[node_index / 2][character_rank] == 0) {
+          this->probabilities[node_index / 2][character_rank] = 1.0 / child_sum;
+        }
+      }
+    }
   }
 
   int sum_child_counts(int node_index) {
@@ -270,22 +295,8 @@ protected:
     return child_sum;
   }
 
-  void add_pseudo_counts(int node_index) {
-    if (this->any_child_count_0(node_index)) {
-      lst::details::iterate_children(
-          node_index, this->table, this->flags, [&](int index) {
-            int sequence_index = this->get_sequence_index(index);
-            if (this->sequence[sequence_index] == seqan3::gap{}) {
-              return;
-            }
-
-            counts[index / 2] += 1;
-          });
-    }
-  }
-
-  bool any_child_count_0(int node_index) {
-    bool any_child_0 = false;
+  bool add_pseudo_counts(int node_index) {
+    int n_children = 0;
     lst::details::iterate_children(
         node_index, this->table, this->flags, [&](int child_index) {
           int sequence_index = this->get_sequence_index(child_index);
@@ -293,11 +304,9 @@ protected:
             return;
           }
 
-          if (get_counts(child_index) == 0) {
-            any_child_0 = true;
-          }
+          n_children += 1;
         });
-    return any_child_0;
+    return n_children != this->valid_characters.size();
   }
 
   bool label_valid(int label_start, int label_end) {

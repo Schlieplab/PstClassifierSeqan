@@ -83,19 +83,19 @@ TEST_F(ProbabilisticSuffixTreeTest, ConstructorSuffixLinks) {
 TEST_F(ProbabilisticSuffixTreeTest, ConstructorProbabilities) {
   std::vector<std::array<float, seqan3::alphabet_size<seqan3::dna4>>>
       expected_probabilities{
-          {3.0 / 7.0, 0, 1.0 / 7.0, 3.0 / 7.0}, // root
-          {0, 0, 0, 1},                         // A
-          {0, 0, 0, 0},                         // GATTATA- (excluded)
-          {2.0 / 3.0, 0, 0, 1.0 / 3.0},         // T
-          {0, 0, 0, 0},                         // - (excluded)
-          {0.5, 0, 0, 0.5},                     // AT
-          {0, 0, 0, 0},                         // A- (excluded)
-          {0, 0, 0, 1},                         // TA
-          {0, 0, 0, 0},                         // TTATA- (excluded)
-          {0, 0, 0, 0},                         // ATA- (excluded)
-          {0, 0, 0, 0},                         // ATTATA- (excluded)
-          {0, 0, 0, 0},                         // TATA- (excluded)
-          {0, 0, 0, 0}                          // TA- (excluded)
+          {4.0 / 11.0, 1.0 / 11.0, 2.0 / 11.0, 4.0 / 11.0}, // root
+          {1.0 / 6.0, 1.0 / 6.0, 1.0 / 6.0, 3.0 / 6.0},     // A
+          {0, 0, 0, 0},                                 // GATTATA- (excluded)
+          {3.0 / 7.0, 1.0 / 7.0, 1.0 / 7.0, 2.0 / 7.0}, // T
+          {0, 0, 0, 0},                                 // - (excluded)
+          {2.0 / 6.0, 1.0 / 6.0, 1.0 / 6.0, 2.0 / 6.0}, // AT
+          {0, 0, 0, 0},                                 // A- (excluded)
+          {1.0 / 5.0, 1.0 / 5.0, 1.0 / 5.0, 2.0 / 5.0}, // TA
+          {0, 0, 0, 0},                                 // TTATA- (excluded)
+          {0, 0, 0, 0},                                 // ATA- (excluded)
+          {0, 0, 0, 0},                                 // ATTATA- (excluded)
+          {0, 0, 0, 0},                                 // TATA- (excluded)
+          {0, 0, 0, 0}                                  // TA- (excluded)
       };
 
   for (int i = 0;
@@ -107,7 +107,7 @@ TEST_F(ProbabilisticSuffixTreeTest, ConstructorProbabilities) {
 }
 
 TEST_F(ProbabilisticSuffixTreeTest, PrunedKL) {
-  pst = pst::ProbabilisticSuffixTree{"TEST", sequence, 3, 2, 1.2, "KL"};
+  pst = pst::ProbabilisticSuffixTree{"TEST", sequence, 3, 2, 0.3, "KL"};
   std::vector<pst::Status> expected_status{
       pst::Status::Included, // root
       pst::Status::Included, // A
