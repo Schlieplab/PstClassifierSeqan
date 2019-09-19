@@ -160,19 +160,12 @@ public:
 
           int character_rank = seqan3::to_rank(this->sequence[node_start]);
 
-          reverse_suffix_links[suffix_parent / 2][character_rank] = node_index;
+          if (reverse_suffix_links[suffix_parent / 2][character_rank] == 0) {
+            reverse_suffix_links[suffix_parent / 2][character_rank] =
+                node_index;
+          }
           return true;
         });
-
-    lst::details::iterate_children(0, table, flags, [&](int node_index) {
-      int node_start = get_sequence_index(node_index);
-
-      int suffix_parent = suffix_links[node_index / 2];
-
-      int character_rank = seqan3::to_rank(this->sequence[node_start]);
-
-      reverse_suffix_links[suffix_parent / 2][character_rank] = node_index;
-    });
   }
 
   void print() {
