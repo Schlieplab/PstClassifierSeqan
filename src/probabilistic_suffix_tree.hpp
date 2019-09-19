@@ -162,6 +162,7 @@ protected:
   void support_pruning() {
     this->build_tree();
     this->expand_implicit_nodes();
+    this->add_implicit_node_status();
     this->add_suffix_links();
     this->counts.resize(this->table.size() / 2, -1);
     this->status.resize(this->table.size() / 2);
