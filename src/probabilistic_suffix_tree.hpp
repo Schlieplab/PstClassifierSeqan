@@ -219,6 +219,8 @@ protected:
         continue;
       }
 
+      this->add_pseudo_counts(node_index);
+
       int child_sum = sum_child_counts(node_index);
 
       lst::details::iterate_children(
@@ -232,7 +234,6 @@ protected:
   }
 
   void assign_probabilities(int node_index, int child_index, int child_sum) {
-
     int sequence_index = this->get_sequence_index(child_index);
     if (this->sequence[sequence_index] == seqan3::gap{}) {
       return;
@@ -259,6 +260,36 @@ protected:
           child_sum += child_count;
         });
     return child_sum;
+  }
+
+  void add_pseudo_counts(int node_index) {
+    if (this->any_child_count_0(node_index)) {
+      lst::details::iterate_children(
+          node_index, this->table, this->flags, [&](int index) {
+            int sequence_index = this->get_sequence_index(index);
+            if (this->sequence[sequence_index] == seqan3::gap{}) {
+              return;
+            }
+
+            counts[index / 2] += 1;
+          });
+    }
+  }
+
+  bool any_child_count_0(int node_index) {
+    bool any_child_0 = false;
+    lst::details::iterate_children(
+        node_index, this->table, this->flags, [&](int child_index) {
+          int sequence_index = this->get_sequence_index(child_index);
+          if (this->sequence[sequence_index] == seqan3::gap{}) {
+            return;
+          }
+
+          if (get_counts(child_index) == 0) {
+            any_child_0 = true;
+          }
+        });
+    return any_child_0;
   }
 
   bool label_valid(int label_start, int label_end) {
