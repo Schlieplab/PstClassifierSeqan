@@ -123,7 +123,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
     tree_string << "Number(nodes): " << nodes_in_tree() << std::endl;
 
     int n_parameters =
-        get_terminal_nodes().size() * (seqan3::alphabet_size<alphabet_t> - 1);
+        get_terminal_nodes().size() * (valid_characters.size() - 1);
     tree_string << "Number(parameters): " << n_parameters << std::endl;
 
     this->append_node_string(0, 0, 0, tree_string);
@@ -163,7 +163,7 @@ protected:
     this->build_tree();
     this->expand_implicit_nodes();
     this->add_suffix_links();
-    this->counts.resize(this->table.size() / 2);
+    this->counts.resize(this->table.size() / 2, -1);
     this->status.resize(this->table.size() / 2);
     status[0] = Status::Included;
   }
@@ -185,7 +185,7 @@ protected:
           int count = lst::details::node_occurrences(node_index, this->table,
                                                      this->flags);
 
-          this->counts.resize(this->table.size() / 2);
+          this->counts.resize(this->table.size() / 2, -1);
           this->counts[node_index / 2] = count;
 
           int label_start = this->table[node_index] - lcp;
@@ -293,9 +293,31 @@ protected:
       }
     }
   }
+  void add_implicit_node_status() {
+    std::stack<std::tuple<int, Status>> stack{};
+
+    lst::details::iterate_children(
+        0, this->table, this->flags,
+        [&](int child_index) { stack.emplace(child_index, Status::Included); });
+
+    while (!stack.empty()) {
+      auto [node_index, parent_status] = stack.top();
+      stack.pop();
+
+      Status node_status = this->status[node_index / 2];
+      if (node_status == Status::None) {
+        this->status[node_index / 2] = parent_status;
+      }
+
+      iterate_children(
+          node_index, this->table, this->flags, [&](int child_index) {
+            stack.emplace(child_index, this->status[node_index / 2]);
+          });
+    }
+  }
 
   void cutoff_prune() {
-    std::vector<int> terminal_nodes = get_terminal_nodes();
+    std::vector<int> terminal_nodes = get_pst_leaves();
     std::queue<int> bottom_up{};
     for (int v : terminal_nodes) {
       bottom_up.push(v);
@@ -305,7 +327,7 @@ protected:
       int node_index = bottom_up.front();
       bottom_up.pop();
 
-      if (node_index == 0 || !this->is_terminal(node_index)) {
+      if (node_index == 0 || !this->is_pst_leaf(node_index)) {
         continue;
       }
 
@@ -321,24 +343,22 @@ protected:
   }
 
   void parameters_prune() {
-    std::vector<int> terminal_nodes = get_terminal_nodes();
+    std::vector<int> pst_leaves = get_pst_leaves();
     auto cmp = [](std::tuple<int, float> left, std::tuple<int, float> right) {
       return std::get<1>(left) < std::get<1>(right);
     };
     std::priority_queue<std::tuple<int, float>,
                         std::vector<std::tuple<int, float>>, decltype(cmp)>
         queue{cmp};
-    for (int v : terminal_nodes) {
+    for (int v : pst_leaves) {
       queue.emplace(v, -this->calculate_delta(v));
     }
 
     int current_number_of_parameters =
-        terminal_nodes.size() * (seqan3::alphabet_size<alphabet_t> - 1);
-
-    seqan3::debug_stream << current_number_of_parameters << std::endl;
+        get_terminal_nodes().size() * (valid_characters.size() - 1);
 
     while (!queue.empty() &&
-           current_number_of_parameters >= this->number_of_parameters) {
+           current_number_of_parameters > this->number_of_parameters) {
       auto [node_index, delta] = queue.top();
       queue.pop();
 
@@ -346,13 +366,18 @@ protected:
         continue;
       }
 
-      current_number_of_parameters -= (seqan3::alphabet_size<alphabet_t> - 1);
+      current_number_of_parameters -= (valid_characters.size() - 1);
 
       this->status[node_index / 2] = Status::Excluded;
 
       int parent_index = this->suffix_links[node_index / 2];
-      if (this->is_terminal(parent_index)) {
+
+      if (this->is_pst_leaf(parent_index)) {
         queue.emplace(parent_index, -this->calculate_delta(parent_index));
+      }
+
+      if (this->became_terminal(parent_index, node_index)) {
+        current_number_of_parameters += (valid_characters.size() - 1);
       }
     }
   }
@@ -442,6 +467,31 @@ protected:
     return child_counts;
   }
 
+  std::vector<int> get_pst_leaves() {
+    std::queue<int> top_down{};
+    std::vector<int> bottom_nodes{};
+    lst::details::iterate_children(0, this->table, this->flags,
+                                   [&](int index) { top_down.push(index); });
+
+    while (!top_down.empty()) {
+      int node_index = top_down.front();
+      top_down.pop();
+
+      if (this->is_unevaluated(node_index) || this->is_excluded(node_index)) {
+        continue;
+      }
+      if (this->is_pst_leaf(node_index)) {
+        bottom_nodes.push_back(node_index);
+      }
+
+      lst::details::iterate_children(
+          node_index, this->table, this->flags,
+          [&](int child_index) { top_down.push(child_index); });
+    }
+
+    return bottom_nodes;
+  }
+
   std::vector<int> get_terminal_nodes() {
     std::queue<int> top_down{};
     std::vector<int> terminal_nodes{};
@@ -455,20 +505,24 @@ protected:
       if (this->is_unevaluated(node_index) || this->is_excluded(node_index)) {
         continue;
       }
+
       if (this->is_terminal(node_index)) {
         terminal_nodes.push_back(node_index);
       }
 
-      lst::details::iterate_children(node_index, this->table, this->flags,
-                                     [&](int index) { top_down.push(index); });
+      for (int child_index : this->reverse_suffix_links[node_index / 2]) {
+        if (child_index == 0) {
+          continue;
+        }
+        top_down.push(child_index);
+      }
     }
 
     return terminal_nodes;
   }
 
-  bool is_terminal(int node_index) {
-    for (int i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
-      int child_index = this->reverse_suffix_links[node_index / 2][i];
+  bool is_pst_leaf(int node_index) {
+    for (int child_index : this->reverse_suffix_links[node_index / 2]) {
       if (child_index == 0) {
         continue;
       }
@@ -480,9 +534,40 @@ protected:
     return true;
   }
 
+  bool is_terminal(int node_index) {
+    if (is_pst_leaf(node_index)) {
+      return true;
+    }
+
+    for (int child_index : this->reverse_suffix_links[node_index / 2]) {
+      if (child_index == 0) {
+        continue;
+      }
+
+      if (this->is_excluded(child_index)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Checks if removed_index is the only child that is missing.
+  bool became_terminal(int node_index, int removed_index) {
+    for (int child_index : this->reverse_suffix_links[node_index / 2]) {
+      if (child_index == 0) {
+        continue;
+      }
+
+      if (this->is_excluded(child_index) && child_index != removed_index) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   int get_counts(int node_index) {
     int c = this->counts[node_index / 2];
-    if (c == 0) {
+    if (c == -1) {
       c = lst::details::node_occurrences(node_index, this->table, this->flags);
       this->counts[node_index / 2] = c;
     }
