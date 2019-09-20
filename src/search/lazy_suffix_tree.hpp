@@ -150,6 +150,10 @@ public:
 
     reverse_suffix_links.resize(table.size() / 2);
 
+    for (auto &reverses : reverse_suffix_links) {
+      reverses.fill(-1);
+    }
+
     lst::details::breadth_first_iteration(
         sequence, suffixes, table, flags, false,
         [&](int node_index, int lcp, int edge_lcp) -> bool {
@@ -160,7 +164,7 @@ public:
 
           int character_rank = seqan3::to_rank(this->sequence[node_start]);
 
-          if (reverse_suffix_links[suffix_parent / 2][character_rank] == 0) {
+          if (reverse_suffix_links[suffix_parent / 2][character_rank] == -1) {
             reverse_suffix_links[suffix_parent / 2][character_rank] =
                 node_index;
           }

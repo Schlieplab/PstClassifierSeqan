@@ -6,18 +6,21 @@
 #include <tuple>
 #include <vector>
 
+#include <seqan3/alphabet/nucleotide/all.hpp>
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/core/debug_stream.hpp>
 
-using seqan3::operator""_dna4;
-
 class ProbabilisticSuffixTreeTest : public ::testing::Test {
+protected:
   void SetUp() override {
+    using seqan3::operator""_dna4;
     sequence = "GATTATA"_dna4;
-    pst = pst::ProbabilisticSuffixTree{"TEST", sequence, 3, 2, 0.0, "KL"};
+    probabilisticSuffixTree =
+        pst::ProbabilisticSuffixTree{"TEST", sequence, 3, 2, 0.0, "KL"};
   }
+
   seqan3::dna4_vector sequence;
-  pst::ProbabilisticSuffixTree<seqan3::dna4> pst;
+  pst::ProbabilisticSuffixTree<seqan3::dna4> probabilisticSuffixTree;
 };
 
 TEST_F(ProbabilisticSuffixTreeTest, ConstructorTable) {
@@ -37,7 +40,7 @@ TEST_F(ProbabilisticSuffixTreeTest, ConstructorTable) {
       7, 0   // TA-
   };
 
-  EXPECT_EQ(pst.table, expected_table);
+  EXPECT_EQ(probabilisticSuffixTree.table, expected_table);
 }
 
 TEST_F(ProbabilisticSuffixTreeTest, ConstructorStatus) {
@@ -57,7 +60,7 @@ TEST_F(ProbabilisticSuffixTreeTest, ConstructorStatus) {
       pst::Status::Excluded  // TA-
   };
 
-  EXPECT_EQ(pst.status, expected_status);
+  EXPECT_EQ(probabilisticSuffixTree.status, expected_status);
 }
 
 TEST_F(ProbabilisticSuffixTreeTest, ConstructorSuffixLinks) {
@@ -77,7 +80,7 @@ TEST_F(ProbabilisticSuffixTreeTest, ConstructorSuffixLinks) {
       12  // TA-
   };
 
-  EXPECT_EQ(pst.suffix_links, expected_suffix_links);
+  EXPECT_EQ(probabilisticSuffixTree.suffix_links, expected_suffix_links);
 }
 
 TEST_F(ProbabilisticSuffixTreeTest, ConstructorProbabilities) {
@@ -98,16 +101,19 @@ TEST_F(ProbabilisticSuffixTreeTest, ConstructorProbabilities) {
           {0, 0, 0, 0}                                  // TA- (excluded)
       };
 
-  for (int i = 0;
-       i < pst.probabilities.size() && i < expected_probabilities.size(); i++) {
+  for (int i = 0; i < probabilisticSuffixTree.probabilities.size() &&
+                  i < expected_probabilities.size();
+       i++) {
     for (int j = 0; j < 4; j++) {
-      EXPECT_FLOAT_EQ(pst.probabilities[i][j], expected_probabilities[i][j]);
+      EXPECT_FLOAT_EQ(probabilisticSuffixTree.probabilities[i][j],
+                      expected_probabilities[i][j]);
     }
   }
 }
 
 TEST_F(ProbabilisticSuffixTreeTest, PrunedKL) {
-  pst = pst::ProbabilisticSuffixTree{"TEST", sequence, 3, 2, 0.3, "KL"};
+  probabilisticSuffixTree =
+      pst::ProbabilisticSuffixTree{"TEST", sequence, 3, 2, 0.3, "KL"};
   std::vector<pst::Status> expected_status{
       pst::Status::Included, // root
       pst::Status::Included, // A
@@ -124,11 +130,12 @@ TEST_F(ProbabilisticSuffixTreeTest, PrunedKL) {
       pst::Status::Excluded  // TA-
   };
 
-  EXPECT_EQ(pst.status, expected_status);
+  EXPECT_EQ(probabilisticSuffixTree.status, expected_status);
 }
 
 TEST_F(ProbabilisticSuffixTreeTest, PrunedPS) {
-  pst = pst::ProbabilisticSuffixTree{"TEST", sequence, 3, 2, 0.0, "PS"};
+  probabilisticSuffixTree =
+      pst::ProbabilisticSuffixTree{"TEST", sequence, 3, 2, 0.0, "PS"};
   std::vector<pst::Status> expected_status{
       pst::Status::Included, // root
       pst::Status::Excluded, // A
@@ -145,19 +152,19 @@ TEST_F(ProbabilisticSuffixTreeTest, PrunedPS) {
       pst::Status::Excluded  // TA-
   };
 
-  EXPECT_EQ(pst.status, expected_status);
+  EXPECT_EQ(probabilisticSuffixTree.status, expected_status);
 }
 
 TEST_F(ProbabilisticSuffixTreeTest, PrunedParameters) {
-  pst =
-      pst::ProbabilisticSuffixTree{"TEST", sequence, 3, 2, 0.0, 6, "parameters", "KL"};
+  probabilisticSuffixTree = pst::ProbabilisticSuffixTree{
+      "TEST", sequence, 3, 2, 0.0, 6, "parameters", "KL"};
   std::vector<pst::Status> expected_status{
       pst::Status::Included, // root
       pst::Status::Included, // A
       pst::Status::Excluded, // GATTATA-
       pst::Status::Included, // T
       pst::Status::Excluded, // -
-      pst::Status::Included, // AT
+      pst::Status::Excluded, // AT
       pst::Status::Excluded, // A-
       pst::Status::Excluded, // TA
       pst::Status::Excluded, // TTATA-
@@ -167,7 +174,7 @@ TEST_F(ProbabilisticSuffixTreeTest, PrunedParameters) {
       pst::Status::Excluded  // TA-
   };
 
-  EXPECT_EQ(pst.status, expected_status);
+  EXPECT_EQ(probabilisticSuffixTree.status, expected_status);
 }
 
 TEST_F(ProbabilisticSuffixTreeTest, Print) {
@@ -176,7 +183,7 @@ TEST_F(ProbabilisticSuffixTreeTest, Print) {
   pst_unpruned.print();
   seqan3::debug_stream << std::endl;
 
-  pst.print();
+  probabilisticSuffixTree.print();
   seqan3::debug_stream << std::endl;
 
   pst::ProbabilisticSuffixTree<seqan3::dna4> pst_pruned =
@@ -186,6 +193,7 @@ TEST_F(ProbabilisticSuffixTreeTest, Print) {
 }
 
 TEST(ProbabilisticSuffixTreeTestPS, PSPruning) {
+  using seqan3::operator""_dna4;
   seqan3::dna4_vector long_sequence =
       "AATAATAATAATAATAATAATAATCGCGCGCGCGCGCATATATAT"_dna4;
   pst::ProbabilisticSuffixTree<seqan3::dna4> pst_ps =

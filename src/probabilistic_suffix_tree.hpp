@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
@@ -13,8 +14,6 @@
 
 #include <seqan3/alphabet/all.hpp>
 #include <seqan3/range/view/to_char.hpp>
-
-using seqan3::operator""_dna4;
 
 #include "search/lazy_suffix_tree.hpp"
 #include "search/lazy_suffix_tree/iteration.hpp"
@@ -62,6 +61,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
         number_of_parameters(number_of_parameters_),
         pruning_method(pruning_method_), estimator(estimator_) {
 
+    using seqan3::operator""_dna4;
     seqan3::dna4_vector dna4{"ACGT"_dna4};
     std::vector<seqan3::gapped<alphabet_t>> characters{
         dna4 | seqan3::view::convert<seqan3::gapped<alphabet_t>>};
@@ -72,6 +72,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
 
     if (estimator_ == "PS") {
       this->cutoff_value = std::pow(float(sequence_.size()), 3.0 / 4.0);
+      seqan3::debug_stream << this->cutoff_value << std::endl;
     }
 
     this->support_pruning();
@@ -366,9 +367,9 @@ protected:
   }
 
   void cutoff_prune() {
-    std::vector<int> terminal_nodes = get_pst_leaves();
+    std::vector<int> pst_leaves = get_pst_leaves();
     std::queue<int> bottom_up{};
-    for (int v : terminal_nodes) {
+    for (int v : pst_leaves) {
       bottom_up.push(v);
     }
 
@@ -393,6 +394,7 @@ protected:
 
   void parameters_prune() {
     std::vector<int> pst_leaves = get_pst_leaves();
+
     auto cmp = [](std::tuple<int, float> left, std::tuple<int, float> right) {
       return std::get<1>(left) < std::get<1>(right);
     };
@@ -428,6 +430,17 @@ protected:
       if (this->became_terminal(parent_index, node_index)) {
         current_number_of_parameters += (valid_characters.size() - 1);
       }
+
+      // auto terminal_nodes = get_terminal_nodes();
+
+      // int n_parameters = terminal_nodes.size() * (valid_characters.size() -
+      // 1); if (n_parameters != current_number_of_parameters) {
+      //   seqan3::debug_stream << "NOT SAME NUMBER OF PARAMETERS" << std::endl;
+      //   seqan3::debug_stream << "Terminal calc: " << n_parameters <<
+      //   std::endl; seqan3::debug_stream
+      //       << "Counting calc: " << current_number_of_parameters <<
+      //       std::endl;
+      // }
     }
   }
 
@@ -445,7 +458,7 @@ protected:
     int parent_index = this->suffix_links[node_index / 2];
     if (parent_index == -1) {
       throw std::invalid_argument(
-          "[CALCULATE DELTA] Given node does not have a parent.");
+          "[kl_delta] Given node does not have a parent.");
     }
 
     int size = seqan3::alphabet_size<alphabet_t>;
@@ -470,7 +483,7 @@ protected:
     int parent_index = this->suffix_links[node_index / 2];
     if (parent_index == -1) {
       throw std::invalid_argument(
-          "[CALCULATE DELTA] Given node does not have a parent.");
+          "[ps_delta] Given node does not have a parent.");
     }
 
     float delta = 0;
@@ -542,6 +555,7 @@ protected:
   }
 
   std::vector<int> get_terminal_nodes() {
+    // TODO somethings up with the reverse suffix links. and the suffix links.
     std::queue<int> top_down{};
     std::vector<int> terminal_nodes{};
     lst::details::iterate_children(0, this->table, this->flags,
@@ -560,7 +574,7 @@ protected:
       }
 
       for (int child_index : this->reverse_suffix_links[node_index / 2]) {
-        if (child_index == 0) {
+        if (child_index == 0 || child_index == -1) {
           continue;
         }
         top_down.push(child_index);
@@ -572,7 +586,7 @@ protected:
 
   bool is_pst_leaf(int node_index) {
     for (int child_index : this->reverse_suffix_links[node_index / 2]) {
-      if (child_index == 0) {
+      if (child_index == 0 || child_index == -1) {
         continue;
       }
 
@@ -593,6 +607,10 @@ protected:
         continue;
       }
 
+      if (child_index == -1) {
+        return true;
+      }
+
       if (this->is_excluded(child_index)) {
         return true;
       }
@@ -605,6 +623,10 @@ protected:
     for (int child_index : this->reverse_suffix_links[node_index / 2]) {
       if (child_index == 0) {
         continue;
+      }
+
+      if (child_index == -1) {
+        return false;
       }
 
       if (this->is_excluded(child_index) && child_index != removed_index) {
