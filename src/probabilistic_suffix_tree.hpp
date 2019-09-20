@@ -235,65 +235,20 @@ protected:
     }
   }
 
-  void assign_child_probabilities(int node_index, int child_index,
-                                  int child_sum, bool add_pseudo_counts) {
-    int sequence_index = this->get_sequence_index(child_index);
-    if (this->sequence[sequence_index] == seqan3::gap{}) {
-      return;
-    }
-
-    int character_rank = seqan3::to_rank(this->sequence[sequence_index]);
-
-    int child_count = get_counts(child_index);
-
-    if (add_pseudo_counts) {
-      child_count += 1;
-    }
-
-    this->probabilities[node_index / 2][character_rank] =
-        float(child_count) / child_sum;
-  }
-
   void assign_node_probabilities(int node_index) {
+    std::array<int, seqan3::alphabet_size<alphabet_t>> child_counts =
+        get_child_counts(node_index, true);
 
-    bool add_pseudo_counts = this->add_pseudo_counts(node_index);
 
-    int child_sum = sum_child_counts(node_index);
-    if (add_pseudo_counts) {
-      child_sum += this->valid_characters.size();
-    }
-
-    lst::details::iterate_children(
-        node_index, this->table, this->flags, [&](int child_index) {
-          assign_child_probabilities(node_index, child_index, child_sum,
-                                     add_pseudo_counts);
-        });
-
-    if (add_pseudo_counts) {
-      for (auto c : this->valid_characters) {
-
-        int character_rank = seqan3::to_rank(c);
-
-        if (this->probabilities[node_index / 2][character_rank] == 0) {
-          this->probabilities[node_index / 2][character_rank] = 1.0 / child_sum;
-        }
-      }
-    }
-  }
-
-  int sum_child_counts(int node_index) {
     int child_sum = 0;
-    lst::details::iterate_children(
-        node_index, this->table, this->flags, [&](int index) {
-          int sequence_index = this->get_sequence_index(index);
-          if (this->sequence[sequence_index] == seqan3::gap{}) {
-            return;
-          }
+    for (int c : child_counts) {
+      child_sum += c;
+    }
 
-          int child_count = get_counts(index);
-          child_sum += child_count;
-        });
-    return child_sum;
+    for (int i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
+      this->probabilities[node_index / 2][i] =
+          float(child_counts[i]) / child_sum;
+    }
   }
 
   bool add_pseudo_counts(int node_index) {
@@ -510,7 +465,7 @@ protected:
   }
 
   std::array<int, seqan3::alphabet_size<alphabet_t>>
-  get_child_counts(int node_index) {
+  get_child_counts(int node_index, bool with_pseudo_counts) {
     std::array<int, seqan3::alphabet_size<alphabet_t>> child_counts{};
 
     lst::details::iterate_children(
@@ -525,6 +480,19 @@ protected:
 
           child_counts[character_rank] = get_counts(child_index);
         });
+
+    bool add_pseudo_counts = this->add_pseudo_counts(node_index);
+    if (with_pseudo_counts && add_pseudo_counts) {
+      for (auto c : this->valid_characters) {
+        if (c == seqan3::gap{}) {
+          continue;
+        }
+        if (this->valid_characters.find(c) != this->valid_characters.end()) {
+          auto char_rank = seqan3::to_rank(c);
+          child_counts[char_rank] += 1;
+        }
+      }
+    }
 
     return child_counts;
   }
@@ -681,10 +649,12 @@ protected:
   }
 
   void append_child_counts(int node_index, std::ostringstream &tree_string) {
+
+    auto child_counts = this->get_child_counts(node_index, true);
+
     tree_string << "[ ";
 
-    auto child_counts = get_child_counts(node_index);
-    for (auto c : child_counts) {
+    for (int c : child_counts) {
       tree_string << c << " ";
     }
 
@@ -693,15 +663,13 @@ protected:
 
   void append_reverse_child_counts(int node_index,
                                    std::ostringstream &tree_string) {
+
     tree_string << "[ ";
+
     auto reverse_children = this->reverse_suffix_links[node_index / 2];
     for (int i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
       int reverse_child = reverse_children[i];
       int count = get_counts(reverse_child);
-
-      if (reverse_child == 0) {
-        count = 0;
-      }
 
       tree_string << count << " ";
     }
