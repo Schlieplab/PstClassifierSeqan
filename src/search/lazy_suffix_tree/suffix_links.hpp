@@ -59,7 +59,7 @@ void add_explicit_suffix_links(sequence_t<alphabet_t> &sequence,
   // doi:10.1016/j.ipl.2005.12.012
   // With modifications to allow for unevaluated nodes.
 
-  std::vector<int> cause(sequence.size() + 1, -1);
+  std::vector<int> cause(sequence.size() + 2, -1);
 
   std::vector<int> leaf_indicies(sequence.size() + 1, -1);
   leaf_indicies[sequence.size()] = 0;
@@ -69,7 +69,7 @@ void add_explicit_suffix_links(sequence_t<alphabet_t> &sequence,
   std::vector<int> depths(table.size() / 2, -1);
   int height = tree_height(depths, sequence, suffixes, table, flags);
 
-  std::vector<int> branch(height, -1);
+  std::vector<int> branch(height + 1, -1);
 
   compute_suffix_links(cause, branch, depths, leaf_indicies, sequence, suffixes,
                        table, flags, suffix_links);
@@ -147,9 +147,8 @@ void compute_suffix_links(std::vector<int> &cause, std::vector<int> &branch,
 void assign_link(int leaf_index, std::vector<int> &cause,
                  std::vector<int> &branch, std::vector<int> &depths,
                  std::vector<int> &suffix_links) {
-  if (cause[leaf_index] != -1) {
-    int caused = cause[leaf_index];
-
+  int caused = cause[leaf_index];
+  if (caused != -1 && depths[caused / 2] != 0) {
     suffix_links[caused / 2] = branch[depths[caused / 2] - 1];
   }
 }
@@ -202,7 +201,6 @@ void prepare_implicit_suffix_links(
     std::vector<std::tuple<int, int>> &closest_suffix_link_destination,
     std::vector<int> &parent_links, std::vector<int> &table,
     std::vector<Flag> &flags, std::vector<int> &suffix_links) {
-
   std::stack<std::tuple<int, int>> stack{};
   stack.emplace(0, 0);
 
