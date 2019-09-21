@@ -4,11 +4,12 @@
 #include <vector>
 
 #include <seqan3/alphabet/all.hpp>
+#include <seqan3/range/container/bitcompressed_vector.hpp>
 
 namespace lst::details {
 
-template <seqan3::Alphabet alphabet_t = seqan3::dna5>
-using sequence_t = std::vector<seqan3::gapped<alphabet_t>>;
+template <seqan3::Alphabet alphabet_t>
+using sequence_t = seqan3::bitcompressed_vector<seqan3::gapped<alphabet_t>>;
 
 template <seqan3::Alphabet alphabet_t = seqan3::dna5>
 using alphabet_array =
@@ -69,8 +70,7 @@ int longest_common_prefix(int lower_bound, int upper_bound,
       return prefix_length - 1;
     }
 
-    seqan3::gapped<alphabet_t> &character =
-        sequence[suffixes[lower_bound] + prefix_length];
+    auto character = sequence[suffixes[lower_bound] + prefix_length];
 
     for (int i = lower_bound + 1; i < upper_bound; i++) {
       if (sequence[suffixes[i] + prefix_length] != character) {

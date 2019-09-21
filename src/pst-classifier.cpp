@@ -5,6 +5,7 @@
 #include <seqan3/argument_parser/all.hpp>
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
+#include <seqan3/range/container/bitcompressed_vector.hpp>
 #include <seqan3/range/view/char_to.hpp>
 
 #include "probabilistic_suffix_tree.hpp"
@@ -16,8 +17,14 @@ struct input_arguments {
   size_t number_of_parameters{192};
   std::string pruning_method{"cutoff"};
   std::string estimator{"PS"};
-  std::vector<seqan3::dna5_vector> sequences{};
+  std::vector<seqan3::bitcompressed_vector<seqan3::dna5>> sequences{};
   std::vector<std::string> ids{};
+};
+
+struct my_traits : seqan3::sequence_file_input_default_traits_dna {
+  template <typename alph>
+  using sequence_container =
+      seqan3::bitcompressed_vector<alph>; // must be defined as a template!
 };
 
 input_arguments parse_cli_arguments(int argc, char *argv[]) {
@@ -63,7 +70,7 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
   }
   seqan3::debug_stream << "The text was: " << filename << "\n";
 
-  seqan3::sequence_file_input file_in{filename};
+  seqan3::sequence_file_input<my_traits> file_in{filename};
 
   for (auto &[seq, id, qual] : file_in) {
     arguments.sequences.push_back(seq);
@@ -73,10 +80,10 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
   return arguments;
 }
 
-std::string train(seqan3::dna5_vector sequence, std::string id,
-                  size_t max_depth, size_t min_count, float threshold,
-                  size_t number_of_parameters, std::string pruning_method,
-                  std::string estimator) {
+std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
+                  std::string id, size_t max_depth, size_t min_count,
+                  float threshold, size_t number_of_parameters,
+                  std::string pruning_method, std::string estimator) {
   pst::ProbabilisticSuffixTree<seqan3::dna5> pst{id,
                                                  sequence,
                                                  max_depth,

@@ -11,6 +11,7 @@
 #include <seqan3/alphabet/all.hpp>
 #include <seqan3/alphabet/composite/alphabet_variant.hpp>
 #include <seqan3/core/debug_stream.hpp>
+#include <seqan3/range/container/bitcompressed_vector.hpp>
 #include <seqan3/range/view/convert.hpp>
 
 #include "lazy_suffix_tree/construction.hpp"
@@ -26,7 +27,7 @@ public:
 
   LazySuffixTree() {}
 
-  LazySuffixTree(std::vector<alphabet_t> &sequence_) {
+  LazySuffixTree(seqan3::bitcompressed_vector<alphabet_t> &sequence_) {
     sequence = sequence_ | seqan3::view::convert<seqan3::gapped<alphabet_t>>;
     sequence.push_back(seqan3::gap{});
 
@@ -201,9 +202,7 @@ public:
   }
 
 protected:
-  // TODO: Can we make the vectors bitcompressed, as we rarely need the full
-  // bytes per input??
-  std::vector<seqan3::gapped<alphabet_t>> sequence{};
+  lst::details::sequence_t<alphabet_t> sequence;
   std::vector<int> suffixes{};
   std::vector<int> table{0, 2};
   std::vector<lst::details::Flag> flags{lst::details::Flag::RightMostChild,

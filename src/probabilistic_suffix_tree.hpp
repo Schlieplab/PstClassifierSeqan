@@ -32,27 +32,32 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
 
   ProbabilisticSuffixTree() {}
 
-  ProbabilisticSuffixTree(std::string id, std::vector<alphabet_t> &sequence)
+  ProbabilisticSuffixTree(std::string id,
+                          seqan3::bitcompressed_vector<alphabet_t> &sequence)
       : ProbabilisticSuffixTree(id, sequence, 15, 100, 1.2, 0, "cutoff", "PS") {
   }
 
-  ProbabilisticSuffixTree(std::string id, std::vector<alphabet_t> &sequence,
+  ProbabilisticSuffixTree(std::string id,
+                          seqan3::bitcompressed_vector<alphabet_t> &sequence,
                           size_t max_depth, size_t freq, float cutoff_value)
       : ProbabilisticSuffixTree(id, sequence, max_depth, freq, cutoff_value, 0,
                                 "cutoff", "KL") {}
 
-  ProbabilisticSuffixTree(std::string id, std::vector<alphabet_t> &sequence,
+  ProbabilisticSuffixTree(std::string id,
+                          seqan3::bitcompressed_vector<alphabet_t> &sequence,
                           size_t max_depth, size_t freq)
       : ProbabilisticSuffixTree(id, sequence, max_depth, freq, cutoff_value, 0,
                                 "cutoff", "PS") {}
 
-  ProbabilisticSuffixTree(std::string id, std::vector<alphabet_t> &sequence,
+  ProbabilisticSuffixTree(std::string id,
+                          seqan3::bitcompressed_vector<alphabet_t> &sequence,
                           size_t max_depth, size_t freq, float cutoff_value,
                           std::string estimator)
       : ProbabilisticSuffixTree(id, sequence, max_depth, freq, cutoff_value, 0,
                                 "cutoff", estimator) {}
 
-  ProbabilisticSuffixTree(std::string id_, std::vector<alphabet_t> &sequence_,
+  ProbabilisticSuffixTree(std::string id_,
+                          seqan3::bitcompressed_vector<alphabet_t> &sequence_,
                           size_t max_depth_, size_t freq_, float cutoff_value_,
                           size_t number_of_parameters_,
                           std::string pruning_method_, std::string estimator_)
@@ -66,7 +71,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
     std::vector<seqan3::gapped<alphabet_t>> characters{
         dna4 | seqan3::view::convert<seqan3::gapped<alphabet_t>>};
 
-    for (auto c : characters) {
+    for (auto &c : characters) {
       valid_characters.insert(c);
     }
 
@@ -304,7 +309,7 @@ protected:
         [&](int child_index) { stack.emplace(child_index, Status::Included); });
 
     while (!stack.empty()) {
-      auto [node_index, parent_status] = stack.top();
+      auto &[node_index, parent_status] = stack.top();
       stack.pop();
 
       Status node_status = this->status[node_index / 2];
