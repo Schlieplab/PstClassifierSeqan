@@ -254,12 +254,21 @@ protected:
     }
   }
 
+  /**! \brief Determines if pseudo counts should be added.
+   * \details
+   * Checks if any of the children that correspond to valid_characters are
+   * missing.
+   *
+   * \param[in] node_index node to check for pseudo counts for.
+   * \return true if pseudo counts should be added.
+   */
   bool add_pseudo_counts(int node_index) {
     int n_children = 0;
     lst::details::iterate_children(
         node_index, this->table, this->flags, [&](int child_index) {
           int sequence_index = this->get_sequence_index(child_index);
-          if (this->sequence[sequence_index] == seqan3::gap{}) {
+          auto c = this->sequence[sequence_index];
+          if (this->valid_characters.find(c) == this->valid_characters.end()) {
             return;
           }
 
@@ -410,23 +419,20 @@ protected:
           "[kl_delta] Given node does not have a parent.");
     }
 
-
     float delta = 0;
     for (auto c : this->valid_characters) {
       if (c == seqan3::gap{}) {
         continue;
       }
-      if (this->valid_characters.find(c) != this->valid_characters.end()) {
-        auto char_rank = seqan3::to_rank(c);
-        float prob = this->probabilities[node_index / 2][char_rank];
-        float parent_prob = this->probabilities[parent_index / 2][char_rank];
+      auto char_rank = seqan3::to_rank(c);
+      float prob = this->probabilities[node_index / 2][char_rank];
+      float parent_prob = this->probabilities[parent_index / 2][char_rank];
 
-        if (parent_prob == 0 || prob == 0) {
-          continue;
-        }
-
-        delta += prob * std::log(prob / parent_prob);
+      if (parent_prob == 0 || prob == 0) {
+        continue;
       }
+
+      delta += prob * std::log(prob / parent_prob);
     }
     delta *= this->get_counts(node_index);
 
@@ -454,15 +460,13 @@ protected:
       if (c == seqan3::gap{}) {
         continue;
       }
-      if (this->valid_characters.find(c) != this->valid_characters.end()) {
-        auto char_rank = seqan3::to_rank(c);
-        float new_delta =
-            std::abs(float(node_child_counts[char_rank]) -
-                (float(parent_child_counts[char_rank]) / parent_count) * node_count);
+      auto char_rank = seqan3::to_rank(c);
+      float new_delta = std::abs(
+          float(node_child_counts[char_rank]) -
+          (float(parent_child_counts[char_rank]) / parent_count) * node_count);
 
-        if (delta < new_delta) {
-          delta = new_delta;
-        }
+      if (delta < new_delta) {
+        delta = new_delta;
       }
     }
 
@@ -492,10 +496,8 @@ protected:
         if (c == seqan3::gap{}) {
           continue;
         }
-        if (this->valid_characters.find(c) != this->valid_characters.end()) {
-          auto char_rank = seqan3::to_rank(c);
-          child_counts[char_rank] += 1;
-        }
+        auto char_rank = seqan3::to_rank(c);
+        child_counts[char_rank] += 1;
       }
     }
 
@@ -536,17 +538,15 @@ protected:
   bool is_pst_leaf(int node_index) {
 
     for (auto c : this->valid_characters) {
-      if (this->valid_characters.find(c) != this->valid_characters.end()) {
-        auto char_rank = seqan3::to_rank(c);
-        int child_index = this->reverse_suffix_links[node_index / 2][char_rank];
+      auto char_rank = seqan3::to_rank(c);
+      int child_index = this->reverse_suffix_links[node_index / 2][char_rank];
 
-        if (child_index == 0 || child_index == -1) {
-          continue;
-        }
+      if (child_index == 0 || child_index == -1) {
+        continue;
+      }
 
-        if (this->is_included(child_index)) {
-          return false;
-        }
+      if (this->is_included(child_index)) {
+        return false;
       }
     }
 
@@ -559,17 +559,15 @@ protected:
     }
 
     for (auto c : this->valid_characters) {
-      if (this->valid_characters.find(c) != this->valid_characters.end()) {
-        auto char_rank = seqan3::to_rank(c);
-        int child_index = this->reverse_suffix_links[node_index / 2][char_rank];
+      auto char_rank = seqan3::to_rank(c);
+      int child_index = this->reverse_suffix_links[node_index / 2][char_rank];
 
-        if (child_index == 0) {
-          continue;
-        }
+      if (child_index == 0) {
+        continue;
+      }
 
-        if (child_index == -1 || this->is_excluded(child_index)) {
-          return true;
-        }
+      if (child_index == -1 || this->is_excluded(child_index)) {
+        return true;
       }
     }
     return false;
@@ -578,17 +576,16 @@ protected:
   // Checks if removed_index is the only child that is missing.
   bool became_terminal(int node_index, int removed_index) {
     for (auto c : this->valid_characters) {
-      if (this->valid_characters.find(c) != this->valid_characters.end()) {
-        auto char_rank = seqan3::to_rank(c);
-        int child_index = this->reverse_suffix_links[node_index / 2][char_rank];
+      auto char_rank = seqan3::to_rank(c);
+      int child_index = this->reverse_suffix_links[node_index / 2][char_rank];
 
-        if (child_index == 0) {
-          continue;
-        }
+      if (child_index == 0) {
+        continue;
+      }
 
-        if (child_index == -1 || (this->is_excluded(child_index) && child_index != removed_index)) {
-          return false;
-        }
+      if (child_index == -1 ||
+          (this->is_excluded(child_index) && child_index != removed_index)) {
+        return false;
       }
     }
 
@@ -647,10 +644,20 @@ protected:
 
     auto child_counts = this->get_child_counts(node_index, true);
 
+    std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -1);
+    for (auto c : this->valid_characters) {
+      auto char_rank = seqan3::to_rank(c);
+
+      output[char_rank] = child_counts[char_rank];
+    };
+
     tree_string << "[ ";
 
-    for (int c : child_counts) {
-      tree_string << c << " ";
+    for (auto count : output) {
+      if (count == -1) {
+        continue;
+      }
+      tree_string << count << " ";
     }
 
     tree_string << "]";
@@ -659,13 +666,23 @@ protected:
   void append_reverse_child_counts(int node_index,
                                    std::ostringstream &tree_string) {
 
-    tree_string << "[ ";
+    std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -1);
 
     auto reverse_children = this->reverse_suffix_links[node_index / 2];
-    for (int i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
-      int reverse_child = reverse_children[i];
+    for (auto c : this->valid_characters) {
+      auto char_rank = seqan3::to_rank(c);
+
+      int reverse_child = reverse_children[char_rank];
       int count = get_counts(reverse_child);
 
+      output[char_rank] = count;
+    };
+
+    tree_string << "[ ";
+    for (auto count : output) {
+      if (count == -1) {
+        continue;
+      }
       tree_string << count << " ";
     }
     tree_string << "]";
@@ -673,17 +690,29 @@ protected:
 
   void append_reverse_children(int node_index,
                                std::ostringstream &tree_string) {
-    tree_string << "[ ";
+
+    std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -2);
+
     auto reverse_children = this->reverse_suffix_links[node_index / 2];
-    for (int i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
-      int reverse_child = reverse_children[i];
+    for (auto c : this->valid_characters) {
+      auto char_rank = seqan3::to_rank(c);
+
+      int reverse_child = reverse_children[char_rank];
 
       if (reverse_child == 0 || reverse_child == -1 ||
           this->is_excluded(reverse_child)) {
-        reverse_child = -2;
+        output[char_rank] = -1;
+      } else {
+        output[char_rank] = reverse_child / 2;
       }
+    };
 
-      tree_string << reverse_child / 2 << " ";
+    tree_string << "[ ";
+    for (auto count : output) {
+      if (count == -2) {
+        continue;
+      }
+      tree_string << count << " ";
     }
     tree_string << "]";
   }
