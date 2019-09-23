@@ -30,6 +30,6 @@ lib.train_kl_parameters.argtypes = [
 lib.train_kl_parameters.restype = ctypes.c_char_p
 
 if __name__ == '__main__':
-    print(train_kl(b"KL trained", b"ACGTACGACACACTTGT", 5, 2, 0.2))
+    print(train_kl(b"KL trained", "ACGTACGACACACTTGT".encode("utf-8"), 5, 2, 0.2))
     print(lib.train_ps(b"PS trained", b"ACGTACGACACACTTGT", 5, 2))
     print(lib.train_kl_parameters(b"Parameter trained", b"ACGTACGACACACTTGT", 5, 2, 192))
