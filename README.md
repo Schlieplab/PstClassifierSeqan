@@ -42,6 +42,12 @@ Where the first argument is a path to a fasta file.  For details on the argument
 
 Building the executable and shared library should be fairly straight-forward (not sure about windows though).  Requires `cmake`, `make`, and a `c++17` (or later) compatible c++ compiler (e.g. `gcc`).
 
+Update/download the SeqAn3 library (you can skip `--init` if you're only updating):
+
+```shell script
+git submodule update --init --recursive
+```
+
 Create and go to a build directory:
 
 ```shell script
