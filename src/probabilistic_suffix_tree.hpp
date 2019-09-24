@@ -26,29 +26,77 @@ enum Status : unsigned char {
   Excluded = 1 << 1,
 };
 
+/*!\brief The probabilistic suffix tree implementation.
+ * \tparam alphabet_t   Alphabet type from Seqan3.
+ * \details
+ *
+ * The pst::ProbabilisticSuffixTree is an extension of a lazy suffix tree which
+ * is pruned to only contain statistically significant information.
+ *
+ * ### General information
+ *
+ * The probabilistic suffix tree is equivalent to a variable length Markov
+ * chain.  The implementation follows the AV-2 algorithm from [Schulz et
+ * al.](https://doi.org/10.1007/978-3-540-87361-7_26), which is based on a lazy
+ * suffix tree.
+ *
+ * ### Example
+ *
+ * \include pst-classifier.cpp
+ *
+ **
+ */
 template <seqan3::Alphabet alphabet_t = seqan3::dna5>
 class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
   friend class ProbabilisticSuffixTreeTest;
 
-  ProbabilisticSuffixTree() {}
+  ProbabilisticSuffixTree() = default;
+  ProbabilisticSuffixTree(ProbabilisticSuffixTree const &) = default;
+  ~ProbabilisticSuffixTree() = default;
 
+  /*!\brief Constructor which assumes default values for all parameters.
+   * \param[in] id The id of the model.
+   * \param[in] sequence The text to construct from.
+   */
   ProbabilisticSuffixTree(std::string id,
                           seqan3::bitcompressed_vector<alphabet_t> &sequence)
       : ProbabilisticSuffixTree(id, sequence, 15, 100, 1.2, 0, "cutoff", "PS") {
   }
 
+  /*!\brief Constructor with KL pruning.
+   * \param[in] id The id of the model.
+   * \param[in] sequence The text to construct from.
+   * \param[in] max_depth Max length of a branch/context in the tree.
+   * \param[in] freq Min frequency of each context/node in the tree.
+   * \param[in] cutoff_value Cutoff value for the similarity-pruning.
+   */
   ProbabilisticSuffixTree(std::string id,
                           seqan3::bitcompressed_vector<alphabet_t> &sequence,
                           size_t max_depth, size_t freq, float cutoff_value)
       : ProbabilisticSuffixTree(id, sequence, max_depth, freq, cutoff_value, 0,
                                 "cutoff", "KL") {}
 
+  /*!\brief Constructor with PS pruning.
+   * \param[in] id The id of the model.
+   * \param[in] sequence The text to construct from.
+   * \param[in] max_depth Max length of a branch/context in the tree.
+   * \param[in] freq Min frequency of each context/node in the tree.
+   */
   ProbabilisticSuffixTree(std::string id,
                           seqan3::bitcompressed_vector<alphabet_t> &sequence,
                           size_t max_depth, size_t freq)
       : ProbabilisticSuffixTree(id, sequence, max_depth, freq, cutoff_value, 0,
                                 "cutoff", "PS") {}
 
+  /*!\brief Constructor with cutoff pruning.
+   * \param[in] id The id of the model.
+   * \param[in] sequence The text to construct from.
+   * \param[in] max_depth Max length of a branch/context in the tree.
+   * \param[in] freq Min frequency of each context/node in the tree.
+   * \param[in] cutoff_value Cutoff value for the similarity-pruning.
+   * \param[in] estimator Name of the estimator, either "KL" (Kullback-Liebler)
+   * or "PS" (Peres-Shields).
+   */
   ProbabilisticSuffixTree(std::string id,
                           seqan3::bitcompressed_vector<alphabet_t> &sequence,
                           size_t max_depth, size_t freq, float cutoff_value,
