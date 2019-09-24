@@ -15,11 +15,12 @@ class LazySuffixTreeTest : public ::testing::Test {
 protected:
   void SetUp() override {
     std::vector<seqan3::dna5> sequence_{"CACAC"_dna5};
-    sequence = sequence_ | seqan3::view::convert<seqan3::gapped<seqan3::dna5>>;
+    sequence = sequence_t<seqan3::dna5>{
+        sequence_ | seqan3::view::convert<seqan3::gapped<seqan3::dna5>>};
     sequence.push_back(seqan3::gap{});
   }
 
-  std::vector<seqan3::gapped<seqan3::dna5>> sequence{};
+  sequence_t<seqan3::dna5> sequence{};
   std::vector<int> suffixes{0, 1, 2, 3, 4, 5};
   std::vector<int> table{0, 2, 2, 5, 5};
   std::vector<Flag> flags{Flag::Unevaluated, Flag::None, Flag::Unevaluated,

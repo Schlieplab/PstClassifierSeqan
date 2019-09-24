@@ -13,11 +13,12 @@ class LazySuffixTreeTest : public ::testing::Test {
 protected:
   void SetUp() override {
     std::vector<seqan3::dna5> sequence_{"CACAC"_dna5};
-    sequence = sequence_ | seqan3::view::convert<seqan3::gapped<seqan3::dna5>>;
+    sequence = sequence_t<seqan3::dna5>{
+        sequence_ | seqan3::view::convert<seqan3::gapped<seqan3::dna5>>};
     sequence.push_back(seqan3::gap{});
   }
 
-  std::vector<seqan3::gapped<seqan3::dna5>> sequence{};
+  sequence_t<seqan3::dna5> sequence{};
 
   std::vector<int> table{0, 2, 1, 8,  0, 12, 5, 0, 3, 0,
                          5, 0, 1, 16, 5, 0,  3, 0, 5, 0};
