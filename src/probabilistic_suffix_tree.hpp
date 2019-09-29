@@ -28,6 +28,7 @@ enum Status : unsigned char {
 
 /*!\brief The probabilistic suffix tree implementation.
  * \tparam alphabet_t   Alphabet type from Seqan3.
+ *
  * \details
  *
  * The pst::ProbabilisticSuffixTree is an extension of a lazy suffix tree which
@@ -114,7 +115,8 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
    * for "parameters" pruning.
    * \param[in] pruning_method_ Pruning method, either "cutoff" (which depends
    * on the `cutoff_value_`) or "parameters" (which depend on the
-   * `number_of_parameters_`). \param[in] estimator_ Name of the estimator,
+   * `number_of_parameters_`)
+   * \param[in] estimator_ Name of the estimator,
    * either "KL" (Kullback-Liebler) or "PS" (Peres-Shields).
    */
   ProbabilisticSuffixTree(std::string id_,

@@ -20,13 +20,29 @@
 
 namespace lst {
 
+/**! \brief Lazy Suffix Tree implementation using the WOTD algorithm.
+ *
+ * \tparam alphabet_t Alphabet type from Seqan3.
+ *
+ * \details
+ * The WOTD algorithm is described by Giegerich et al. in
+ * https://doi.org/10.1002/spe.535. It differs from a suffix tree by only
+ * building the parts of the tree that are used.  This massively saves time and
+ * memory in cases where we're searching for only a subset of the suffixes.
+ *
+ */
 template <seqan3::Alphabet alphabet_t = seqan3::dna5> class LazySuffixTree {
 
 public:
   friend class LazySuffixTreeTest;
 
-  LazySuffixTree() {}
+  LazySuffixTree() = default;
+  LazySuffixTree(LazySuffixTree const &) = default;
+  ~LazySuffixTree() = default;
 
+  /**! \brief Constructor.
+   * @param sequence_ The sequence to build the tree for.
+   */
   LazySuffixTree(seqan3::bitcompressed_vector<alphabet_t> &sequence_) {
     sequence = sequence_ | seqan3::view::convert<seqan3::gapped<alphabet_t>>;
     sequence.push_back(seqan3::gap{});
@@ -37,6 +53,9 @@ public:
     lst::details::expand_root(sequence, suffixes, table, flags);
   }
 
+  /**! \brief Fully builds the lazy suffix tree.
+   *
+   */
   void expand_all() {
     for (int i = 0; i < table.size(); i++) {
       if (is_unevaluated(i)) {
@@ -45,6 +64,10 @@ public:
     }
   }
 
+  /**! \brief Finds all labels encoded by the nodes in the tree.
+   *
+   * \return Vector of tuple of the label and count for each node in the tree.
+   */
   std::vector<std::tuple<lst::details::sequence_t<alphabet_t>, int>>
   get_all_labels() {
     std::vector<std::tuple<lst::details::sequence_t<alphabet_t>, int>> labels{};
@@ -69,6 +92,11 @@ public:
     return labels;
   }
 
+  /**! \brief Find the start index of the pattern in the sequence.
+   *
+   * \param[in] pattern the sequence to search for.
+   * \return Vector of indices into the sequence where the pattern is.
+   */
   std::vector<int> search(std::vector<alphabet_t> pattern) {
     if (pattern.size() == 0) {
       std::vector<int> all_suffixes{};
@@ -89,6 +117,15 @@ public:
     }
   }
 
+  /**! \brief Breadth first traversal of the tree.
+   * \details
+   * Breadth first traversal for convenience for further implementations.
+   * Accepts a callback function which for each node gives the start and end
+   * index into the sequence, the length of the edge, and the occurrence count.
+   *
+   * \param f callback function which gives the start, end sequence index,
+   * edge length and occurrences of each node.
+   */
   void
   breadth_first_traversal(const std::function<bool(int, int, int, int)> &f) {
     lst::details::breadth_first_iteration(
@@ -109,7 +146,13 @@ public:
         });
   }
 
-  void expand_implicit_nodes() {
+  /**! \brief Expands implicit nodes in the tree.
+   * \details
+   * I.e. for every edge with an edge length > 1, there is an extra node added.
+   * This is a convenience for further implementations and not a requirement
+   * for the lazy suffix tree.
+   */
+  virtual void expand_implicit_nodes() {
     std::queue<int> queue{};
     queue.push(0);
 
@@ -134,6 +177,12 @@ public:
     }
   }
 
+  /**! \brief Adds suffix links to the tree.
+   *
+   * \details
+   * Note that this takes a significant amount of extra time and memory.
+   *
+   */
   void add_suffix_links() {
     suffix_links.resize(table.size() / 2, -1);
     std::fill(suffix_links.begin(), suffix_links.end(), -1);
@@ -144,6 +193,11 @@ public:
     suffix_links[0] = -1;
   }
 
+  /**! \brief Adds reverse suffix links to the tree.
+   * \details
+   * This is done by iterating through the tree in a breadth first fashion
+   * and requires (or will compute) the suffix links.
+   */
   void add_reverse_suffix_links() {
     if (suffix_links.size() != table.size() / 2) {
       add_suffix_links();
@@ -173,7 +227,10 @@ public:
         });
   }
 
-  void print() {
+  /**! \brief Debug print of the tree.
+   *
+   */
+  virtual void print() {
     lst::details::breadth_first_iteration(
         sequence, suffixes, table, flags, false,
         [&](int node_index, int lcp, int edge_lcp) -> bool {
