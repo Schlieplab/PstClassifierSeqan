@@ -12,7 +12,7 @@
 
 struct input_arguments {
   size_t max_depth{15};
-  size_t min_count{10};
+  size_t min_count{100};
   float threshold{1.2};
   size_t number_of_parameters{192};
   std::string pruning_method{"cutoff"};
