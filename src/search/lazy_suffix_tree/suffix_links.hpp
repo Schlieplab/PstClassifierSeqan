@@ -61,40 +61,40 @@ void add_explicit_suffix_links(sequence_t<alphabet_t> &sequence,
 
   std::vector<int> cause(sequence.size() + 2, -1);
 
-  std::vector<int> leaf_indicies(sequence.size() + 1, -1);
-  leaf_indicies[sequence.size()] = 0;
+  std::vector<int> leaf_indices(sequence.size() + 1, -1);
+  leaf_indices[sequence.size()] = 0;
 
-  prepare_suffix_links(cause, leaf_indicies, sequence, suffixes, table, flags);
+  prepare_suffix_links(cause, leaf_indices, sequence, suffixes, table, flags);
 
   std::vector<int> depths(table.size() / 2, -1);
   int height = tree_height(depths, sequence, suffixes, table, flags);
 
   std::vector<int> branch(height + 1, -1);
 
-  compute_suffix_links(cause, branch, depths, leaf_indicies, sequence, suffixes,
+  compute_suffix_links(cause, branch, depths, leaf_indices, sequence, suffixes,
                        table, flags, suffix_links);
 }
 
 template <seqan3::Alphabet alphabet_t>
 void prepare_suffix_links(std::vector<int> &cause,
-                          std::vector<int> &leaf_indicies,
+                          std::vector<int> &leaf_indices,
                           sequence_t<alphabet_t> &sequence,
                           std::vector<int> &suffixes, std::vector<int> &table,
                           std::vector<Flag> &flags) {
-  prepare_suffix_links(0, 0, cause, leaf_indicies, sequence, suffixes, table,
+  prepare_suffix_links(0, 0, cause, leaf_indices, sequence, suffixes, table,
                        flags);
 }
 
 template <seqan3::Alphabet alphabet_t>
 int prepare_suffix_links(int node_index, int lcp, std::vector<int> &cause,
-                         std::vector<int> &leaf_indicies,
+                         std::vector<int> &leaf_indices,
                          sequence_t<alphabet_t> &sequence,
                          std::vector<int> &suffixes, std::vector<int> &table,
                          std::vector<Flag> &flags) {
   if (is_leaf(node_index, flags)) {
     int leaf_index = get_leaf_index(node_index, lcp, suffixes, table, flags);
 
-    leaf_indicies[leaf_index] = node_index;
+    leaf_indices[leaf_index] = node_index;
 
     return leaf_index;
   } else if (is_unevaluated(node_index, flags)) {
@@ -115,7 +115,7 @@ int prepare_suffix_links(int node_index, int lcp, std::vector<int> &cause,
 
     iterate_children(node_index, table, flags, [&](int index) {
       int child =
-          prepare_suffix_links(index, lcp + edge_lcp, cause, leaf_indicies,
+          prepare_suffix_links(index, lcp + edge_lcp, cause, leaf_indices,
                                sequence, suffixes, table, flags);
 
       if (child < smallest_child) {
@@ -135,12 +135,12 @@ int prepare_suffix_links(int node_index, int lcp, std::vector<int> &cause,
 template <seqan3::Alphabet alphabet_t>
 void compute_suffix_links(std::vector<int> &cause, std::vector<int> &branch,
                           std::vector<int> &depths,
-                          std::vector<int> &leaf_indicies,
+                          std::vector<int> &leaf_indices,
                           sequence_t<alphabet_t> &sequence,
                           std::vector<int> &suffixes, std::vector<int> &table,
                           std::vector<Flag> &flags,
                           std::vector<int> &suffix_links) {
-  compute_suffix_links(0, 0, cause, branch, depths, leaf_indicies, sequence,
+  compute_suffix_links(0, 0, cause, branch, depths, leaf_indices, sequence,
                        suffixes, table, flags, suffix_links);
 }
 
@@ -155,16 +155,16 @@ void assign_link(int leaf_index, std::vector<int> &cause,
 
 void assign_leaf_link(int node_index, int leaf_index,
                       std::vector<int> &suffix_links,
-                      std::vector<int> &leaf_indicies) {
-  if (leaf_indicies[leaf_index + 1] != -1) {
-    suffix_links[node_index / 2] = leaf_indicies[leaf_index + 1];
+                      std::vector<int> &leaf_indices) {
+  if (leaf_indices[leaf_index + 1] != -1) {
+    suffix_links[node_index / 2] = leaf_indices[leaf_index + 1];
   }
 }
 
 template <seqan3::Alphabet alphabet_t>
 void compute_suffix_links(int node_index, int lcp, std::vector<int> &cause,
                           std::vector<int> &branch, std::vector<int> &depths,
-                          std::vector<int> &leaf_indicies,
+                          std::vector<int> &leaf_indices,
                           sequence_t<alphabet_t> &sequence,
                           std::vector<int> &suffixes, std::vector<int> &table,
                           std::vector<Flag> &flags,
@@ -177,7 +177,7 @@ void compute_suffix_links(int node_index, int lcp, std::vector<int> &cause,
     int leaf_index = get_leaf_index(node_index, lcp, suffixes, table, flags);
 
     assign_link(leaf_index, cause, branch, depths, suffix_links);
-    assign_leaf_link(node_index, leaf_index, suffix_links, leaf_indicies);
+    assign_leaf_link(node_index, leaf_index, suffix_links, leaf_indices);
   }
 
   if (is_unevaluated(node_index, flags)) {
@@ -192,7 +192,7 @@ void compute_suffix_links(int node_index, int lcp, std::vector<int> &cause,
 
   iterate_children(node_index, table, flags, [&](int index) {
     compute_suffix_links(index, lcp + edge_lcp, cause, branch, depths,
-                         leaf_indicies, sequence, suffixes, table, flags,
+                         leaf_indices, sequence, suffixes, table, flags,
                          suffix_links);
   });
 }
