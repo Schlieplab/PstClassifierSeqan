@@ -32,7 +32,8 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
 
   input_arguments arguments{};
 
-  seqan3::argument_parser parser{"Count kmers in the fasta file.", argc, argv};
+  seqan3::argument_parser parser{"Count kmers in the fasta file.", argc, argv,
+                                 false};
 
   parser.add_positional_option(filename, "path to fasta file.");
 
