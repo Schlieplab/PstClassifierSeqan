@@ -309,11 +309,9 @@ protected:
 
           int label_start = this->table[node_index] - lcp;
           int label_end = this->table[node_index] + edge_lcp;
-          int label_length = label_end - label_start;
 
           this->status.resize(this->table.size() / 2);
-          if (label_length < this->max_depth && count >= this->freq &&
-              label_valid(label_start, label_end)) {
+          if (include_node(label_start, label_end, count)) {
             this->status[node_index / 2] = Status::Included;
             return true;
           }
@@ -400,25 +398,10 @@ protected:
     return n_children != this->valid_characters.size();
   }
 
-  /**! \brief Checks if a label is valid.
-   *
-   * \param[in] label_start starting index of the label in the sequence.
-   * \param[in] label_end ending index of the label in the sequence.
-   * \return true if the label is valid, false otherwise.
-   */
-  bool label_valid(int label_start, int label_end) {
-    for (int i = label_start; i < label_end; i++) {
-      if (valid_characters.find(this->sequence[i]) == valid_characters.end()) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
   /**! \copydoc lst::LazySuffixTree::expand_implicit_nodes()
    *
-   * The only change is that the excluded nodes are not iterated through.
+   * The only change from the lazy suffix tree is that the excluded nodes are
+   * not iterated expanded.
    */
   void expand_implicit_nodes() {
     std::queue<int> queue{};
@@ -447,7 +430,7 @@ protected:
   /**! \brief Assigns node status to implicit nodes.
    * \details
    * Iterates through all nodes and assigns the status for implicit nodes
-   * with the status of their parent.
+   * to the status of their parent.
    *
    */
   void add_implicit_node_status() {
@@ -475,7 +458,8 @@ protected:
 
   /**! \brief Removes all nodes from the tree with a delta value below
    * threshold.
-   * \details The full tree is iterated to find the leaves in the
+   * \details
+   * The full tree is iterated to find the leaves in the
    * PST.  These leaves are then iterated, for each leaf the delta value is
    * calculated, and the node is removed if the delta value is below a
    * threshold.  For each removed node, the parent is added to be considered if
@@ -986,6 +970,41 @@ protected:
         });
 
     return n_nodes;
+  }
+
+  /**! \brief Determine if a node should be included in the tree.
+   * \details
+   * A node is included if the following three conditions are true:
+   * - The length of the label is shorter than the max_depth of the tree.
+   * - The label occurs at least as often as the specified min frequency.
+   * - Every character in the label is included in the valid_characters.
+   *
+   * \param label_start start index of label in sequence.
+   * \param label_end end index of label in sequence.
+   * \param count number of times the label occurs in the sequence.
+   * \return true if the node should be included.
+   */
+  bool include_node(int label_start, int label_end, int count) {
+    int label_length = label_end - label_start;
+
+    return label_length < this->max_depth && count >= this->freq &&
+           label_valid(label_start, label_end);
+  }
+
+  /**! \brief Checks if a label is valid.
+   *
+   * \param[in] label_start starting index of the label in the sequence.
+   * \param[in] label_end ending index of the label in the sequence.
+   * \return true if the label is valid, false otherwise.
+   */
+  bool label_valid(int label_start, int label_end) {
+    for (int i = label_start; i < label_end; i++) {
+      if (valid_characters.find(this->sequence[i]) == valid_characters.end()) {
+        return false;
+      }
+    }
+
+    return true;
   }
 };
 } // namespace pst
