@@ -437,6 +437,7 @@ protected:
    *
    */
   void add_implicit_node_status() {
+    this->status.resize(this->table.size() / 2);
     std::stack<std::tuple<int, Status>> stack{};
 
     lst::details::iterate_children(
