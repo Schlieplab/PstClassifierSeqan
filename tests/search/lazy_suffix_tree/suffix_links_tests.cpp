@@ -1,17 +1,20 @@
 #include <gtest/gtest.h>
 
-#include "../../src/search/lazy_suffix_tree.hpp"
-#include "../../src/search/lazy_suffix_tree/construction.hpp"
-#include "../../src/search/lazy_suffix_tree/suffix_links.hpp"
+#include <vector>
+
+#include "../../../src/search/lazy_suffix_tree.hpp"
+#include "../../../src/search/lazy_suffix_tree/construction.hpp"
+#include "../../../src/search/lazy_suffix_tree/suffix_links.hpp"
 
 using namespace lst::details;
 
 #include <seqan3/alphabet/all.hpp>
-using seqan3::operator""_dna5;
+#include <seqan3/alphabet/nucleotide/dna5.hpp>
 
 class LazySuffixTreeTest : public ::testing::Test {
 protected:
   void SetUp() override {
+    using seqan3::operator""_dna5;
     std::vector<seqan3::dna5> sequence_{"CACAC"_dna5};
     sequence = sequence_t<seqan3::dna5>{
         sequence_ | seqan3::view::convert<seqan3::gapped<seqan3::dna5>>};
@@ -61,7 +64,8 @@ protected:
 
 TEST_F(LazySuffixTreeTest, TreeHeight) {
   std::vector<int> depths(table.size() / 2, -1);
-  int height = tree_height(depths, sequence, suffixes, table, flags);
+  int height =
+      tree_height<seqan3::dna5>(depths, sequence, suffixes, table, flags);
 
   EXPECT_EQ(6, height);
 

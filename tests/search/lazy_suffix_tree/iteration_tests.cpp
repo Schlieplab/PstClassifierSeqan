@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
-#include "../../src/search/lazy_suffix_tree.hpp"
-#include "../../src/search/lazy_suffix_tree/construction.hpp"
-#include "../../src/search/lazy_suffix_tree/suffix_links.hpp"
+#include "../../../src/search/lazy_suffix_tree.hpp"
+#include "../../../src/search/lazy_suffix_tree/construction.hpp"
+#include "../../../src/search/lazy_suffix_tree/suffix_links.hpp"
 
 using namespace lst::details;
 

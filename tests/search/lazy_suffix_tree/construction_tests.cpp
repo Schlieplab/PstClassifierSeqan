@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "../../src/search/lazy_suffix_tree/construction.hpp"
+#include "../../../src/search/lazy_suffix_tree/construction.hpp"
 using namespace lst::details;
 
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
