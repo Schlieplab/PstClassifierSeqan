@@ -178,13 +178,15 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
                                  << this->reverse_suffix_links[node_index / 2];
           }
 
-          seqan3::debug_stream << "\tDelta: "
-                               << this->calculate_delta(node_index);
+          if (this->suffix_links.size() > node_index / 2) {
+            seqan3::debug_stream << "\tDelta: "
+                                 << this->calculate_delta(node_index);
 
-          seqan3::debug_stream << "\tLeaf: " << this->is_pst_leaf(node_index);
+            seqan3::debug_stream << "\tLeaf: " << this->is_pst_leaf(node_index);
 
-          seqan3::debug_stream << "\tTerminal: "
-                               << this->is_terminal(node_index);
+            seqan3::debug_stream << "\tTerminal: "
+                                 << this->is_terminal(node_index);
+          }
 
           seqan3::debug_stream << std::endl;
           return true;
