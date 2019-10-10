@@ -23,8 +23,9 @@ protected:
   sequence_t<seqan3::dna5> sequence{};
   std::vector<int> suffixes{0, 1, 2, 3, 4, 5};
   std::vector<int> table{0, 2, 2, 5, 5};
-  std::vector<Flag> flags{Flag::Unevaluated, Flag::None, Flag::Unevaluated,
-                          Flag::None, Flag(Flag::Leaf | Flag::RightMostChild)};
+  std::vector<Flag> flags{Flag::UNEVALUATED, Flag::NONE, Flag::UNEVALUATED,
+                          Flag::NONE,
+                          Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)};
 };
 
 TEST_F(LazySuffixTreeTest, CountSuffixes) {
@@ -93,12 +94,12 @@ TEST_F(LazySuffixTreeTest, AddChildren) {
   EXPECT_EQ(table, expected_table);
 
   std::vector<Flag> expected_flags{
-      Flag::Unevaluated,
-      Flag::None,
-      Flag::Unevaluated,
-      Flag::None,
-      Flag(Flag::Leaf | Flag::RightMostChild),
-      Flag::None, // Added to allow for explicit labels in the tree
+      Flag::UNEVALUATED,
+      Flag::NONE,
+      Flag::UNEVALUATED,
+      Flag::NONE,
+      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
+      Flag::NONE, // Added to allow for explicit labels in the tree
   };
   EXPECT_EQ(flags, expected_flags);
 }
@@ -113,12 +114,12 @@ TEST_F(LazySuffixTreeTest, ExpandRoot) {
   EXPECT_EQ(table, expected_table);
 
   std::vector<Flag> expected_flags{
-      Flag::Unevaluated,
-      Flag::None,
-      Flag::Unevaluated,
-      Flag::None,
-      Flag(Flag::Leaf | Flag::RightMostChild),
-      Flag::None, // Added to allow for explicit labels in the tree
+      Flag::UNEVALUATED,
+      Flag::NONE,
+      Flag::UNEVALUATED,
+      Flag::NONE,
+      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
+      Flag::NONE, // Added to allow for explicit labels in the tree
   };
   EXPECT_EQ(flags, expected_flags);
 
@@ -136,16 +137,16 @@ TEST_F(LazySuffixTreeTest, ExpandTest) {
   std::vector<int> expected_table{1, 6, 2, 5, 5, 0, 3, 0, 5, 0};
 
   std::vector<Flag> expected_flags{
-      Flag::None,
-      Flag::None,
-      Flag::Unevaluated,
-      Flag::None,
-      Flag(Flag::Leaf | Flag::RightMostChild),
-      Flag::None, // Added to allow for explicit labels in the tree
-      Flag::Leaf,
-      Flag::None, // Added to allow for explicit labels in the tree
-      Flag(Flag::Leaf | Flag::RightMostChild),
-      Flag::None, // Added to allow for explicit labels in the tree
+      Flag::NONE,
+      Flag::NONE,
+      Flag::UNEVALUATED,
+      Flag::NONE,
+      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
+      Flag::NONE, // Added to allow for explicit labels in the tree
+      Flag::LEAF,
+      Flag::NONE, // Added to allow for explicit labels in the tree
+      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
+      Flag::NONE, // Added to allow for explicit labels in the tree
   };
 
   EXPECT_EQ(table, expected_table);

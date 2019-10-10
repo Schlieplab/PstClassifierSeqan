@@ -46,19 +46,19 @@ TEST_F(ProbabilisticSuffixTreeTest, ConstructorTable) {
 
 TEST_F(ProbabilisticSuffixTreeTest, ConstructorStatus) {
   std::vector<pst::Status> expected_status{
-      pst::Status::Included, // root
-      pst::Status::Included, // A
-      pst::Status::Excluded, // GATTATA-
-      pst::Status::Included, // T
-      pst::Status::Excluded, // -
-      pst::Status::Included, // AT
-      pst::Status::Excluded, // A-
-      pst::Status::Included, // TA
-      pst::Status::Excluded, // TTATA-
-      pst::Status::Excluded, // ATA-
-      pst::Status::Excluded, // ATTATA-
-      pst::Status::Excluded, // TATA-
-      pst::Status::Excluded  // TA-
+      pst::Status::INCLUDED, // root
+      pst::Status::INCLUDED, // A
+      pst::Status::EXCLUDED, // GATTATA-
+      pst::Status::INCLUDED, // T
+      pst::Status::EXCLUDED, // -
+      pst::Status::INCLUDED, // AT
+      pst::Status::EXCLUDED, // A-
+      pst::Status::INCLUDED, // TA
+      pst::Status::EXCLUDED, // TTATA-
+      pst::Status::EXCLUDED, // ATA-
+      pst::Status::EXCLUDED, // ATTATA-
+      pst::Status::EXCLUDED, // TATA-
+      pst::Status::EXCLUDED  // TA-
   };
 
   EXPECT_EQ(probabilisticSuffixTree.status, expected_status);
@@ -116,19 +116,19 @@ TEST_F(ProbabilisticSuffixTreeTest, PrunedKL) {
   probabilisticSuffixTree =
       pst::ProbabilisticSuffixTree{"TEST", sequence, 3, 2, 0.3};
   std::vector<pst::Status> expected_status{
-      pst::Status::Included, // root
-      pst::Status::Included, // A
-      pst::Status::Excluded, // GATTATA-
-      pst::Status::Excluded, // T
-      pst::Status::Excluded, // -
-      pst::Status::Excluded, // AT
-      pst::Status::Excluded, // A-
-      pst::Status::Excluded, // TA
-      pst::Status::Excluded, // TTATA-
-      pst::Status::Excluded, // ATA-
-      pst::Status::Excluded, // ATTATA-
-      pst::Status::Excluded, // TATA-
-      pst::Status::Excluded  // TA-
+      pst::Status::INCLUDED, // root
+      pst::Status::INCLUDED, // A
+      pst::Status::EXCLUDED, // GATTATA-
+      pst::Status::EXCLUDED, // T
+      pst::Status::EXCLUDED, // -
+      pst::Status::EXCLUDED, // AT
+      pst::Status::EXCLUDED, // A-
+      pst::Status::EXCLUDED, // TA
+      pst::Status::EXCLUDED, // TTATA-
+      pst::Status::EXCLUDED, // ATA-
+      pst::Status::EXCLUDED, // ATTATA-
+      pst::Status::EXCLUDED, // TATA-
+      pst::Status::EXCLUDED  // TA-
   };
 
   EXPECT_EQ(probabilisticSuffixTree.status, expected_status);
@@ -138,19 +138,19 @@ TEST_F(ProbabilisticSuffixTreeTest, PrunedPS) {
   probabilisticSuffixTree =
       pst::ProbabilisticSuffixTree{"TEST", sequence, 3, 2};
   std::vector<pst::Status> expected_status{
-      pst::Status::Included, // root
-      pst::Status::Excluded, // A
-      pst::Status::Excluded, // GATTATA-
-      pst::Status::Excluded, // T
-      pst::Status::Excluded, // -
-      pst::Status::Excluded, // AT
-      pst::Status::Excluded, // A-
-      pst::Status::Excluded, // TA
-      pst::Status::Excluded, // TTATA-
-      pst::Status::Excluded, // ATA-
-      pst::Status::Excluded, // ATTATA-
-      pst::Status::Excluded, // TATA-
-      pst::Status::Excluded  // TA-
+      pst::Status::INCLUDED, // root
+      pst::Status::EXCLUDED, // A
+      pst::Status::EXCLUDED, // GATTATA-
+      pst::Status::EXCLUDED, // T
+      pst::Status::EXCLUDED, // -
+      pst::Status::EXCLUDED, // AT
+      pst::Status::EXCLUDED, // A-
+      pst::Status::EXCLUDED, // TA
+      pst::Status::EXCLUDED, // TTATA-
+      pst::Status::EXCLUDED, // ATA-
+      pst::Status::EXCLUDED, // ATTATA-
+      pst::Status::EXCLUDED, // TATA-
+      pst::Status::EXCLUDED  // TA-
   };
 
   EXPECT_EQ(probabilisticSuffixTree.status, expected_status);
@@ -160,19 +160,19 @@ TEST_F(ProbabilisticSuffixTreeTest, PrunedParameters) {
   probabilisticSuffixTree = pst::ProbabilisticSuffixTree{
       "TEST", sequence, 3, 2, 0.0, 6, "parameters", "KL"};
   std::vector<pst::Status> expected_status{
-      pst::Status::Included, // root
-      pst::Status::Included, // A
-      pst::Status::Excluded, // GATTATA-
-      pst::Status::Included, // T
-      pst::Status::Excluded, // -
-      pst::Status::Excluded, // AT
-      pst::Status::Excluded, // A-
-      pst::Status::Excluded, // TA
-      pst::Status::Excluded, // TTATA-
-      pst::Status::Excluded, // ATA-
-      pst::Status::Excluded, // ATTATA-
-      pst::Status::Excluded, // TATA-
-      pst::Status::Excluded  // TA-
+      pst::Status::INCLUDED, // root
+      pst::Status::INCLUDED, // A
+      pst::Status::EXCLUDED, // GATTATA-
+      pst::Status::INCLUDED, // T
+      pst::Status::EXCLUDED, // -
+      pst::Status::EXCLUDED, // AT
+      pst::Status::EXCLUDED, // A-
+      pst::Status::EXCLUDED, // TA
+      pst::Status::EXCLUDED, // TTATA-
+      pst::Status::EXCLUDED, // ATA-
+      pst::Status::EXCLUDED, // ATTATA-
+      pst::Status::EXCLUDED, // TATA-
+      pst::Status::EXCLUDED  // TA-
   };
 
   EXPECT_EQ(probabilisticSuffixTree.status, expected_status);

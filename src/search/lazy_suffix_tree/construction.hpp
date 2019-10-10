@@ -16,22 +16,22 @@ using alphabet_array =
     std::array<int, seqan3::alphabet_size<seqan3::gapped<alphabet_t>>>;
 
 enum Flag : unsigned char {
-  None = 0,
-  RightMostChild = 1 << 0,
-  Leaf = 1 << 1,
-  Unevaluated = 1 << 2,
+  NONE = 0,
+  RIGHT_MOST_CHILD = 1 << 0,
+  LEAF = 1 << 1,
+  UNEVALUATED = 1 << 2,
 };
 
 bool is_leaf(int node_index, std::vector<Flag> &flags) {
-  return (flags[node_index] & Flag::Leaf) == Flag::Leaf;
+  return (flags[node_index] & Flag::LEAF) == Flag::LEAF;
 }
 
 bool is_unevaluated(int node_index, std::vector<Flag> &flags) {
-  return (flags[node_index] & Flag::Unevaluated) == Flag::Unevaluated;
+  return (flags[node_index] & Flag::UNEVALUATED) == Flag::UNEVALUATED;
 }
 
 bool is_rightmostchild(int node_index, std::vector<Flag> &flags) {
-  return (flags[node_index] & Flag::RightMostChild) == Flag::RightMostChild;
+  return (flags[node_index] & Flag::RIGHT_MOST_CHILD) == Flag::RIGHT_MOST_CHILD;
 }
 
 void add_branching_node(int index, int count, std::vector<int> &table,
@@ -39,8 +39,8 @@ void add_branching_node(int index, int count, std::vector<int> &table,
   table.push_back(index);
   table.push_back(index + count);
 
-  flags.push_back(Flag::Unevaluated);
-  flags.push_back(Flag::None);
+  flags.push_back(Flag::UNEVALUATED);
+  flags.push_back(Flag::NONE);
 }
 
 void add_leaf(int index, std::vector<int> &table, std::vector<Flag> &flags,
@@ -50,8 +50,8 @@ void add_leaf(int index, std::vector<int> &table, std::vector<Flag> &flags,
   // It's not technically needed.
   table.push_back(0);
 
-  flags.push_back(Flag::Leaf);
-  flags.push_back(Flag::None);
+  flags.push_back(Flag::LEAF);
+  flags.push_back(Flag::NONE);
 }
 
 void add_lcp_to_suffixes(int lower_bound, int upper_bound, int lcp,
@@ -112,7 +112,7 @@ void add_children(alphabet_array<alphabet_t> &counts, int lower_bound,
   }
 
   flags[right_most_child_index] =
-      Flag(flags[right_most_child_index] | Flag::RightMostChild);
+      Flag(flags[right_most_child_index] | Flag::RIGHT_MOST_CHILD);
 }
 
 template <seqan3::Alphabet alphabet_t>
@@ -209,7 +209,7 @@ int expand_node(int node_index, sequence_t<alphabet_t> &sequence,
 
   add_children<alphabet_t>(counts, lower_bound, suffixes, table, flags);
 
-  flags[node_index] = Flag(flags[node_index] & ~Flag::Unevaluated);
+  flags[node_index] = Flag(flags[node_index] & ~Flag::UNEVALUATED);
 
   return lcp;
 }
@@ -224,13 +224,13 @@ void add_implicit_nodes(int node_index, int edge_lcp, std::vector<int> &table,
     table.push_back(i);
     table.push_back(table.size() + 1);
 
-    flags.push_back(Flag::RightMostChild);
-    flags.push_back(Flag::None);
+    flags.push_back(Flag::RIGHT_MOST_CHILD);
+    flags.push_back(Flag::NONE);
   }
 
   if (is_leaf(node_index, flags)) {
-    flags[node_index] = Flag(flags[node_index] & ~Flag::Leaf);
-    flags[flags.size() - 2] = Flag(flags[flags.size() - 2] | Flag::Leaf);
+    flags[node_index] = Flag(flags[node_index] & ~Flag::LEAF);
+    flags[flags.size() - 2] = Flag(flags[flags.size() - 2] | Flag::LEAF);
 
     table[table.size() - 1] = 0;
   } else {

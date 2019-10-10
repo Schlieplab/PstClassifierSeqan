@@ -262,8 +262,8 @@ protected:
   lst::details::sequence_t<alphabet_t> sequence;
   std::vector<int> suffixes{};
   std::vector<int> table{0, 2};
-  std::vector<lst::details::Flag> flags{lst::details::Flag::RightMostChild,
-                                        lst::details::Flag::None};
+  std::vector<lst::details::Flag> flags{lst::details::Flag::RIGHT_MOST_CHILD,
+                                        lst::details::Flag::NONE};
   std::vector<int> suffix_links{};
   std::vector<lst::details::alphabet_array<alphabet_t>> reverse_suffix_links{};
 

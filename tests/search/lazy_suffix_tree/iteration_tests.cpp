@@ -23,26 +23,26 @@ protected:
   std::vector<int> table{0, 2, 1, 8,  0, 12, 5, 0, 3, 0,
                          5, 0, 1, 16, 5, 0,  3, 0, 5, 0};
   std::vector<Flag> flags{
-      Flag::RightMostChild,
-      Flag::None,
-      Flag::None,
-      Flag::None,
-      Flag::None,
-      Flag::None,
-      Flag(Flag::Leaf | Flag::RightMostChild),
-      Flag::None, // Added to allow for explicit labels in the tree
-      Flag::Leaf,
-      Flag::None, // Added to allow for explicit labels in the tree
-      Flag(Flag::Leaf | Flag::RightMostChild),
-      Flag::None, // Added to allow for explicit labels in the tree
-      Flag::None,
-      Flag::None,
-      Flag(Flag::Leaf | Flag::RightMostChild),
-      Flag::None, // Added to allow for explicit labels in the tree
-      Flag::Leaf,
-      Flag::None, // Added to allow for explicit labels in the tree
-      Flag(Flag::Leaf | Flag::RightMostChild),
-      Flag::None, // Added to allow for explicit labels in the tree
+      Flag::RIGHT_MOST_CHILD,
+      Flag::NONE,
+      Flag::NONE,
+      Flag::NONE,
+      Flag::NONE,
+      Flag::NONE,
+      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
+      Flag::NONE, // Added to allow for explicit labels in the tree
+      Flag::LEAF,
+      Flag::NONE, // Added to allow for explicit labels in the tree
+      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
+      Flag::NONE, // Added to allow for explicit labels in the tree
+      Flag::NONE,
+      Flag::NONE,
+      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
+      Flag::NONE, // Added to allow for explicit labels in the tree
+      Flag::LEAF,
+      Flag::NONE, // Added to allow for explicit labels in the tree
+      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
+      Flag::NONE, // Added to allow for explicit labels in the tree
   };
   std::vector<int> suffixes{3, 5, 3, 5, 5, 5};
 
@@ -50,12 +50,12 @@ protected:
   ;
   std::vector<int> unfinished_table{0, 2, 2, 5, 5, 0};
   std::vector<Flag> unfinished_flags{
-      Flag::Unevaluated,
-      Flag::None,
-      Flag::Unevaluated,
-      Flag::None,
-      Flag(Flag::Leaf | Flag::RightMostChild),
-      Flag::None, // Added to allow for explicit labels in the tree
+      Flag::UNEVALUATED,
+      Flag::NONE,
+      Flag::UNEVALUATED,
+      Flag::NONE,
+      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
+      Flag::NONE, // Added to allow for explicit labels in the tree
   };
 };
 

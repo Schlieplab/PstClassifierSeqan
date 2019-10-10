@@ -67,26 +67,26 @@ TEST_F(LazySuffixTreeTest, SimpleTest) {
   EXPECT_EQ(tree.suffixes, expected_suffixes);
 
   std::vector<Flag> expected_flags{
-      Flag::RightMostChild,
-      Flag::None,
-      Flag::None,
-      Flag::None,
-      Flag::None,
-      Flag::None,
-      Flag(Flag::Leaf | Flag::RightMostChild),
-      Flag::None, // Added to allow for explicit labels in the tree
-      Flag::Leaf,
-      Flag::None, // Added to allow for explicit labels in the tree
-      Flag(Flag::Leaf | Flag::RightMostChild),
-      Flag::None, // Added to allow for explicit labels in the tree
-      Flag::None,
-      Flag::None,
-      Flag(Flag::Leaf | Flag::RightMostChild),
-      Flag::None, // Added to allow for explicit labels in the tree
-      Flag::Leaf,
-      Flag::None, // Added to allow for explicit labels in the tree
-      Flag(Flag::Leaf | Flag::RightMostChild),
-      Flag::None, // Added to allow for explicit labels in the tree
+      Flag::RIGHT_MOST_CHILD,
+      Flag::NONE,
+      Flag::NONE,
+      Flag::NONE,
+      Flag::NONE,
+      Flag::NONE,
+      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
+      Flag::NONE, // Added to allow for explicit labels in the tree
+      Flag::LEAF,
+      Flag::NONE, // Added to allow for explicit labels in the tree
+      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
+      Flag::NONE, // Added to allow for explicit labels in the tree
+      Flag::NONE,
+      Flag::NONE,
+      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
+      Flag::NONE, // Added to allow for explicit labels in the tree
+      Flag::LEAF,
+      Flag::NONE, // Added to allow for explicit labels in the tree
+      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
+      Flag::NONE, // Added to allow for explicit labels in the tree
   };
 
   EXPECT_EQ(tree.flags, expected_flags);

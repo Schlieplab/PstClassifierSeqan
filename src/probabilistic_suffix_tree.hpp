@@ -7,6 +7,7 @@
 #include <ctime>
 #include <functional>
 #include <sstream>
+#include <stack>
 #include <string>
 #include <tuple>
 #include <unordered_set>
@@ -21,9 +22,9 @@
 namespace pst {
 
 enum Status : unsigned char {
-  None = 0,
-  Included = 1 << 0,
-  Excluded = 1 << 1,
+  NONE = 0,
+  INCLUDED = 1 << 0,
+  EXCLUDED = 1 << 1,
 };
 
 /*!\brief The probabilistic suffix tree implementation.
@@ -269,7 +270,7 @@ protected:
     this->add_suffix_links();
     this->counts.resize(this->table.size() / 2, -1);
     this->status.resize(this->table.size() / 2);
-    status[0] = Status::Included;
+    status[0] = Status::INCLUDED;
   }
 
   /**! \brief Similarity pruning phase of the algorithm
@@ -312,10 +313,10 @@ protected:
 
           this->status.resize(this->table.size() / 2);
           if (include_node(label_start, label_end, count)) {
-            this->status[node_index / 2] = Status::Included;
+            this->status[node_index / 2] = Status::INCLUDED;
             return true;
           }
-          this->status[node_index / 2] = Status::Excluded;
+          this->status[node_index / 2] = Status::EXCLUDED;
           return false;
         });
   }
@@ -438,14 +439,14 @@ protected:
 
     lst::details::iterate_children(
         0, this->table, this->flags,
-        [&](int child_index) { stack.emplace(child_index, Status::Included); });
+        [&](int child_index) { stack.emplace(child_index, Status::INCLUDED); });
 
     while (!stack.empty()) {
       auto &[node_index, parent_status] = stack.top();
       stack.pop();
 
       Status node_status = this->status[node_index / 2];
-      if (node_status == Status::None) {
+      if (node_status == Status::NONE) {
         this->status[node_index / 2] = parent_status;
       }
 
@@ -483,7 +484,7 @@ protected:
       float delta = calculate_delta(node_index);
 
       if (delta <= this->cutoff_value) {
-        this->status[node_index / 2] = Status::Excluded;
+        this->status[node_index / 2] = Status::EXCLUDED;
 
         int parent_index = this->suffix_links[node_index / 2];
         if (this->is_pst_leaf(parent_index)) {
@@ -529,7 +530,7 @@ protected:
 
       current_number_of_parameters -= (valid_characters.size() - 1);
 
-      this->status[node_index / 2] = Status::Excluded;
+      this->status[node_index / 2] = Status::EXCLUDED;
 
       int parent_index = this->suffix_links[node_index / 2];
 
@@ -810,11 +811,11 @@ protected:
   }
 
   bool is_included(int node_index) {
-    return (status[node_index / 2] & Status::Included) == Status::Included;
+    return (status[node_index / 2] & Status::INCLUDED) == Status::INCLUDED;
   }
 
   bool is_excluded(int node_index) {
-    return (status[node_index / 2] & Status::Excluded) == Status::Excluded;
+    return (status[node_index / 2] & Status::EXCLUDED) == Status::EXCLUDED;
   }
 
   /**! \brief Append string for a node to the output stream.
