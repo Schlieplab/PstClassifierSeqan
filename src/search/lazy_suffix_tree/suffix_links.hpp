@@ -132,17 +132,6 @@ int prepare_suffix_links(int node_index, int lcp, std::vector<int> &cause,
   }
 }
 
-template <seqan3::Alphabet alphabet_t>
-void compute_suffix_links(std::vector<int> &cause, std::vector<int> &branch,
-                          std::vector<int> &depths,
-                          std::vector<int> &leaf_indices,
-                          sequence_t<alphabet_t> &sequence,
-                          std::vector<int> &suffixes, std::vector<int> &table,
-                          std::vector<Flag> &flags,
-                          std::vector<int> &suffix_links) {
-  compute_suffix_links(0, 0, cause, branch, depths, leaf_indices, sequence,
-                       suffixes, table, flags, suffix_links);
-}
 
 void assign_link(int leaf_index, std::vector<int> &cause,
                  std::vector<int> &branch, std::vector<int> &depths,
@@ -162,39 +151,44 @@ void assign_leaf_link(int node_index, int leaf_index,
 }
 
 template <seqan3::Alphabet alphabet_t>
-void compute_suffix_links(int node_index, int lcp, std::vector<int> &cause,
-                          std::vector<int> &branch, std::vector<int> &depths,
+void compute_suffix_links(std::vector<int> &cause, std::vector<int> &branch,
+                          std::vector<int> &depths,
                           std::vector<int> &leaf_indices,
                           sequence_t<alphabet_t> &sequence,
                           std::vector<int> &suffixes, std::vector<int> &table,
                           std::vector<Flag> &flags,
                           std::vector<int> &suffix_links) {
-  if (!is_leaf(node_index, flags)) {
-    branch[depths[node_index / 2]] = node_index;
-  }
+  std::stack<std::tuple<int, int>> stack{};
+  stack.emplace(0, 0);
 
-  if (is_leaf(node_index, flags)) {
-    int leaf_index = get_leaf_index(node_index, lcp, suffixes, table, flags);
+  while (!stack.empty()) {
+    auto [node_index, lcp] = stack.top();
+    stack.pop();
 
-    assign_link(leaf_index, cause, branch, depths, suffix_links);
-    assign_leaf_link(node_index, leaf_index, suffix_links, leaf_indices);
-  }
-
-  if (is_unevaluated(node_index, flags)) {
-    // Maybe possible to stop this iteration early.
-    for (int i = table[node_index]; i < table[node_index + 1]; i++) {
-      int leaf_index = suffixes[i] - lcp;
-      assign_link(leaf_index, cause, branch, depths, suffix_links);
+    if (!is_leaf(node_index, flags)) {
+      branch[depths[node_index / 2]] = node_index;
     }
+
+    if (is_leaf(node_index, flags)) {
+      int leaf_index = get_leaf_index(node_index, lcp, suffixes, table, flags);
+
+      assign_link(leaf_index, cause, branch, depths, suffix_links);
+      assign_leaf_link(node_index, leaf_index, suffix_links, leaf_indices);
+    }
+
+    if (is_unevaluated(node_index, flags)) {
+      // Maybe possible to stop this iteration early.
+      for (int i = table[node_index]; i < table[node_index + 1]; i++) {
+        int leaf_index = suffixes[i] - lcp;
+        assign_link(leaf_index, cause, branch, depths, suffix_links);
+      }
+    }
+
+    int edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
+
+    iterate_children(node_index, table, flags,
+                     [&](int index) { stack.emplace(index, lcp + edge_lcp); });
   }
-
-  int edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
-
-  iterate_children(node_index, table, flags, [&](int index) {
-    compute_suffix_links(index, lcp + edge_lcp, cause, branch, depths,
-                         leaf_indices, sequence, suffixes, table, flags,
-                         suffix_links);
-  });
 }
 
 void prepare_implicit_suffix_links(
