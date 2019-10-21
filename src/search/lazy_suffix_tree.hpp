@@ -101,7 +101,7 @@ public:
     if (pattern.size() == 0) {
       std::vector<int> all_suffixes{};
       lst::details::iterate_children(0, table, flags, [&](int index) {
-        auto suffixes = suffix_indicies(index, 0);
+        auto suffixes = suffix_indices(index, 0);
         all_suffixes.insert(all_suffixes.end(), suffixes.begin(),
                             suffixes.end());
       });
@@ -113,7 +113,7 @@ public:
     if (node_index == -1) {
       return std::vector<int>{};
     } else {
-      return suffix_indicies(node_index, lcp);
+      return suffix_indices(node_index, lcp);
     }
   }
 
@@ -267,10 +267,10 @@ protected:
   std::vector<int> suffix_links{};
   std::vector<lst::details::alphabet_array<alphabet_t>> reverse_suffix_links{};
 
-  std::vector<int> suffix_indicies(int node_index, int og_lcp) {
+  std::vector<int> suffix_indices(int node_index, int og_lcp) {
     if (node_index >= table.size()) {
       throw std::invalid_argument(
-          "[SUFFIX INDICIES] Given node index is too large.");
+          "[SUFFIX INDICES] Given node index is too large.");
     }
 
     std::vector<int> start_indicies{};
@@ -370,9 +370,9 @@ protected:
   lst::details::sequence_t<alphabet_t> edge_label(int node_index,
                                                   int edge_lcp) {
     int edge_start = get_sequence_index(node_index);
-    lst::details::sequence_t<alphabet_t> edge(sequence.begin() + edge_start,
-                                              sequence.begin() + edge_start +
-                                                  edge_lcp);
+    lst::details::sequence_t<alphabet_t> edge(
+        this->sequence.begin() + edge_start,
+        this->sequence.begin() + edge_start + edge_lcp);
 
     return edge;
   }
@@ -383,16 +383,16 @@ protected:
 
     int node_start = sequence_index - lcp;
     int node_end = sequence_index + edge_lcp;
-    lst::details::sequence_t<alphabet_t> label(sequence.begin() + node_start,
-                                               sequence.begin() + node_end);
+    lst::details::sequence_t<alphabet_t> label(
+        this->sequence.begin() + node_start, this->sequence.begin() + node_end);
 
     return label;
   }
 
   lst::details::sequence_t<alphabet_t> leaf_label(int node_index, int lcp) {
     int node_start = table[node_index] - lcp;
-    lst::details::sequence_t<alphabet_t> label(sequence.begin() + node_start,
-                                               sequence.end());
+    lst::details::sequence_t<alphabet_t> label(
+        this->sequence.begin() + node_start, this->sequence.end());
 
     return label;
   }

@@ -22,9 +22,9 @@
 namespace pst {
 
 enum Status : unsigned char {
-  NONE = 0,
-  INCLUDED = 1 << 0,
-  EXCLUDED = 1 << 1,
+  NONE = 1 << 0,
+  INCLUDED = 1 << 1,
+  EXCLUDED = 1 << 2,
 };
 
 /*!\brief The probabilistic suffix tree implementation.
@@ -156,7 +156,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
         this->sequence, this->suffixes, this->table, this->flags, false,
         [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (this->is_excluded(node_index)) {
-            return false;
+            return true;
           }
 
           auto label = this->node_label(node_index, lcp, edge_lcp);
@@ -271,7 +271,7 @@ protected:
     this->add_implicit_node_status();
     this->add_suffix_links();
     this->counts.resize(this->table.size() / 2, -1);
-    this->status.resize(this->table.size() / 2);
+    this->status.resize(this->table.size() / 2, Status::NONE);
     status[0] = Status::INCLUDED;
   }
 
@@ -313,7 +313,7 @@ protected:
           int label_start = this->table[node_index] - lcp;
           int label_end = this->table[node_index] + edge_lcp;
 
-          this->status.resize(this->table.size() / 2);
+          this->status.resize(this->table.size() / 2, Status::NONE);
           if (include_node(label_start, label_end, count)) {
             this->status[node_index / 2] = Status::INCLUDED;
             return true;
@@ -404,7 +404,7 @@ protected:
   /**! \copydoc lst::LazySuffixTree::expand_implicit_nodes()
    *
    * The only change from the lazy suffix tree is that the excluded nodes are
-   * not iterated expanded.
+   * not iterated/expanded.
    */
   void expand_implicit_nodes() {
     std::queue<int> queue{};
@@ -437,7 +437,7 @@ protected:
    *
    */
   void add_implicit_node_status() {
-    this->status.resize(this->table.size() / 2);
+    this->status.resize(this->table.size() / 2, Status::NONE);
     std::stack<std::tuple<int, Status>> stack{};
 
     lst::details::iterate_children(
@@ -445,11 +445,11 @@ protected:
         [&](int child_index) { stack.emplace(child_index, Status::INCLUDED); });
 
     while (!stack.empty()) {
-      auto &[node_index, parent_status] = stack.top();
+      auto [node_index, parent_status] = stack.top();
       stack.pop();
 
       Status node_status = this->status[node_index / 2];
-      if (node_status == Status::NONE) {
+      if ((node_status & Status::NONE) == Status::NONE) {
         this->status[node_index / 2] = parent_status;
       }
 
@@ -533,9 +533,9 @@ protected:
 
       current_number_of_parameters -= (valid_characters.size() - 1);
 
-      this->status[node_index / 2] = Status::EXCLUDED;
-
       int parent_index = this->suffix_links[node_index / 2];
+
+      this->status[node_index / 2] = Status::EXCLUDED;
 
       if (this->is_pst_leaf(parent_index)) {
         queue.emplace(parent_index, -this->calculate_delta(parent_index));
@@ -745,10 +745,6 @@ protected:
    * \return If the node is terminal (has any missing children).
    */
   bool is_terminal(int node_index) {
-    if (is_pst_leaf(node_index)) {
-      return true;
-    }
-
     for (auto c : this->valid_characters) {
       auto char_rank = seqan3::to_rank(c);
       int child_index = this->reverse_suffix_links[node_index / 2][char_rank];
