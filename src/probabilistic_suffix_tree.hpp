@@ -221,8 +221,8 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
     tree_string << "Alphabet: " << typeid(alphabet_t).name() << std::endl;
     tree_string << "Number(nodes): " << nodes_in_tree() << std::endl;
 
-    int n_parameters =
-        get_terminal_nodes().size() * (valid_characters.size() - 1);
+    auto n_parameters =
+        this->count_terminal_nodes() * (valid_characters.size() - 1);
     tree_string << "Number(parameters): " << n_parameters << std::endl;
 
     this->append_node_string(0, 0, 0, tree_string);
@@ -515,23 +515,22 @@ protected:
     std::priority_queue<std::tuple<int, float>,
                         std::vector<std::tuple<int, float>>, decltype(cmp)>
         queue{cmp};
+
     for (int v : pst_leaves) {
       queue.emplace(v, -this->calculate_delta(v));
     }
 
-    int current_number_of_parameters =
-        this->get_terminal_nodes().size() * (valid_characters.size() - 1);
+    auto n_terminal_nodes = this->count_terminal_nodes();
 
     while (!queue.empty() &&
-           current_number_of_parameters > this->number_of_parameters) {
+           n_terminal_nodes * (this->valid_characters.size() - 1) >
+               this->number_of_parameters) {
       auto [node_index, delta] = queue.top();
       queue.pop();
 
       if (node_index == 0) {
         continue;
       }
-
-      current_number_of_parameters -= (valid_characters.size() - 1);
 
       int parent_index = this->suffix_links[node_index / 2];
 
@@ -541,8 +540,8 @@ protected:
         queue.emplace(parent_index, -this->calculate_delta(parent_index));
       }
 
-      if (this->became_terminal(parent_index, node_index)) {
-        current_number_of_parameters += (valid_characters.size() - 1);
+      if (!this->became_terminal(parent_index, node_index)) {
+        n_terminal_nodes -= 1;
       }
     }
   }
@@ -695,19 +694,19 @@ protected:
    *
    * \return vector of indices to all terminal nodes.
    */
-  std::vector<int> get_terminal_nodes() {
-    std::vector<int> terminal_nodes{};
+  int count_terminal_nodes() {
+    int n_terminal_nodes = 0;
 
     lst::details::breadth_first_iteration(
         this->sequence, this->suffixes, this->table, this->flags, false,
         [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (this->is_included(node_index) && this->is_terminal(node_index)) {
-            terminal_nodes.push_back(node_index);
+            n_terminal_nodes += 1;
           }
           return true;
         });
 
-    return terminal_nodes;
+    return n_terminal_nodes;
   }
 
   /**! \brief Checks if the node is a leaf in the PST.
@@ -785,7 +784,7 @@ protected:
       }
     }
 
-    return true;
+    return is_terminal(node_index);
   }
 
   /**! \brief Returns count of the node
@@ -824,7 +823,7 @@ protected:
    *
    * \param[in] node_index The node index to operate on
    * \param[in] lcp Longest common prefix of the node.
-   * \param[in] edge_lcp Lenght of edge.
+   * \param[in] edge_lcp Length of edge.
    * \param tree_string The output stream to write to.
    */
   void append_node_string(int node_index, int lcp, int edge_lcp,
