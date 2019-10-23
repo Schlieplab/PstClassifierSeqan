@@ -178,7 +178,8 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
                                  << this->reverse_suffix_links[node_index / 2];
           }
 
-          if (this->suffix_links.size() > node_index / 2) {
+          if (this->suffix_links.size() > node_index / 2 &&
+              this->suffix_links[node_index / 2] != -1) {
             seqan3::debug_stream << "\tDelta: "
                                  << this->calculate_delta(node_index);
 
@@ -186,6 +187,11 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
 
             seqan3::debug_stream << "\tTerminal: "
                                  << this->is_terminal(node_index);
+          }
+
+          if (this->status.size() > node_index / 2) {
+            seqan3::debug_stream << "\tStatus: "
+                                 << this->status[node_index / 2];
           }
 
           seqan3::debug_stream << std::endl;
@@ -271,7 +277,6 @@ protected:
     this->add_implicit_node_status();
     this->add_suffix_links();
     this->counts.resize(this->table.size() / 2, -1);
-    this->status.resize(this->table.size() / 2, Status::NONE);
     status[0] = Status::INCLUDED;
   }
 
@@ -421,7 +426,7 @@ protected:
 
       Status node_status = this->status[node_index / 2];
       if ((node_status & Status::NONE) == Status::NONE) {
-        this->status[node_index / 2] = parent_status;
+        this->status[node_index / 2] = Status(parent_status);
       }
 
       iterate_children(
@@ -689,7 +694,6 @@ protected:
    * \return If all children are missing.
    */
   bool is_pst_leaf(int node_index) {
-
     for (auto c : this->valid_characters) {
       auto char_rank = seqan3::to_rank(c);
       int child_index = this->reverse_suffix_links[node_index / 2][char_rank];
