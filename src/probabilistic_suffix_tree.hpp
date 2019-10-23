@@ -401,35 +401,6 @@ protected:
     return n_children != this->valid_characters.size();
   }
 
-  /**! \copydoc lst::LazySuffixTree::expand_implicit_nodes()
-   *
-   * The only change from the lazy suffix tree is that the excluded nodes are
-   * not iterated/expanded.
-   */
-  void expand_implicit_nodes() {
-    std::queue<int> queue{};
-    queue.push(0);
-
-    while (!queue.empty()) {
-      int node_index = queue.front();
-      queue.pop();
-
-      if (this->is_unevaluated(node_index) || this->is_excluded(node_index)) {
-        continue;
-      }
-
-      lst::details::iterate_children(node_index, this->table, this->flags,
-                                     [&](int index) { queue.push(index); });
-
-      int edge_lcp = lst::details::get_edge_lcp(
-          node_index, this->sequence, this->suffixes, this->table, this->flags);
-      if (edge_lcp > 1) {
-        lst::details::add_implicit_nodes(node_index, edge_lcp, this->table,
-                                         this->flags);
-      }
-    }
-  }
-
   /**! \brief Assigns node status to implicit nodes.
    * \details
    * Iterates through all nodes and assigns the status for implicit nodes
@@ -998,12 +969,19 @@ protected:
    */
   bool label_valid(int label_start, int label_end) {
     for (int i = label_start; i < label_end; i++) {
-      if (valid_characters.find(this->sequence[i]) == valid_characters.end()) {
+      if (this->valid_characters.find(this->sequence[i]) ==
+          this->valid_characters.end()) {
         return false;
       }
     }
 
     return true;
+  }
+
+  /** \copydoc lst::LazySuffixTree.skip_node()
+   */
+  bool skip_node(int node_index) {
+    return this->is_unevaluated(node_index) || this->is_excluded(node_index);
   }
 };
 } // namespace pst
