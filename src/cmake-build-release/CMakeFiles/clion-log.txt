@@ -1,0 +1,33 @@
+/opt/clion/bin/cmake/linux/bin/cmake -DCMAKE_BUILD_TYPE=Release -G "CodeBlocks - Unix Makefiles" /home/ghal/git/DATX05/pstclassifierseqan/src
+-- The CXX compiler identification is GNU 9.2.0
+-- Check for working CXX compiler: /usr/bin/c++
+-- Check for working CXX compiler: /usr/bin/c++ -- works
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- [1mFinding SeqAn3 and checking requirements:[m
+--     Detected as running from a repository checkout…
+--     …adding SeqAn3 include:     /home/ghal/git/DATX05/pstclassifierseqan/seqan3/include
+--     …adding submodule include:  /home/ghal/git/DATX05/pstclassifierseqan/seqan3/submodules/cereal/include
+--     …adding submodule include:  /home/ghal/git/DATX05/pstclassifierseqan/seqan3/submodules/range-v3/include
+--     …adding submodule include:  /home/ghal/git/DATX05/pstclassifierseqan/seqan3/submodules/sdsl-lite/include
+--   SeqAn3 include dir found:   /home/ghal/git/DATX05/pstclassifierseqan/seqan3/include
+--   C++ Standard-17 support:    builtin
+--   C++ Concepts support:       via -fconcepts
+--   C++ Filesystem header:      <filesystem>
+--   C++ Filesystem library:     builtin
+--   Required dependency:        Range-V3 found.
+--   Required dependency:        SDSL found.
+--   Optional dependency:        Cereal found.
+--   Optional dependency:        Lemon found.
+--   Optional dependency:        ZLIB-1.2.11 found.
+--   Optional dependency:        BZip2-1.0.8 found.
+--   Optional dependency:        libexecinfo found.
+--   SeqAn3 version.hpp found:   /home/ghal/git/DATX05/pstclassifierseqan/seqan3/include/seqan3/version.hpp
+--   SeqAn3 version detected:    3.0.0
+--   SeqAn3 platform.hpp build:  passed.
+-- [1mFound SeqAn3:[m /home/ghal/git/DATX05/pstclassifierseqan/seqan3/include/seqan3 (found version "3.0.0")
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/ghal/git/DATX05/pstclassifierseqan/src/cmake-build-release

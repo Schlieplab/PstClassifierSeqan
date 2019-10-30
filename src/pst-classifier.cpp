@@ -85,6 +85,7 @@ std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                   std::string id, size_t max_depth, size_t min_count,
                   float threshold, size_t number_of_parameters,
                   std::string pruning_method, std::string estimator) {
+
   pst::ProbabilisticSuffixTree<seqan3::dna5> pst{id,
                                                  sequence,
                                                  max_depth,
@@ -94,6 +95,9 @@ std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                                                  pruning_method,
                                                  estimator};
 
+
+  //pst.support_pruning();
+  //pst.similarity_pruning();
   return pst.to_tree();
 }
 

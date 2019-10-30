@@ -27,6 +27,10 @@ enum Status : unsigned char {
   EXCLUDED = 1 << 2,
 };
 
+
+bool timeMessurement = false;
+//bool timeMessurement = true;
+
 /*!\brief The probabilistic suffix tree implementation.
  * \tparam alphabet_t   Alphabet type from Seqan3.
  *
@@ -142,7 +146,6 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
     if (estimator_ == "PS") {
       this->cutoff_value = std::pow(float(sequence_.size()), 3.0 / 4.0);
     }
-
     this->support_pruning();
     this->similarity_pruning();
   }
@@ -266,13 +269,42 @@ protected:
    *
    */
   void support_pruning() {
+    using namespace std::chrono;
+    auto start = high_resolution_clock::now();
+    auto t1 = high_resolution_clock::now();
     this->build_tree();
+    auto t2 = high_resolution_clock::now();
     this->expand_implicit_nodes();
+    auto t3 = high_resolution_clock::now();
     this->add_implicit_node_status();
+    auto t4 = high_resolution_clock::now();
     this->add_suffix_links();
+    auto t5 = high_resolution_clock::now();
     this->counts.resize(this->table.size() / 2, -1);
     this->status.resize(this->table.size() / 2, Status::NONE);
+
+    auto t6 = high_resolution_clock::now();
+
     status[0] = Status::INCLUDED;
+    if (timeMessurement){
+      auto stop = high_resolution_clock::now();
+      auto duration = duration_cast<milliseconds>(stop - start);
+      auto buildTree = duration_cast<milliseconds>(t2 - t1);
+      auto expandImplicitNodes = duration_cast<milliseconds>(t3 - t2);
+      auto addImplicitNodesStatus = duration_cast<milliseconds>(t4 - t3);
+      auto addSuffixLinks = duration_cast<milliseconds>(t5-t4);
+      auto countsRelize   = duration_cast<milliseconds>(t6-t5);
+      auto statusResize   = duration_cast<milliseconds>(stop-t6);
+
+      std::cout <<  "\n\nSupport Pruning" << std::endl;
+      std::cout << "    Total Duration:" << duration.count() << "ms" << std::endl;
+      std::cout << "        Build Tree: " << buildTree.count() << "ms" << std::endl;
+      std::cout << "        Expand Implicint Nodes: " << expandImplicitNodes.count() << "ms" <<std::endl;
+      std::cout << "        Add Implicit Nodes Status: "<< addImplicitNodesStatus.count() << "ms" <<std::endl;
+      std::cout << "        Add Suffix Links: "<< addSuffixLinks.count() << "ms" <<std::endl;
+      std::cout << "        Resize counts: "<< countsRelize.count() << "ms" <<std::endl;
+      std::cout << "        Resize status: "<< statusResize.count() << "ms\n" <<std::endl;
+    }
   }
 
   /**! \brief Similarity pruning phase of the algorithm
@@ -283,12 +315,29 @@ protected:
    * are reached, or until a specified threshold value.
    */
   void similarity_pruning() {
+    using namespace std::chrono;
+    auto start = high_resolution_clock::now();
     this->add_reverse_suffix_links();
+    auto t1 = high_resolution_clock::now();
     this->compute_probabilities();
+    auto t2 = high_resolution_clock::now();
     if (this->pruning_method == "cutoff") {
       this->cutoff_prune();
     } else if (this->pruning_method == "parameters") {
       this->parameters_prune();
+    }
+    if (timeMessurement){
+      auto stop = high_resolution_clock::now();
+      auto duration = duration_cast<milliseconds>(stop - start);
+      auto reverseSuffix = duration_cast<milliseconds>(t1 - start);
+      auto probabilities = duration_cast<milliseconds>(t2 - t1);
+      auto pruning  = duration_cast<milliseconds>(stop - t2);
+
+      std::cout << "\n\nSimilarity Pruning" << std::endl;
+      std::cout << "    Total Duration: " << duration.count() << "ms" << std::endl;
+      std::cout << "        Reverse Suffix Links: " << reverseSuffix.count() << "ms" <<std::endl;
+      std::cout << "        Calculating Probabilities: " << probabilities.count() << "ms" <<std::endl;
+      std::cout << "        Pruning: "<< pruning.count() << "ms\n" <<std::endl;
     }
   }
 
@@ -300,13 +349,12 @@ protected:
    *
    * Also saves the count of the node as well as if it is included or excluded.
    */
-  void build_tree() {
-    lst::details::breadth_first_iteration(
-        this->sequence, this->suffixes, this->table, this->flags,
-        [&](int node_index, int lcp, int edge_lcp) -> bool {
-          int count = lst::details::node_occurrences(node_index, this->table,
-                                                     this->flags);
-
+   void build_tree() {
+     lst::details::breadth_first_iteration(
+         this->sequence, this->suffixes, this->table, this->flags,
+         [&](int node_index, int lcp, int edge_lcp) -> bool {
+           int count = lst::details::node_occurrences(node_index, this->table,
+                                                      this->flags);
           this->counts.resize(this->table.size() / 2, -1);
           this->counts[node_index / 2] = count;
 
@@ -584,8 +632,8 @@ protected:
       if (parent_prob == 0 || prob == 0) {
         continue;
       }
-
       delta += prob * std::log(prob / parent_prob);
+
     }
     delta *= this->get_counts(node_index);
 

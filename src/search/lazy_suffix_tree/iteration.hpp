@@ -8,9 +8,13 @@
 
 #include "construction.hpp"
 
+int biggest_index = 0;
 namespace lst::details {
 
 int next_child_index(int node_index, std::vector<Flag> &flags) {
+  if (node_index < biggest_index){
+    node_index = biggest_index;
+  }
   if (is_leaf(node_index, flags)) {
     // Should be 1, but I've addded a value to leaves to allow for
     // explicit nodes.
@@ -20,6 +24,7 @@ int next_child_index(int node_index, std::vector<Flag> &flags) {
     node_index += 2;
   }
 
+  biggest_index = node_index;
   return node_index;
 }
 
@@ -66,7 +71,6 @@ int node_occurrences(int node_index, std::vector<int> &table,
       iterate_children(index, table, flags, [&](int i) { queue.push(i); });
     }
   }
-
   return occurrences;
 }
 
@@ -84,12 +88,44 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
                              std::vector<int> &table, std::vector<Flag> &flags,
                              bool expand_nodes,
                              const std::function<bool(int, int, int)> &f) {
+
   std::queue<std::tuple<int, int>> queue{};
   iterate_children(0, table, flags,
                    [&](int index) { queue.emplace(index, 0); });
 
   while (!queue.empty()) {
     auto [node_index, lcp] = queue.front();
+    if (node_index > 8 ){
+      std::vector<int> aSuffix;
+      std::vector<int> cSuffix;
+      std::vector<int> gSuffix;
+      std::vector<int> tSuffix;
+
+      for (int j : suffixes) {
+        int letterCode = sequence[j].to_rank();
+        if (letterCode == 0){
+          aSuffix.push_back(j+1);
+        }
+        else if (letterCode == 1){
+          cSuffix.push_back(j+1);
+        }
+        else if (letterCode == 2){
+          gSuffix.push_back(j+1);
+        }
+        else if (letterCode == 3){
+          tSuffix.push_back(j+1);
+        }
+      }
+      for (int j : cSuffix) {
+        seqan3::debug_stream << suffixes[j] << std::endl;
+      }
+      breadth_first_iteration_paralell(sequence, aSuffix, table, flags, true, 2, f);
+      breadth_first_iteration_paralell(sequence, cSuffix, table, flags, true, 4, f);
+      breadth_first_iteration_paralell(sequence, gSuffix, table, flags, true, 6, f);
+      breadth_first_iteration_paralell(sequence, tSuffix, table, flags, true, 8, f);
+
+      break;
+    }
     queue.pop();
 
     int edge_lcp;
@@ -112,6 +148,44 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
                      [&](int index) { queue.emplace(index, new_lcp); });
   }
 }
+
+template <seqan3::Alphabet alphabet_t>
+void breadth_first_iteration_paralell(sequence_t<alphabet_t> &sequence,
+                             std::vector<int> &suffixes,
+                             std::vector<int> &table, std::vector<Flag> &flags,
+                             bool expand_nodes, int start_node,
+                             const std::function<bool(int, int, int)> &f){
+
+    std::queue<std::tuple<int, int>> queue{};
+    iterate_children(start_node, table, flags,
+                     [&](int index) { queue.emplace(index, start_node); });
+
+    while (!queue.empty()) {
+        auto [node_index, lcp] = queue.front();
+
+        queue.pop();
+
+        int edge_lcp;
+
+        if (is_unevaluated(node_index, flags) && expand_nodes) {
+            edge_lcp = lst::details::expand_node(node_index, sequence, suffixes,
+                                                 table, flags);
+        } else {
+            edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
+        }
+
+        bool consider_children = f(node_index, lcp, edge_lcp);
+
+        if (!consider_children) {
+            continue;
+        }
+
+        int new_lcp = lcp + edge_lcp;
+        iterate_children(node_index, table, flags,
+                         [&](int index) { queue.emplace(index, new_lcp); });
+    }
+}
+
 
 template <seqan3::Alphabet alphabet_t>
 int get_edge_lcp(int node_index, sequence_t<alphabet_t> &sequence,
