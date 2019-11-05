@@ -160,7 +160,7 @@ public:
       int node_index = queue.front();
       queue.pop();
 
-      if (is_unevaluated(node_index)) {
+      if (this->skip_node(node_index)) {
         continue;
       }
 
@@ -212,6 +212,10 @@ public:
     lst::details::breadth_first_iteration(
         sequence, suffixes, table, flags, false,
         [&](int node_index, int lcp, int edge_lcp) -> bool {
+          if (this->skip_node(node_index)) {
+            return true;
+          }
+
           int sequence_index = get_sequence_index(node_index);
           int node_start = sequence_index - lcp;
 
@@ -415,6 +419,17 @@ protected:
 
   bool is_rightmostchild(int node_index) {
     return lst::details::is_rightmostchild(node_index, flags);
+  }
+
+  /** \brief Determines if the node should be skipped during various iterations
+   * Useful for subclassing, as further restrictions on which nodes are
+   * relevant can be included.
+   *
+   * \param node_index Node to evaluate if it should be skipped.
+   * \return Boolean, true if this node should be skipped.
+   */
+  virtual bool skip_node(int node_index) {
+    return this->is_unevaluated(node_index);
   }
 };
 } // namespace lst

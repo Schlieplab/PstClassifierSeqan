@@ -100,7 +100,7 @@ int prepare_suffix_links(int node_index, int lcp, std::vector<int> &cause,
   } else if (is_unevaluated(node_index, flags)) {
     // This isn't technically correct.  The following gives the second smallest
     // suffix _overall_ and the algorithm calls for the second smallest suffix
-    // from the immediate children.  Not entirely sure that it is important,
+    // from the immediate children.  Not entirely sure that it is important
     // since the values will still be unique.
 
     int second_smallest_child = suffixes[table[node_index] + 1] - lcp;

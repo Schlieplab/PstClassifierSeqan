@@ -181,7 +181,8 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
                                  << this->reverse_suffix_links[node_index / 2];
           }
 
-          if (this->suffix_links.size() > node_index / 2) {
+          if (this->suffix_links.size() > node_index / 2 &&
+              this->suffix_links[node_index / 2] != -1) {
             seqan3::debug_stream << "\tDelta: "
                                  << this->calculate_delta(node_index);
 
@@ -189,6 +190,11 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
 
             seqan3::debug_stream << "\tTerminal: "
                                  << this->is_terminal(node_index);
+          }
+
+          if (this->status.size() > node_index / 2) {
+            seqan3::debug_stream << "\tStatus: "
+                                 << this->status[node_index / 2];
           }
 
           seqan3::debug_stream << std::endl;
@@ -224,8 +230,8 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
     tree_string << "Alphabet: " << typeid(alphabet_t).name() << std::endl;
     tree_string << "Number(nodes): " << nodes_in_tree() << std::endl;
 
-    int n_parameters =
-        get_terminal_nodes().size() * (valid_characters.size() - 1);
+    auto n_parameters =
+        this->count_terminal_nodes() * (valid_characters.size() - 1);
     tree_string << "Number(parameters): " << n_parameters << std::endl;
 
     this->append_node_string(0, 0, 0, tree_string);
@@ -449,35 +455,6 @@ protected:
     return n_children != this->valid_characters.size();
   }
 
-  /**! \copydoc lst::LazySuffixTree::expand_implicit_nodes()
-   *
-   * The only change from the lazy suffix tree is that the excluded nodes are
-   * not iterated/expanded.
-   */
-  void expand_implicit_nodes() {
-    std::queue<int> queue{};
-    queue.push(0);
-
-    while (!queue.empty()) {
-      int node_index = queue.front();
-      queue.pop();
-
-      if (this->is_unevaluated(node_index) || this->is_excluded(node_index)) {
-        continue;
-      }
-
-      lst::details::iterate_children(node_index, this->table, this->flags,
-                                     [&](int index) { queue.push(index); });
-
-      int edge_lcp = lst::details::get_edge_lcp(
-          node_index, this->sequence, this->suffixes, this->table, this->flags);
-      if (edge_lcp > 1) {
-        lst::details::add_implicit_nodes(node_index, edge_lcp, this->table,
-                                         this->flags);
-      }
-    }
-  }
-
   /**! \brief Assigns node status to implicit nodes.
    * \details
    * Iterates through all nodes and assigns the status for implicit nodes
@@ -498,7 +475,7 @@ protected:
 
       Status node_status = this->status[node_index / 2];
       if ((node_status & Status::NONE) == Status::NONE) {
-        this->status[node_index / 2] = parent_status;
+        this->status[node_index / 2] = Status(parent_status);
       }
 
       iterate_children(
@@ -563,23 +540,22 @@ protected:
     std::priority_queue<std::tuple<int, float>,
                         std::vector<std::tuple<int, float>>, decltype(cmp)>
         queue{cmp};
+
     for (int v : pst_leaves) {
       queue.emplace(v, -this->calculate_delta(v));
     }
 
-    int current_number_of_parameters =
-        this->get_terminal_nodes().size() * (valid_characters.size() - 1);
+    auto n_terminal_nodes = this->count_terminal_nodes();
 
     while (!queue.empty() &&
-           current_number_of_parameters > this->number_of_parameters) {
+           n_terminal_nodes * (this->valid_characters.size() - 1) >
+               this->number_of_parameters) {
       auto [node_index, delta] = queue.top();
       queue.pop();
 
       if (node_index == 0) {
         continue;
       }
-
-      current_number_of_parameters -= (valid_characters.size() - 1);
 
       int parent_index = this->suffix_links[node_index / 2];
 
@@ -589,8 +565,8 @@ protected:
         queue.emplace(parent_index, -this->calculate_delta(parent_index));
       }
 
-      if (this->became_terminal(parent_index, node_index)) {
-        current_number_of_parameters += (valid_characters.size() - 1);
+      if (!this->became_terminal(parent_index, node_index)) {
+        n_terminal_nodes -= 1;
       }
     }
   }
@@ -743,19 +719,19 @@ protected:
    *
    * \return vector of indices to all terminal nodes.
    */
-  std::vector<int> get_terminal_nodes() {
-    std::vector<int> terminal_nodes{};
+  int count_terminal_nodes() {
+    int n_terminal_nodes = 0;
 
     lst::details::breadth_first_iteration(
         this->sequence, this->suffixes, this->table, this->flags, false,
         [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (this->is_included(node_index) && this->is_terminal(node_index)) {
-            terminal_nodes.push_back(node_index);
+            n_terminal_nodes += 1;
           }
           return true;
         });
 
-    return terminal_nodes;
+    return n_terminal_nodes;
   }
 
   /**! \brief Checks if the node is a leaf in the PST.
@@ -767,7 +743,6 @@ protected:
    * \return If all children are missing.
    */
   bool is_pst_leaf(int node_index) {
-
     for (auto c : this->valid_characters) {
       auto char_rank = seqan3::to_rank(c);
       int child_index = this->reverse_suffix_links[node_index / 2][char_rank];
@@ -833,7 +808,7 @@ protected:
       }
     }
 
-    return true;
+    return is_terminal(node_index);
   }
 
   /**! \brief Returns count of the node
@@ -872,7 +847,7 @@ protected:
    *
    * \param[in] node_index The node index to operate on
    * \param[in] lcp Longest common prefix of the node.
-   * \param[in] edge_lcp Lenght of edge.
+   * \param[in] edge_lcp Length of edge.
    * \param tree_string The output stream to write to.
    */
   void append_node_string(int node_index, int lcp, int edge_lcp,
@@ -1047,12 +1022,19 @@ protected:
    */
   bool label_valid(int label_start, int label_end) {
     for (int i = label_start; i < label_end; i++) {
-      if (valid_characters.find(this->sequence[i]) == valid_characters.end()) {
+      if (this->valid_characters.find(this->sequence[i]) ==
+          this->valid_characters.end()) {
         return false;
       }
     }
 
     return true;
+  }
+
+  /** \copydoc lst::LazySuffixTree.skip_node()
+   */
+  bool skip_node(int node_index) {
+    return this->is_unevaluated(node_index) || this->is_excluded(node_index);
   }
 };
 } // namespace pst
