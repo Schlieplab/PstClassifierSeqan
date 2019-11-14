@@ -346,8 +346,7 @@ protected:
       int node_index = queue.front();
       queue.pop();
 
-      if (this->is_leaf(node_index) || this->is_unevaluated(node_index) ||
-          this->is_excluded(node_index)) {
+      if (this->is_leaf(node_index) || this->skip_node(node_index)) {
         continue;
       }
 
@@ -367,10 +366,9 @@ protected:
    * \param[in] node_index
    */
   void assign_node_probabilities(int node_index) {
-    std::array<int, seqan3::alphabet_size<alphabet_t>> child_counts =
-        get_child_counts(node_index, true);
+    auto child_counts = this->get_child_counts(node_index, true);
 
-    int child_sum = 0;
+    float child_sum = 0;
     for (int c : child_counts) {
       child_sum += c;
     }
@@ -462,7 +460,7 @@ protected:
 
       float delta = calculate_delta(node_index);
 
-      if (delta <= this->cutoff_value) {
+      if (delta < this->cutoff_value) {
         this->status[node_index / 2] = Status::EXCLUDED;
 
         int parent_index = this->suffix_links[node_index / 2];
