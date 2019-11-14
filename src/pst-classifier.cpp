@@ -16,7 +16,7 @@ struct input_arguments {
   float threshold{1.2};
   size_t number_of_parameters{192};
   std::string pruning_method{"cutoff"};
-  std::string estimator{"PS"};
+  std::string estimator{"KL"};
   std::vector<seqan3::bitcompressed_vector<seqan3::dna5>> sequences{};
   std::vector<std::string> ids{};
 };
