@@ -5639,8 +5639,6 @@ queue
 -
 vector
 -
-mutex
--
 seqan3/alphabet/all.hpp
 -
 construction.hpp

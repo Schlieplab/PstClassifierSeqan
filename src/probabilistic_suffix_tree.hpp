@@ -28,7 +28,7 @@ enum Status : unsigned char {
 };
 
 
-bool timeMessurement = false;
+bool timeMessurement = true;
 //bool timeMessurement = true;
 
 /*!\brief The probabilistic suffix tree implementation.
@@ -156,7 +156,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
    */
   void print() {
     lst::details::breadth_first_iteration(
-        this->sequence, this->suffixes, this->table, this->flags, false,
+        this->sequence, this->suffixes, this->table, this->flags,
         [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (this->is_excluded(node_index)) {
             return true;
@@ -165,6 +165,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
           auto label = this->node_label(node_index, lcp, edge_lcp);
 
           if (this->is_leaf(node_index)) {
+            label = this->leaf_label(node_index, lcp);
             label = this->leaf_label(node_index, lcp);
           }
 
@@ -237,7 +238,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
     this->append_node_string(0, 0, 0, tree_string);
 
     lst::details::breadth_first_iteration(
-        this->sequence, this->suffixes, this->table, this->flags, false,
+        this->sequence, this->suffixes, this->table, this->flags,
         [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (this->is_included(node_index)) {
             this->append_node_string(node_index, lcp, edge_lcp, tree_string);
@@ -357,7 +358,7 @@ protected:
    */
    void build_tree() {
      lst::details::breadth_first_iteration(
-         this->sequence, this->suffixes, this->table, this->flags,
+         this->sequence, this->suffixes, this->table, this->flags, true,
          [&](int node_index, int lcp, int edge_lcp) -> bool {
            int count = lst::details::node_occurrences(node_index, this->table,
                                                       this->flags);
@@ -374,7 +375,7 @@ protected:
           }
           this->status[node_index / 2] = Status::EXCLUDED;
           return false;
-        });
+        }, true);
   }
 
   /**! \brief Computes and saves the forward probabilities of each node.
@@ -703,7 +704,7 @@ protected:
     std::vector<int> bottom_nodes{};
 
     lst::details::breadth_first_iteration(
-        this->sequence, this->suffixes, this->table, this->flags, false,
+        this->sequence, this->suffixes, this->table, this->flags,
         [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (this->is_included(node_index) && this->is_pst_leaf(node_index)) {
             bottom_nodes.push_back(node_index);
@@ -723,7 +724,7 @@ protected:
     int n_terminal_nodes = 0;
 
     lst::details::breadth_first_iteration(
-        this->sequence, this->suffixes, this->table, this->flags, false,
+        this->sequence, this->suffixes, this->table, this->flags,
         [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (this->is_included(node_index) && this->is_terminal(node_index)) {
             n_terminal_nodes += 1;
@@ -984,7 +985,7 @@ protected:
   int nodes_in_tree() {
     int n_nodes = 1;
     lst::details::breadth_first_iteration(
-        this->sequence, this->suffixes, this->table, this->flags, false,
+        this->sequence, this->suffixes, this->table, this->flags,
         [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (is_included(node_index)) {
             n_nodes += 1;
@@ -1021,6 +1022,7 @@ protected:
    * \return true if the label is valid, false otherwise.
    */
   bool label_valid(int label_start, int label_end) {
+
     for (int i = label_start; i < label_end; i++) {
       if (this->valid_characters.find(this->sequence[i]) ==
           this->valid_characters.end()) {

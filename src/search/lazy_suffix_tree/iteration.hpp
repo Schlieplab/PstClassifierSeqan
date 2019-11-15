@@ -3,12 +3,14 @@
 #include <functional>
 #include <queue>
 #include <vector>
-
+#include <mutex>
+#include <thread>
 #include <seqan3/alphabet/all.hpp>
 
 #include "construction.hpp"
 
-int biggest_index = 0;
+std::mutex expand_lock;
+std::mutex child_lock;
 namespace lst::details {
 
 int next_child_index(int node_index, std::vector<Flag> &flags) {
@@ -96,35 +98,39 @@ void BFIp(sequence_t<alphabet_t> &sequence,
                                       std::vector<int> &suffixes,
                                       std::vector<int> &table, std::vector<Flag> &flags,
                                       bool expand_nodes,  const std::function<bool(int, int, int)> &f,
-                                      int start_node){
+                                      int start_node, int initial_lcp){
 
   std::queue<std::tuple<int, int>> queue{};
   iterate_children(start_node, table, flags,
-                   [&](int index) { queue.emplace(index, 0); });
+                   [&](int index) { queue.emplace(index, initial_lcp); });
 
   while (!queue.empty()) {
     auto [node_index, lcp] = queue.front();
-
     queue.pop();
 
     int edge_lcp;
-
+    //expand_lock.lock();
     if (is_unevaluated(node_index, flags) && expand_nodes) {
       edge_lcp = lst::details::expand_node(node_index, sequence, suffixes,
                                            table, flags);
     } else {
       edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
     }
+    //expand_lock.unlock();
 
+    child_lock.lock();
     bool consider_children = f(node_index, lcp, edge_lcp);
-
+    child_lock.unlock();
     if (!consider_children) {
       continue;
     }
+
     int new_lcp = lcp + edge_lcp;
+
     iterate_children(node_index, table, flags,
                      [&](int index) { queue.emplace(index, new_lcp); });
   }
+
 
 }
 
@@ -134,7 +140,7 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
                              std::vector<int> &suffixes,
                              std::vector<int> &table, std::vector<Flag> &flags,
                              const std::function<bool(int, int, int)> &f) {
-  breadth_first_iteration(sequence, suffixes, table, flags, true, f);
+  breadth_first_iteration(sequence, suffixes, table, flags, false, f, false);
 }
 
 
@@ -144,7 +150,8 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
                              std::vector<int> &suffixes,
                              std::vector<int> &table, std::vector<Flag> &flags,
                              bool expand_nodes,
-                             const std::function<bool(int, int, int)> &f) {
+                             const std::function<bool(int, int, int)> &f, bool build) {
+
 
   std::queue<std::tuple<int, int>> queue{};
   iterate_children(0, table, flags,
@@ -152,11 +159,11 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
 
   while (!queue.empty()) {
     auto [node_index, lcp] = queue.front();
-    if (node_index > 10 ){
-      std::vector<int> aSuffix(suffixes);
-      std::vector<int> cSuffix(suffixes);
-      std::vector<int> gSuffix(suffixes);
-      std::vector<int> tSuffix(suffixes);
+    if (node_index > 10 && build){
+      std::vector<int> aSuffix();
+      std::vector<int> cSuffix();
+      std::vector<int> gSuffix();
+      std::vector<int> tSuffix();
 
       std::vector<int> aTable(table);
       std::vector<int> cTable(table);
@@ -180,32 +187,44 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
         else if (letterCode == 2){
           gSuffix.push_back(j);
         }
+        else if (letterCode == 3){
+          tSuffix.push_back(j);
+        }
         else if (letterCode == 4){
           tSuffix.push_back(j);
         }
+
       }
-      //std::thread threads[4];
-
-      BFIp(sequence, aSuffix, aTable, aFlags, true, f, 2);
-      BFIp(sequence, cSuffix, cTable, cFlags, true, f, 4);
-      BFIp(sequence, gSuffix, gTable, gFlags, true, f, 6);
-      BFIp(sequence, tSuffix, tTable, tFlags, true, f, 10);
       */
-      BFIp(sequence, suffixes, table, flags, true, f, 2);
-      BFIp(sequence, suffixes, table, flags, true, f, 4);
-      BFIp(sequence, suffixes, table, flags, true, f, 6);
-      BFIp(sequence, suffixes, table, flags, true, f, 10);
-      //threads[0] = std::thread(BFIp<seqan3::dna5>, std::ref(sequence), std::ref(aSuffix), std::ref(table), std::ref(flags), true, f, 2);
-      //std::thread t1(BFIp, sequence, cSuffix, table, flags, true, 4, f);
-      //std::thread t2(BFIp, sequence, gSuffix, table, flags, true, 6, f);
-      //std::thread t3(BFIp, sequence, tSuffix, table, flags, true, 8, f);
+      std::thread threads[5];
 
-      //threads[1] = t1;
-      //threads[2] = t2;
-      //threads[3] = t3;
-      //for (int i = 0; i < 4; ++i) {
-      //  threads[i].join();
-      //}
+      //BFIp(sequence, suffixes, table, flags, expand_nodes, f, 0);
+      //BFIp(sequence, cSuffix, cTable, cFlags, true, f, 4);
+      //BFIp(sequence, gSuffix, gTable, gFlags, true, f, 6);
+      //BFIp(sequence, tSuffix, tTable, tFlags, true, f, 10);
+
+
+      threads[0] = std::thread(BFIp<seqan3::dna5>, std::ref(sequence), std::ref(suffixes),
+                   std::ref(table), std::ref(flags), expand_nodes, f, 2, 1);
+      threads[1] = std::thread(BFIp<seqan3::dna5>, std::ref(sequence), std::ref(suffixes),
+                   std::ref(table), std::ref(flags), expand_nodes, f, 4, 1);
+      threads[2] = std::thread(BFIp<seqan3::dna5>, std::ref(sequence), std::ref(suffixes),
+                   std::ref(table), std::ref(flags), expand_nodes, f, 6, 1);
+      threads[3] = std::thread(BFIp<seqan3::dna5>, std::ref(sequence), std::ref(suffixes),
+                   std::ref(table), std::ref(flags), expand_nodes, f, 8, 1);
+      threads[4] = std::thread(BFIp<seqan3::dna5>, std::ref(sequence), std::ref(suffixes),
+                   std::ref(table), std::ref(flags), expand_nodes, f, 10, 1);
+
+      for (int i = 0; i < 5; ++i) {
+        threads[i].join();
+      }
+      //threads[0].join();
+      //threads[1].join();
+      //BFIp(sequence, suffixes, table, flags, expand_nodes, f, 2, 1);
+      //BFIp(sequence, suffixes, table, flags, expand_nodes, f, 6, 1);
+      //BFIp(sequence, suffixes, table, flags, expand_nodes, f, 8, 1);
+      //BFIp(sequence, suffixes, table, flags, expand_nodes, f, 10, 1);
+
       break;
     }
     queue.pop();

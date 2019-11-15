@@ -2,9 +2,17 @@
 
 #include <tuple>
 #include <vector>
-
+#include <mutex>
 #include <seqan3/alphabet/all.hpp>
 #include <seqan3/range/container/bitcompressed_vector.hpp>
+
+std::mutex l1;
+std::mutex l2;
+std::mutex l3;
+std::mutex l4;
+std::mutex l5;
+std::mutex l6;
+std::mutex l7;
 
 namespace lst::details {
 
@@ -132,6 +140,7 @@ template <seqan3::Alphabet alphabet_t>
 void sort_suffixes(alphabet_array<alphabet_t> counts, int lower_bound,
                    int upper_bound, sequence_t<alphabet_t> &sequence,
                    std::vector<int> &suffixes) {
+
   std::vector<int> temp_suffixes(suffixes.begin() + lower_bound,
                                  suffixes.begin() + upper_bound);
 
@@ -143,8 +152,9 @@ void sort_suffixes(alphabet_array<alphabet_t> counts, int lower_bound,
 
     int suffix_index = pointers[character_rank] + lower_bound;
 
+    l1.lock();
     suffixes[suffix_index] = temp_suffixes[i - lower_bound];
-
+    l1.unlock();
     pointers[character_rank] += 1;
   }
 }
@@ -188,28 +198,49 @@ template <seqan3::Alphabet alphabet_t>
 int expand_node(int node_index, sequence_t<alphabet_t> &sequence,
                 std::vector<int> &suffixes, std::vector<int> &table,
                 std::vector<Flag> &flags) {
+  //l6.lock();
   if (!is_unevaluated(node_index, flags)) {
     throw std::invalid_argument("[EXPAND NODE] Given node is already expanded");
   }
 
+
+
+
+  //seqan3::debug_stream << node_index << "        " << std::this_thread::get_id() << std::endl;
+
+
+  //l6.unlock();
+
+  //l1.lock();
+  //l1.unlock();
+
+  //l2.lock();
   int lower_bound = table[node_index];
   int upper_bound = table[node_index + 1];
-
   table[node_index] = suffixes[lower_bound];
-  table[node_index + 1] = table.size();
 
   int lcp = longest_common_prefix(lower_bound, upper_bound, sequence, suffixes);
 
   add_lcp_to_suffixes(lower_bound, upper_bound, lcp, suffixes);
+  //l2.unlock();
 
+  l3.lock();
   alphabet_array<alphabet_t> counts =
       count_suffixes(lower_bound, upper_bound, sequence, suffixes);
-
   sort_suffixes(counts, lower_bound, upper_bound, sequence, suffixes);
+  l3.unlock();
 
+  //l4.lock();
+  //l4.unlock();
+
+  l5.lock();
+  table[node_index + 1] = table.size();
   add_children<alphabet_t>(counts, lower_bound, suffixes, table, flags);
-
   flags[node_index] = Flag(flags[node_index] & ~Flag::UNEVALUATED);
+  l5.unlock();
+
+  //l7.lock();
+  //l7.unlock();
 
   return lcp;
 }
