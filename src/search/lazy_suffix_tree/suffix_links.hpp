@@ -110,7 +110,6 @@ int prepare_suffix_links(int node_index, int lcp, std::vector<int> &cause,
     return get_leaf_index(node_index, lcp, suffixes, table, flags);
   } else {
     int edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
-    seqan3::debug_stream << edge_lcp << "     " <<  node_index << "     " <<  sequence[node_index] << std::endl;
 
     int smallest_child = sequence.size();
     int second_smallest_child = sequence.size();

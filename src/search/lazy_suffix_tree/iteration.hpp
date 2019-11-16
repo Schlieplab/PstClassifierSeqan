@@ -160,10 +160,11 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
   while (!queue.empty()) {
     auto [node_index, lcp] = queue.front();
     if (node_index > 10 && build){
-      std::vector<int> aSuffix();
-      std::vector<int> cSuffix();
-      std::vector<int> gSuffix();
-      std::vector<int> tSuffix();
+      std::vector<int> aSuffix;
+      std::vector<int> cSuffix;
+      std::vector<int> gSuffix;
+      std::vector<int> nSuffix;
+      std::vector<int> tSuffix;
 
       std::vector<int> aTable(table);
       std::vector<int> cTable(table);
@@ -175,27 +176,35 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
       std::vector<Flag> gFlags(flags);
       std::vector<Flag> tFlags(flags);
 
-      /*
-      for (int j : suffixes) {
-        int letterCode = sequence[j].to_rank();
-        if (letterCode == 0){
-          aSuffix.push_back(j);
-        }
-        else if (letterCode == 1){
-          cSuffix.push_back(j);
-        }
-        else if (letterCode == 2){
-          gSuffix.push_back(j);
-        }
-        else if (letterCode == 3){
-          tSuffix.push_back(j);
-        }
-        else if (letterCode == 4){
-          tSuffix.push_back(j);
+
+      for (int i = 0; i < suffixes.size(); i++) {
+        /*if (suffixes[i] + 1 < sequence.size()){
+          suffixes[i] = suffixes[i] + 1;
         }
 
+        if (j+1 < suffixes.size()){
+          continue;
+        }
+        suffixes
+        int letterCode = sequence[j].to_rank();
+        if (letterCode == 0){
+          aSuffix.push_back(j+1);
+        }
+        else if (letterCode == 1){
+          cSuffix.push_back(j+1);
+        }
+        else if (letterCode == 2){
+          gSuffix.push_back(j+1);
+        }
+        else if (letterCode == 3){
+          nSuffix.push_back(j+1);
+        }
+        else if (letterCode == 4){
+          tSuffix.push_back(j+1);
+        }
+        */
       }
-      */
+
       std::thread threads[5];
 
       //BFIp(sequence, suffixes, table, flags, expand_nodes, f, 0);
@@ -218,14 +227,7 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
       for (int i = 0; i < 5; ++i) {
         threads[i].join();
       }
-      //threads[0].join();
-      //threads[1].join();
-      //BFIp(sequence, suffixes, table, flags, expand_nodes, f, 2, 1);
-      //BFIp(sequence, suffixes, table, flags, expand_nodes, f, 6, 1);
-      //BFIp(sequence, suffixes, table, flags, expand_nodes, f, 8, 1);
-      //BFIp(sequence, suffixes, table, flags, expand_nodes, f, 10, 1);
-
-      break;
+      return;
     }
     queue.pop();
 

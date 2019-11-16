@@ -61,14 +61,6 @@ void add_leaf(int index, std::vector<int> &table, std::vector<Flag> &flags,
   flags.push_back(Flag::LEAF);
   flags.push_back(Flag::NONE);
 }
-
-void add_lcp_to_suffixes(int lower_bound, int upper_bound, int lcp,
-                         std::vector<int> &suffixes) {
-  for (int i = lower_bound; i < upper_bound; i++) {
-    suffixes[i] += lcp;
-  }
-}
-
 template <seqan3::Alphabet alphabet_t>
 int longest_common_prefix(int lower_bound, int upper_bound,
                           sequence_t<alphabet_t> &sequence,
@@ -89,6 +81,22 @@ int longest_common_prefix(int lower_bound, int upper_bound,
 
   return -1;
 }
+
+template <seqan3::Alphabet alphabet_t>
+int add_lcp_to_suffixes(int lower_bound, int upper_bound,
+                         sequence_t<alphabet_t> &sequence,
+                         std::vector<int> &suffixes) {
+
+  int lcp = longest_common_prefix(lower_bound, upper_bound, sequence, suffixes);
+  l2.lock();
+  for (int i = lower_bound; i < upper_bound; i++) {
+    suffixes[i] += lcp;
+  }
+  l2.unlock();
+  return lcp;
+}
+
+
 
 template <seqan3::Alphabet alphabet_t>
 void add_children(alphabet_array<alphabet_t> &counts, int lower_bound,
@@ -198,49 +206,33 @@ template <seqan3::Alphabet alphabet_t>
 int expand_node(int node_index, sequence_t<alphabet_t> &sequence,
                 std::vector<int> &suffixes, std::vector<int> &table,
                 std::vector<Flag> &flags) {
-  //l6.lock();
   if (!is_unevaluated(node_index, flags)) {
     throw std::invalid_argument("[EXPAND NODE] Given node is already expanded");
   }
 
 
-
-
-  //seqan3::debug_stream << node_index << "        " << std::this_thread::get_id() << std::endl;
-
-
-  //l6.unlock();
-
-  //l1.lock();
-  //l1.unlock();
+  l1.lock();
+  int lower_bound  = table[node_index];
+  int upper_bound  = table[node_index + 1];
+  table[node_index]= suffixes[lower_bound];
+  l1.unlock();
 
   //l2.lock();
-  int lower_bound = table[node_index];
-  int upper_bound = table[node_index + 1];
-  table[node_index] = suffixes[lower_bound];
-
-  int lcp = longest_common_prefix(lower_bound, upper_bound, sequence, suffixes);
-
-  add_lcp_to_suffixes(lower_bound, upper_bound, lcp, suffixes);
+  int lcp = add_lcp_to_suffixes(lower_bound, upper_bound, sequence, suffixes);
   //l2.unlock();
 
-  l3.lock();
+  //l3.lock();
   alphabet_array<alphabet_t> counts =
       count_suffixes(lower_bound, upper_bound, sequence, suffixes);
   sort_suffixes(counts, lower_bound, upper_bound, sequence, suffixes);
-  l3.unlock();
+  //l3.unlock();
 
-  //l4.lock();
-  //l4.unlock();
 
   l5.lock();
   table[node_index + 1] = table.size();
   add_children<alphabet_t>(counts, lower_bound, suffixes, table, flags);
-  flags[node_index] = Flag(flags[node_index] & ~Flag::UNEVALUATED);
+  flags[node_index]     = Flag(flags[node_index] & ~Flag::UNEVALUATED);
   l5.unlock();
-
-  //l7.lock();
-  //l7.unlock();
 
   return lcp;
 }
