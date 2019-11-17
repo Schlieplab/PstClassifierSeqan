@@ -10,9 +10,9 @@ std::mutex l1;
 std::mutex l2;
 std::mutex l3;
 std::mutex l4;
-std::mutex l5;
-std::mutex l6;
-std::mutex l7;
+std::mutex sort_suffix_lock;
+std::mutex add_child_lock;
+std::mutex lcp_lock;
 
 namespace lst::details {
 
@@ -88,11 +88,10 @@ int add_lcp_to_suffixes(int lower_bound, int upper_bound,
                          std::vector<int> &suffixes) {
 
   int lcp = longest_common_prefix(lower_bound, upper_bound, sequence, suffixes);
-  l2.lock();
+  std::lock_guard<std::mutex> lock(lcp_lock);
   for (int i = lower_bound; i < upper_bound; i++) {
     suffixes[i] += lcp;
   }
-  l2.unlock();
   return lcp;
 }
 
@@ -154,15 +153,14 @@ void sort_suffixes(alphabet_array<alphabet_t> counts, int lower_bound,
 
   auto pointers = suffix_pointers<alphabet_t>(counts);
 
+  std::lock_guard<std::mutex> lock(sort_suffix_lock);
   for (int i = lower_bound; i < upper_bound; i++) {
     int character_rank =
         seqan3::to_rank(sequence[temp_suffixes[i - lower_bound]]);
 
     int suffix_index = pointers[character_rank] + lower_bound;
 
-    l1.lock();
     suffixes[suffix_index] = temp_suffixes[i - lower_bound];
-    l1.unlock();
     pointers[character_rank] += 1;
   }
 }
@@ -210,29 +208,20 @@ int expand_node(int node_index, sequence_t<alphabet_t> &sequence,
     throw std::invalid_argument("[EXPAND NODE] Given node is already expanded");
   }
 
-
-  l1.lock();
   int lower_bound  = table[node_index];
   int upper_bound  = table[node_index + 1];
   table[node_index]= suffixes[lower_bound];
-  l1.unlock();
-
-  //l2.lock();
   int lcp = add_lcp_to_suffixes(lower_bound, upper_bound, sequence, suffixes);
-  //l2.unlock();
 
-  //l3.lock();
+
   alphabet_array<alphabet_t> counts =
       count_suffixes(lower_bound, upper_bound, sequence, suffixes);
   sort_suffixes(counts, lower_bound, upper_bound, sequence, suffixes);
-  //l3.unlock();
 
-
-  l5.lock();
+  std::lock_guard<std::mutex> lock(add_child_lock);
   table[node_index + 1] = table.size();
   add_children<alphabet_t>(counts, lower_bound, suffixes, table, flags);
   flags[node_index]     = Flag(flags[node_index] & ~Flag::UNEVALUATED);
-  l5.unlock();
 
   return lcp;
 }

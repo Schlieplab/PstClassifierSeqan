@@ -140,7 +140,7 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
                              std::vector<int> &suffixes,
                              std::vector<int> &table, std::vector<Flag> &flags,
                              const std::function<bool(int, int, int)> &f) {
-  breadth_first_iteration(sequence, suffixes, table, flags, false, f, false);
+  breadth_first_iteration(sequence, suffixes, table, flags, false, f, false, 0);
 }
 
 
@@ -150,81 +150,37 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
                              std::vector<int> &suffixes,
                              std::vector<int> &table, std::vector<Flag> &flags,
                              bool expand_nodes,
-                             const std::function<bool(int, int, int)> &f, bool build) {
+                             const std::function<bool(int, int, int)> &f, bool build, int paralell_depth) {
 
 
   std::queue<std::tuple<int, int>> queue{};
   iterate_children(0, table, flags,
                    [&](int index) { queue.emplace(index, 0); });
 
+   // Calculate lower and upper bound for nodes index counting
+  int n_lower_bound = 2;
+  if (paralell_depth > 1){
+    n_lower_bound = pow(5,(paralell_depth-1))*2+2;
+  }
+  int n_upper_bound = pow(5,paralell_depth)*2;
   while (!queue.empty()) {
     auto [node_index, lcp] = queue.front();
-    if (node_index > 10 && build){
-      std::vector<int> aSuffix;
-      std::vector<int> cSuffix;
-      std::vector<int> gSuffix;
-      std::vector<int> nSuffix;
-      std::vector<int> tSuffix;
-
-      std::vector<int> aTable(table);
-      std::vector<int> cTable(table);
-      std::vector<int> gTable(table);
-      std::vector<int> tTable(table);
-
-      std::vector<Flag> aFlags(flags);
-      std::vector<Flag> cFlags(flags);
-      std::vector<Flag> gFlags(flags);
-      std::vector<Flag> tFlags(flags);
-
-
-      for (int i = 0; i < suffixes.size(); i++) {
-        /*if (suffixes[i] + 1 < sequence.size()){
-          suffixes[i] = suffixes[i] + 1;
-        }
-
-        if (j+1 < suffixes.size()){
-          continue;
-        }
-        suffixes
-        int letterCode = sequence[j].to_rank();
-        if (letterCode == 0){
-          aSuffix.push_back(j+1);
-        }
-        else if (letterCode == 1){
-          cSuffix.push_back(j+1);
-        }
-        else if (letterCode == 2){
-          gSuffix.push_back(j+1);
-        }
-        else if (letterCode == 3){
-          nSuffix.push_back(j+1);
-        }
-        else if (letterCode == 4){
-          tSuffix.push_back(j+1);
-        }
-        */
+    if (node_index > n_upper_bound && build){
+      // Spawn threads
+      int number_of_threads = 5;
+      if (paralell_depth > 1){
+        number_of_threads = pow(5,(paralell_depth));
       }
-
-      std::thread threads[5];
-
-      //BFIp(sequence, suffixes, table, flags, expand_nodes, f, 0);
-      //BFIp(sequence, cSuffix, cTable, cFlags, true, f, 4);
-      //BFIp(sequence, gSuffix, gTable, gFlags, true, f, 6);
-      //BFIp(sequence, tSuffix, tTable, tFlags, true, f, 10);
-
-
-      threads[0] = std::thread(BFIp<seqan3::dna5>, std::ref(sequence), std::ref(suffixes),
-                   std::ref(table), std::ref(flags), expand_nodes, f, 2, 1);
-      threads[1] = std::thread(BFIp<seqan3::dna5>, std::ref(sequence), std::ref(suffixes),
-                   std::ref(table), std::ref(flags), expand_nodes, f, 4, 1);
-      threads[2] = std::thread(BFIp<seqan3::dna5>, std::ref(sequence), std::ref(suffixes),
-                   std::ref(table), std::ref(flags), expand_nodes, f, 6, 1);
-      threads[3] = std::thread(BFIp<seqan3::dna5>, std::ref(sequence), std::ref(suffixes),
-                   std::ref(table), std::ref(flags), expand_nodes, f, 8, 1);
-      threads[4] = std::thread(BFIp<seqan3::dna5>, std::ref(sequence), std::ref(suffixes),
-                   std::ref(table), std::ref(flags), expand_nodes, f, 10, 1);
-
-      for (int i = 0; i < 5; ++i) {
+      std::thread threads[number_of_threads];
+      int thread_index = 0;
+      for (int j = n_lower_bound; j < n_upper_bound+1; j+=2) {
+        int edge_lcp = get_edge_lcp(j, sequence, suffixes, table, flags);
+        threads[thread_index] = std::thread(BFIp<seqan3::dna5>, std::ref(sequence), std::ref(suffixes),
+                                std::ref(table), std::ref(flags), expand_nodes, f, j, edge_lcp);
+        thread_index++;
+      }
+      for (int i = 0; i < thread_index; ++i) {
+        seqan3::debug_stream << i << std::endl;
         threads[i].join();
       }
       return;

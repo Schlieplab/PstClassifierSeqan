@@ -375,7 +375,7 @@ protected:
           }
           this->status[node_index / 2] = Status::EXCLUDED;
           return false;
-        }, true);
+        }, true, 1);
   }
 
   /**! \brief Computes and saves the forward probabilities of each node.
