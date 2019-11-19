@@ -46,7 +46,7 @@ const char *train_ps_parameters(const char *id_, const char *sequence_, size_t m
       seq | seqan3::view::char_to<seqan3::dna5>;
 
   pst::ProbabilisticSuffixTree<seqan3::dna5> pst{id, sequence, max_depth,
-                                                 min_count, 0.0, n_parameters, "parameters", "PS"};
+                                                 min_count, 0.0, n_parameters, "parameters", "PS", false, 1};
 
   return strdup(pst.to_tree().c_str());
 }
@@ -59,7 +59,7 @@ const char *train_kl_parameters(const char *id_, const char *sequence_, size_t m
       seq | seqan3::view::char_to<seqan3::dna5>;
 
   pst::ProbabilisticSuffixTree<seqan3::dna5> pst{id, sequence, max_depth,
-                                                 min_count, 0.0, n_parameters, "parameters", "KL"};
+                                                 min_count, 0.0, n_parameters, "parameters", "KL", false, 1};
 
   return strdup(pst.to_tree().c_str());
 }

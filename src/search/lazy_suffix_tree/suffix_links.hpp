@@ -95,6 +95,7 @@ int prepare_suffix_links(int node_index, int lcp, std::vector<int> &cause,
     int leaf_index = get_leaf_index(node_index, lcp, suffixes, table, flags);
 
     leaf_indices[leaf_index] = node_index;
+    //seqan3::debug_stream << lcp <<  std::endl;
 
     return leaf_index;
   } else if (is_unevaluated(node_index, flags)) {

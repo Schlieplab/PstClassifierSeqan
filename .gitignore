@@ -1,7 +1,8 @@
-*.tree
-*.fa
-*.fasta
-
-/build/
-/tests_build/
-**/cmake-build-debug/
+src/cmake-build-release/*
+src/cmake-build-debug/*
+cmake-build-debug/
+cmake-build-release/
+build_s/
+build/*
+.idea/*
+data/

@@ -2,9 +2,17 @@
 
 #include <tuple>
 #include <vector>
-
+#include <mutex>
 #include <seqan3/alphabet/all.hpp>
 #include <seqan3/range/container/bitcompressed_vector.hpp>
+
+std::mutex l1;
+std::mutex l2;
+std::mutex l3;
+std::mutex l4;
+std::mutex sort_suffix_lock;
+std::mutex add_child_lock;
+std::mutex lcp_lock;
 
 namespace lst::details {
 
@@ -53,14 +61,6 @@ void add_leaf(int index, std::vector<int> &table, std::vector<Flag> &flags,
   flags.push_back(Flag::LEAF);
   flags.push_back(Flag::NONE);
 }
-
-void add_lcp_to_suffixes(int lower_bound, int upper_bound, int lcp,
-                         std::vector<int> &suffixes) {
-  for (int i = lower_bound; i < upper_bound; i++) {
-    suffixes[i] += lcp;
-  }
-}
-
 template <seqan3::Alphabet alphabet_t>
 int longest_common_prefix(int lower_bound, int upper_bound,
                           sequence_t<alphabet_t> &sequence,
@@ -81,6 +81,21 @@ int longest_common_prefix(int lower_bound, int upper_bound,
 
   return -1;
 }
+
+template <seqan3::Alphabet alphabet_t>
+int add_lcp_to_suffixes(int lower_bound, int upper_bound,
+                         sequence_t<alphabet_t> &sequence,
+                         std::vector<int> &suffixes) {
+
+  int lcp = longest_common_prefix(lower_bound, upper_bound, sequence, suffixes);
+  std::lock_guard<std::mutex> lock(lcp_lock);
+  for (int i = lower_bound; i < upper_bound; i++) {
+    suffixes[i] += lcp;
+  }
+  return lcp;
+}
+
+
 
 template <seqan3::Alphabet alphabet_t>
 void add_children(alphabet_array<alphabet_t> &counts, int lower_bound,
@@ -132,11 +147,13 @@ template <seqan3::Alphabet alphabet_t>
 void sort_suffixes(alphabet_array<alphabet_t> counts, int lower_bound,
                    int upper_bound, sequence_t<alphabet_t> &sequence,
                    std::vector<int> &suffixes) {
+
   std::vector<int> temp_suffixes(suffixes.begin() + lower_bound,
                                  suffixes.begin() + upper_bound);
 
   auto pointers = suffix_pointers<alphabet_t>(counts);
 
+  std::lock_guard<std::mutex> lock(sort_suffix_lock);
   for (int i = lower_bound; i < upper_bound; i++) {
     int character_rank =
         seqan3::to_rank(sequence[temp_suffixes[i - lower_bound]]);
@@ -144,7 +161,6 @@ void sort_suffixes(alphabet_array<alphabet_t> counts, int lower_bound,
     int suffix_index = pointers[character_rank] + lower_bound;
 
     suffixes[suffix_index] = temp_suffixes[i - lower_bound];
-
     pointers[character_rank] += 1;
   }
 }
@@ -192,24 +208,20 @@ int expand_node(int node_index, sequence_t<alphabet_t> &sequence,
     throw std::invalid_argument("[EXPAND NODE] Given node is already expanded");
   }
 
-  int lower_bound = table[node_index];
-  int upper_bound = table[node_index + 1];
+  int lower_bound  = table[node_index];
+  int upper_bound  = table[node_index + 1];
+  table[node_index]= suffixes[lower_bound];
+  int lcp = add_lcp_to_suffixes(lower_bound, upper_bound, sequence, suffixes);
 
-  table[node_index] = suffixes[lower_bound];
-  table[node_index + 1] = table.size();
-
-  int lcp = longest_common_prefix(lower_bound, upper_bound, sequence, suffixes);
-
-  add_lcp_to_suffixes(lower_bound, upper_bound, lcp, suffixes);
 
   alphabet_array<alphabet_t> counts =
       count_suffixes(lower_bound, upper_bound, sequence, suffixes);
-
   sort_suffixes(counts, lower_bound, upper_bound, sequence, suffixes);
 
+  std::lock_guard<std::mutex> lock(add_child_lock);
+  table[node_index + 1] = table.size();
   add_children<alphabet_t>(counts, lower_bound, suffixes, table, flags);
-
-  flags[node_index] = Flag(flags[node_index] & ~Flag::UNEVALUATED);
+  flags[node_index]     = Flag(flags[node_index] & ~Flag::UNEVALUATED);
 
   return lcp;
 }

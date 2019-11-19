@@ -210,7 +210,7 @@ public:
     }
 
     lst::details::breadth_first_iteration(
-        sequence, suffixes, table, flags, false,
+        sequence, suffixes, table, flags,
         [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (this->skip_node(node_index)) {
             return true;
@@ -236,7 +236,7 @@ public:
    */
   virtual void print() {
     lst::details::breadth_first_iteration(
-        sequence, suffixes, table, flags, false,
+        sequence, suffixes, table, flags,
         [&](int node_index, int lcp, int edge_lcp) -> bool {
           auto label = node_label(node_index, lcp, edge_lcp);
 

@@ -27,6 +27,13 @@ enum Status : unsigned char {
   EXCLUDED = 1 << 2,
 };
 
+bool multi_core = true;
+//bool paralell = false;
+int split_depth = 1;
+
+bool timeMessurement = true;
+//bool timeMessurement = false;
+
 /*!\brief The probabilistic suffix tree implementation.
  * \tparam alphabet_t   Alphabet type from Seqan3.
  *
@@ -62,8 +69,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
    */
   ProbabilisticSuffixTree(std::string id,
                           seqan3::bitcompressed_vector<alphabet_t> &sequence)
-      : ProbabilisticSuffixTree(id, sequence, 15, 100, 1.2, 0, "cutoff", "PS") {
-  }
+      : ProbabilisticSuffixTree(id, sequence, 15, 100, 1.2, 0, "cutoff", "PS", false, 1) {}
 
   /*!\brief Constructor with KL pruning.
    * \param[in] id The id of the model.
@@ -76,7 +82,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
                           seqan3::bitcompressed_vector<alphabet_t> &sequence,
                           size_t max_depth, size_t freq, float cutoff_value)
       : ProbabilisticSuffixTree(id, sequence, max_depth, freq, cutoff_value, 0,
-                                "cutoff", "KL") {}
+                                "cutoff", "KL", false, 1) {}
 
   /*!\brief Constructor with PS pruning.
    * \param[in] id The id of the model.
@@ -88,7 +94,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
                           seqan3::bitcompressed_vector<alphabet_t> &sequence,
                           size_t max_depth, size_t freq)
       : ProbabilisticSuffixTree(id, sequence, max_depth, freq, cutoff_value, 0,
-                                "cutoff", "PS") {}
+                                "cutoff", "PS", false, 1) {}
 
   /*!\brief Constructor with cutoff pruning.
    * \param[in] id The id of the model.
@@ -104,7 +110,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
                           size_t max_depth, size_t freq, float cutoff_value,
                           std::string estimator)
       : ProbabilisticSuffixTree(id, sequence, max_depth, freq, cutoff_value, 0,
-                                "cutoff", estimator) {}
+                                "cutoff", estimator, false, 1) {}
 
   /*!\brief Constructor.
    * \param[in] id_ The id of the model.
@@ -124,12 +130,14 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
                           seqan3::bitcompressed_vector<alphabet_t> &sequence_,
                           size_t max_depth_, size_t freq_, float cutoff_value_,
                           size_t number_of_parameters_,
-                          std::string pruning_method_, std::string estimator_)
+                          std::string pruning_method_, std::string estimator_,
+                          bool multi_core_, int split_depth_ )
       : lst::LazySuffixTree<alphabet_t>(sequence_), id(id_), freq(freq_),
         max_depth(max_depth_), cutoff_value(cutoff_value_),
         number_of_parameters(number_of_parameters_),
-        pruning_method(pruning_method_), estimator(estimator_) {
-
+        pruning_method(pruning_method_), estimator(estimator_){
+    multi_core = multi_core_;
+    split_depth = split_depth_;
     using seqan3::operator""_dna4;
     seqan3::dna4_vector dna4{"ACGT"_dna4};
     std::vector<seqan3::gapped<alphabet_t>> characters{
@@ -153,7 +161,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
    */
   void print() {
     lst::details::breadth_first_iteration(
-        this->sequence, this->suffixes, this->table, this->flags, false,
+        this->sequence, this->suffixes, this->table, this->flags,
         [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (this->is_excluded(node_index)) {
             return true;
@@ -162,6 +170,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
           auto label = this->node_label(node_index, lcp, edge_lcp);
 
           if (this->is_leaf(node_index)) {
+            label = this->leaf_label(node_index, lcp);
             label = this->leaf_label(node_index, lcp);
           }
 
@@ -234,7 +243,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
     this->append_node_string(0, 0, 0, tree_string);
 
     lst::details::breadth_first_iteration(
-        this->sequence, this->suffixes, this->table, this->flags, false,
+        this->sequence, this->suffixes, this->table, this->flags,
         [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (this->is_included(node_index)) {
             this->append_node_string(node_index, lcp, edge_lcp, tree_string);
@@ -272,12 +281,42 @@ protected:
    *
    */
   void support_pruning() {
+    using namespace std::chrono;
+    auto start = high_resolution_clock::now();
+    auto t1 = high_resolution_clock::now();
     this->build_tree();
+    auto t2 = high_resolution_clock::now();
     this->expand_implicit_nodes();
+    auto t3 = high_resolution_clock::now();
     this->add_implicit_node_status();
+    auto t4 = high_resolution_clock::now();
     this->add_suffix_links();
+    auto t5 = high_resolution_clock::now();
     this->counts.resize(this->table.size() / 2, -1);
+    this->status.resize(this->table.size() / 2, Status::NONE);
+
+    auto t6 = high_resolution_clock::now();
+
     status[0] = Status::INCLUDED;
+    if (timeMessurement){
+      auto stop = high_resolution_clock::now();
+      auto duration = duration_cast<milliseconds>(stop - start);
+      auto buildTree = duration_cast<milliseconds>(t2 - t1);
+      auto expandImplicitNodes = duration_cast<milliseconds>(t3 - t2);
+      auto addImplicitNodesStatus = duration_cast<milliseconds>(t4 - t3);
+      auto addSuffixLinks = duration_cast<milliseconds>(t5-t4);
+      auto countsRelize   = duration_cast<milliseconds>(t6-t5);
+      auto statusResize   = duration_cast<milliseconds>(stop-t6);
+
+      std::cout <<  "\n\nSupport Pruning" << std::endl;
+      std::cout << "    Total Duration:" << duration.count() << "ms" << std::endl;
+      std::cout << "        Build Tree: " << buildTree.count() << "ms" << std::endl;
+      std::cout << "        Expand Implicint Nodes: " << expandImplicitNodes.count() << "ms" <<std::endl;
+      std::cout << "        Add Implicit Nodes Status: "<< addImplicitNodesStatus.count() << "ms" <<std::endl;
+      std::cout << "        Add Suffix Links: "<< addSuffixLinks.count() << "ms" <<std::endl;
+      std::cout << "        Resize counts: "<< countsRelize.count() << "ms" <<std::endl;
+      std::cout << "        Resize status: "<< statusResize.count() << "ms\n" <<std::endl;
+    }
   }
 
   /**! \brief Similarity pruning phase of the algorithm
@@ -288,12 +327,29 @@ protected:
    * are reached, or until a specified threshold value.
    */
   void similarity_pruning() {
+    using namespace std::chrono;
+    auto start = high_resolution_clock::now();
     this->add_reverse_suffix_links();
+    auto t1 = high_resolution_clock::now();
     this->compute_probabilities();
+    auto t2 = high_resolution_clock::now();
     if (this->pruning_method == "cutoff") {
       this->cutoff_prune();
     } else if (this->pruning_method == "parameters") {
       this->parameters_prune();
+    }
+    if (timeMessurement){
+      auto stop = high_resolution_clock::now();
+      auto duration = duration_cast<milliseconds>(stop - start);
+      auto reverseSuffix = duration_cast<milliseconds>(t1 - start);
+      auto probabilities = duration_cast<milliseconds>(t2 - t1);
+      auto pruning  = duration_cast<milliseconds>(stop - t2);
+
+      std::cout << "\n\nSimilarity Pruning" << std::endl;
+      std::cout << "    Total Duration: " << duration.count() << "ms" << std::endl;
+      std::cout << "        Reverse Suffix Links: " << reverseSuffix.count() << "ms" <<std::endl;
+      std::cout << "        Calculating Probabilities: " << probabilities.count() << "ms" <<std::endl;
+      std::cout << "        Pruning: "<< pruning.count() << "ms\n" <<std::endl;
     }
   }
 
@@ -305,13 +361,12 @@ protected:
    *
    * Also saves the count of the node as well as if it is included or excluded.
    */
-  void build_tree() {
-    lst::details::breadth_first_iteration(
-        this->sequence, this->suffixes, this->table, this->flags,
-        [&](int node_index, int lcp, int edge_lcp) -> bool {
-          int count = lst::details::node_occurrences(node_index, this->table,
-                                                     this->flags);
-
+   void build_tree() {
+     lst::details::breadth_first_iteration(
+         this->sequence, this->suffixes, this->table, this->flags, true,
+         [&](int node_index, int lcp, int edge_lcp) -> bool {
+           int count = lst::details::node_occurrences(node_index, this->table,
+                                                      this->flags);
           this->counts.resize(this->table.size() / 2, -1);
           this->counts[node_index / 2] = count;
 
@@ -325,7 +380,7 @@ protected:
           }
           this->status[node_index / 2] = Status::EXCLUDED;
           return false;
-        });
+        }, multi_core, split_depth);
   }
 
   /**! \brief Computes and saves the forward probabilities of each node.
@@ -557,8 +612,8 @@ protected:
       if (parent_prob == 0 || prob == 0) {
         continue;
       }
-
       delta += prob * std::log(prob / parent_prob);
+
     }
     delta *= this->get_counts(node_index);
 
@@ -652,7 +707,7 @@ protected:
     std::vector<int> bottom_nodes{};
 
     lst::details::breadth_first_iteration(
-        this->sequence, this->suffixes, this->table, this->flags, false,
+        this->sequence, this->suffixes, this->table, this->flags,
         [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (this->is_included(node_index) && this->is_pst_leaf(node_index)) {
             bottom_nodes.push_back(node_index);
@@ -672,7 +727,7 @@ protected:
     int n_terminal_nodes = 0;
 
     lst::details::breadth_first_iteration(
-        this->sequence, this->suffixes, this->table, this->flags, false,
+        this->sequence, this->suffixes, this->table, this->flags,
         [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (this->is_included(node_index) && this->is_terminal(node_index)) {
             n_terminal_nodes += 1;
@@ -933,7 +988,7 @@ protected:
   int nodes_in_tree() {
     int n_nodes = 1;
     lst::details::breadth_first_iteration(
-        this->sequence, this->suffixes, this->table, this->flags, false,
+        this->sequence, this->suffixes, this->table, this->flags,
         [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (is_included(node_index)) {
             n_nodes += 1;
@@ -970,6 +1025,7 @@ protected:
    * \return true if the label is valid, false otherwise.
    */
   bool label_valid(int label_start, int label_end) {
+
     for (int i = label_start; i < label_end; i++) {
       if (this->valid_characters.find(this->sequence[i]) ==
           this->valid_characters.end()) {
