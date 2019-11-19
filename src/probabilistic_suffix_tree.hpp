@@ -27,9 +27,12 @@ enum Status : unsigned char {
   EXCLUDED = 1 << 2,
 };
 
+bool multi_core = true;
+//bool paralell = false;
+int split_depth = 1;
 
 bool timeMessurement = true;
-//bool timeMessurement = true;
+//bool timeMessurement = false;
 
 /*!\brief The probabilistic suffix tree implementation.
  * \tparam alphabet_t   Alphabet type from Seqan3.
@@ -66,8 +69,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
    */
   ProbabilisticSuffixTree(std::string id,
                           seqan3::bitcompressed_vector<alphabet_t> &sequence)
-      : ProbabilisticSuffixTree(id, sequence, 15, 100, 1.2, 0, "cutoff", "PS") {
-  }
+      : ProbabilisticSuffixTree(id, sequence, 15, 100, 1.2, 0, "cutoff", "PS", false, 1) {}
 
   /*!\brief Constructor with KL pruning.
    * \param[in] id The id of the model.
@@ -80,7 +82,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
                           seqan3::bitcompressed_vector<alphabet_t> &sequence,
                           size_t max_depth, size_t freq, float cutoff_value)
       : ProbabilisticSuffixTree(id, sequence, max_depth, freq, cutoff_value, 0,
-                                "cutoff", "KL") {}
+                                "cutoff", "KL", false, 1) {}
 
   /*!\brief Constructor with PS pruning.
    * \param[in] id The id of the model.
@@ -92,7 +94,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
                           seqan3::bitcompressed_vector<alphabet_t> &sequence,
                           size_t max_depth, size_t freq)
       : ProbabilisticSuffixTree(id, sequence, max_depth, freq, cutoff_value, 0,
-                                "cutoff", "PS") {}
+                                "cutoff", "PS", false, 1) {}
 
   /*!\brief Constructor with cutoff pruning.
    * \param[in] id The id of the model.
@@ -108,7 +110,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
                           size_t max_depth, size_t freq, float cutoff_value,
                           std::string estimator)
       : ProbabilisticSuffixTree(id, sequence, max_depth, freq, cutoff_value, 0,
-                                "cutoff", estimator) {}
+                                "cutoff", estimator, false, 1) {}
 
   /*!\brief Constructor.
    * \param[in] id_ The id of the model.
@@ -128,12 +130,14 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
                           seqan3::bitcompressed_vector<alphabet_t> &sequence_,
                           size_t max_depth_, size_t freq_, float cutoff_value_,
                           size_t number_of_parameters_,
-                          std::string pruning_method_, std::string estimator_)
+                          std::string pruning_method_, std::string estimator_,
+                          bool multi_core_, int split_depth_ )
       : lst::LazySuffixTree<alphabet_t>(sequence_), id(id_), freq(freq_),
         max_depth(max_depth_), cutoff_value(cutoff_value_),
         number_of_parameters(number_of_parameters_),
-        pruning_method(pruning_method_), estimator(estimator_) {
-
+        pruning_method(pruning_method_), estimator(estimator_){
+    multi_core = multi_core_;
+    split_depth = split_depth_;
     using seqan3::operator""_dna4;
     seqan3::dna4_vector dna4{"ACGT"_dna4};
     std::vector<seqan3::gapped<alphabet_t>> characters{
@@ -146,6 +150,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
     if (estimator_ == "PS") {
       this->cutoff_value = std::pow(float(sequence_.size()), 3.0 / 4.0);
     }
+
     this->support_pruning();
     this->similarity_pruning();
   }
@@ -375,7 +380,7 @@ protected:
           }
           this->status[node_index / 2] = Status::EXCLUDED;
           return false;
-        }, true, 1);
+        }, multi_core, split_depth);
   }
 
   /**! \brief Computes and saves the forward probabilities of each node.

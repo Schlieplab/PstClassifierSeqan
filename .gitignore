@@ -1,3 +1,8 @@
-cmake-build-release/*
-cmake-build-debug/*
+src/cmake-build-release/*
+src/cmake-build-debug/*
+cmake-build-debug/
+cmake-build-release/
+build_s/
 build/*
+.idea/*
+data/

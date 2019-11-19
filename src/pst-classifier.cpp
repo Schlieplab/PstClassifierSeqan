@@ -1,5 +1,6 @@
 #include <string>
 #include <vector>
+#include <chrono>
 
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/argument_parser/all.hpp>
@@ -19,6 +20,8 @@ struct input_arguments {
   std::string estimator{"PS"};
   std::vector<seqan3::bitcompressed_vector<seqan3::dna5>> sequences{};
   std::vector<std::string> ids{};
+  bool multi_core{false};
+  int split_depth{1};
 };
 
 struct my_traits : seqan3::sequence_file_input_default_traits_dna {
@@ -31,6 +34,7 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
   std::string filename{};
 
   input_arguments arguments{};
+
 
   seqan3::argument_parser parser{"Build PST/VLMC on the given fasta file.",
                                  argc, argv, false};
@@ -63,6 +67,13 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
                     "the threshold is reached, or 'parameters' to prune until "
                     "a certain number of parameters have been reached.");
 
+  // Added for Multi processing
+  parser.add_flag(arguments.multi_core, 'm', "multi-core" ,
+                  "Enable Multi-core utilisation.");
+
+  parser.add_option(arguments.split_depth, 's', "split-depth",
+                    "Depth where to start the split into threads "
+                    "Higher value increase the number of threads spawned. Default 1");
   try {
     parser.parse();
   } catch (seqan3::parser_invalid_argument const &ext) {
@@ -70,21 +81,25 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
     return arguments;
   }
   seqan3::debug_stream << "The text was: " << filename << "\n";
-
+  using namespace std::chrono;
+  auto start = std::chrono::system_clock::now();
   seqan3::sequence_file_input<my_traits> file_in{filename};
 
   for (auto &[seq, id, qual] : file_in) {
     arguments.sequences.push_back(seq);
     arguments.ids.push_back(id);
   }
-
+  auto stop = std::chrono::system_clock::now();
+  auto duration   = duration_cast<milliseconds>(stop-start);
+  std::cout << "IO reading fast file: " << duration.count() << " ms" << std::endl;
   return arguments;
 }
 
 std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                   std::string id, size_t max_depth, size_t min_count,
                   float threshold, size_t number_of_parameters,
-                  std::string pruning_method, std::string estimator) {
+                  std::string pruning_method, std::string estimator,
+                  bool multi_core, int split_depth) {
 
   pst::ProbabilisticSuffixTree<seqan3::dna5> pst{id,
                                                  sequence,
@@ -93,11 +108,12 @@ std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                                                  threshold,
                                                  number_of_parameters,
                                                  pruning_method,
-                                                 estimator};
+                                                 estimator,
+                                                 multi_core,
+                                                 split_depth};
 
 
-  //pst.support_pruning();
-  //pst.similarity_pruning();
+
   return pst.to_tree();
 }
 
@@ -109,7 +125,8 @@ int main(int argc, char *argv[]) {
   std::string tree = train(arguments.sequences[0], arguments.ids[0],
                            arguments.max_depth, arguments.min_count,
                            arguments.threshold, arguments.number_of_parameters,
-                           arguments.pruning_method, arguments.estimator);
+                           arguments.pruning_method, arguments.estimator,
+                           arguments.multi_core, arguments.split_depth);
   std::cout << tree << std::endl;
 
   return 0;
