@@ -1,0 +1,3 @@
+#!/usr/bin/bash
+FILE=$(basename $1)
+echo "$FILE"

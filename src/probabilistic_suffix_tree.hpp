@@ -12,6 +12,7 @@
 #include <tuple>
 #include <unordered_set>
 #include <vector>
+#include <string>
 
 #include <seqan3/alphabet/all.hpp>
 #include <seqan3/range/view/to_char.hpp>
@@ -29,7 +30,7 @@ enum Status : unsigned char {
 
 bool multi_core = true;
 //bool paralell = false;
-int split_depth = 1;
+int  split_depth = 1;
 
 bool timeMessurement = true;
 //bool timeMessurement = false;
@@ -171,7 +172,6 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
 
           if (this->is_leaf(node_index)) {
             label = this->leaf_label(node_index, lcp);
-            label = this->leaf_label(node_index, lcp);
           }
 
           seqan3::debug_stream << label << "\t" << node_index << "\t"
@@ -294,28 +294,27 @@ protected:
     auto t5 = high_resolution_clock::now();
     this->counts.resize(this->table.size() / 2, -1);
     this->status.resize(this->table.size() / 2, Status::NONE);
-
     auto t6 = high_resolution_clock::now();
 
     status[0] = Status::INCLUDED;
     if (timeMessurement){
       auto stop = high_resolution_clock::now();
-      auto duration = duration_cast<milliseconds>(stop - start);
-      auto buildTree = duration_cast<milliseconds>(t2 - t1);
-      auto expandImplicitNodes = duration_cast<milliseconds>(t3 - t2);
-      auto addImplicitNodesStatus = duration_cast<milliseconds>(t4 - t3);
-      auto addSuffixLinks = duration_cast<milliseconds>(t5-t4);
-      auto countsRelize   = duration_cast<milliseconds>(t6-t5);
-      auto statusResize   = duration_cast<milliseconds>(stop-t6);
+      auto duration = duration_cast<seconds>(stop - start);
+      auto buildTree = duration_cast<seconds>(t2 - t1);
+      auto expandImplicitNodes = duration_cast<seconds>(t3 - t2);
+      auto addImplicitNodesStatus = duration_cast<seconds>(t4 - t3);
+      auto addSuffixLinks = duration_cast<seconds>(t5-t4);
+      auto countsRelize   = duration_cast<seconds>(t6-t5);
+      auto statusResize   = duration_cast<seconds>(stop-t6);
 
       std::cout <<  "\n\nSupport Pruning" << std::endl;
-      std::cout << "    Total Duration:" << duration.count() << "ms" << std::endl;
-      std::cout << "        Build Tree: " << buildTree.count() << "ms" << std::endl;
-      std::cout << "        Expand Implicint Nodes: " << expandImplicitNodes.count() << "ms" <<std::endl;
-      std::cout << "        Add Implicit Nodes Status: "<< addImplicitNodesStatus.count() << "ms" <<std::endl;
-      std::cout << "        Add Suffix Links: "<< addSuffixLinks.count() << "ms" <<std::endl;
-      std::cout << "        Resize counts: "<< countsRelize.count() << "ms" <<std::endl;
-      std::cout << "        Resize status: "<< statusResize.count() << "ms\n" <<std::endl;
+      std::cout << "    Total Duration:" << duration.count() << " sec" << std::endl;
+      std::cout << "        Build Tree: " << buildTree.count() << " sec" << std::endl;
+      std::cout << "        Expand Implicint Nodes: " << expandImplicitNodes.count() << " sec" <<std::endl;
+      std::cout << "        Add Implicit Nodes Status: "<< addImplicitNodesStatus.count() << " sec" <<std::endl;
+      std::cout << "        Add Suffix Links: "<< addSuffixLinks.count() << " sec" <<std::endl;
+      std::cout << "        Resize counts: "<< countsRelize.count() << " sec" <<std::endl;
+      std::cout << "        Resize status: "<< statusResize.count() << " sec" <<std::endl;
     }
   }
 
@@ -340,15 +339,15 @@ protected:
     }
     if (timeMessurement){
       auto stop = high_resolution_clock::now();
-      auto duration = duration_cast<milliseconds>(stop - start);
-      auto reverseSuffix = duration_cast<milliseconds>(t1 - start);
-      auto probabilities = duration_cast<milliseconds>(t2 - t1);
-      auto pruning  = duration_cast<milliseconds>(stop - t2);
+      auto duration = duration_cast<seconds>(stop - start);
+      auto reverseSuffix = duration_cast<seconds>(t1 - start);
+      auto probabilities = duration_cast<seconds>(t2 - t1);
+      auto pruning  = duration_cast<seconds>(stop - t2);
 
       std::cout << "\n\nSimilarity Pruning" << std::endl;
-      std::cout << "    Total Duration: " << duration.count() << "ms" << std::endl;
-      std::cout << "        Reverse Suffix Links: " << reverseSuffix.count() << "ms" <<std::endl;
-      std::cout << "        Calculating Probabilities: " << probabilities.count() << "ms" <<std::endl;
+      std::cout << "    Total Duration: " << duration.count() << " sec" << std::endl;
+      std::cout << "        Reverse Suffix Links: " << reverseSuffix.count() << " sec" <<std::endl;
+      std::cout << "        Calculating Probabilities: " << probabilities.count() << " sec" <<std::endl;
       std::cout << "        Pruning: "<< pruning.count() << "ms\n" <<std::endl;
     }
   }

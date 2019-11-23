@@ -10,8 +10,8 @@
 
 
 extern "C" {
-const char *train_kl(const char *id_, const char *sequence_, size_t max_depth,
-                  size_t min_count, float threshold) {
+const char *train_kl(const char *id_, const char *sequence_, intmax_depth,
+                  intmin_count, float threshold) {
 
   std::string id = std::string(id_);
   std::string seq = std::string(sequence_);
@@ -24,8 +24,8 @@ const char *train_kl(const char *id_, const char *sequence_, size_t max_depth,
   return strdup(pst.to_tree().c_str());
 }
 
-const char *train_ps(const char *id_, const char *sequence_, size_t max_depth,
-                  size_t min_count) {
+const char *train_ps(const char *id_, const char *sequence_, intmax_depth,
+                  intmin_count) {
 
   std::string id = std::string(id_);
   std::string seq = std::string(sequence_);
@@ -38,7 +38,7 @@ const char *train_ps(const char *id_, const char *sequence_, size_t max_depth,
   return strdup(pst.to_tree().c_str());
 }
 
-const char *train_ps_parameters(const char *id_, const char *sequence_, size_t max_depth, size_t min_count, size_t n_parameters) {
+const char *train_ps_parameters(const char *id_, const char *sequence_, intmax_depth, intmin_count, intn_parameters) {
 
   std::string id = std::string(id_);
   std::string seq = std::string(sequence_);
@@ -51,7 +51,7 @@ const char *train_ps_parameters(const char *id_, const char *sequence_, size_t m
   return strdup(pst.to_tree().c_str());
 }
 
-const char *train_kl_parameters(const char *id_, const char *sequence_, size_t max_depth, size_t min_count, size_t n_parameters) {
+const char *train_kl_parameters(const char *id_, const char *sequence_, intmax_depth, intmin_count, intn_parameters) {
 
   std::string id = std::string(id_);
   std::string seq = std::string(sequence_);

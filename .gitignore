@@ -6,3 +6,5 @@ build_s/
 build/*
 .idea/*
 data/
+experiment/
+readFile.cpp

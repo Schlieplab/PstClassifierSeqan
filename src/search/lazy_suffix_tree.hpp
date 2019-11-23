@@ -47,7 +47,7 @@ public:
     sequence = sequence_ | seqan3::view::convert<seqan3::gapped<alphabet_t>>;
     sequence.push_back(seqan3::gap{});
 
-    suffixes = std::vector<int>(sequence.size());
+    suffixes = std::vector<uint>(sequence.size());
     std::iota(suffixes.begin(), suffixes.end(), 0);
 
     lst::details::expand_root(sequence, suffixes, table, flags);
@@ -168,7 +168,7 @@ public:
         lst::details::iterate_children(node_index, table, flags,
                                        [&](int index) { queue.push(index); });
       }
-
+share 
       int edge_lcp = lst::details::get_edge_lcp(node_index, sequence, suffixes,
                                                 table, flags);
       if (edge_lcp > 1) {
@@ -264,7 +264,7 @@ public:
 
 protected:
   lst::details::sequence_t<alphabet_t> sequence;
-  std::vector<int> suffixes{};
+  std::vector<uint> suffixes{};
   std::vector<int> table{0, 2};
   std::vector<lst::details::Flag> flags{lst::details::Flag::RIGHT_MOST_CHILD,
                                         lst::details::Flag::NONE};
