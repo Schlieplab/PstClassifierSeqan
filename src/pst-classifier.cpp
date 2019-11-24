@@ -20,27 +20,6 @@
 
 #include "probabilistic_suffix_tree.hpp"
 
-struct input_arguments {
-  size_t max_depth{15};
-  size_t min_count{100};
-  float threshold{1.2};
-  size_t number_of_parameters{192};
-  std::string pruning_method{"cutoff"};
-  std::string estimator{"KL"};
-  //std::vector<seqan3::bitcompressed_vector<seqan3::dna5>> sequences{};
-  seqan3::bitcompressed_vector<seqan3::dna5> sequences{};
-  std::vector<std::string> ids{};
-  bool multi_core{false};
-  int split_depth{1};
-};
-
-struct my_traits : seqan3::sequence_file_input_default_traits_dna {
-  template <typename alph>
-  using sequence_container =
-      seqan3::bitcompressed_vector<alph>; // must be defined as a template!
-};
-using namespace std;
-
 
 size_t get_chars_in_file(std::string path){
   std::ifstream   file(path);
@@ -50,6 +29,26 @@ size_t get_chars_in_file(std::string path){
   return size;
 }
 
+
+struct input_arguments {
+  size_t max_depth{15};
+  size_t min_count{100};
+  float threshold{1.2};
+  size_t number_of_parameters{192};
+  std::string pruning_method{"cutoff"};
+  std::string estimator{"KL"};
+  std::vector<seqan3::bitcompressed_vector<seqan3::dna5>> sequences{};
+  //seqan3::bitcompressed_vector<seqan3::dna5> sequences{};
+  std::vector<std::string> ids{};
+  bool multi_core{false};
+  int split_depth{1};
+};
+
+struct my_traits : seqan3::sequence_file_input_default_traits_dna {
+    template <typename alph>
+    using sequence_container =
+    seqan3::bitcompressed_vector<alph>; // must be defined as a template!
+};
 
 input_arguments parse_cli_arguments(int argc, char *argv[]) {
   std::string filename{};
@@ -111,12 +110,8 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
 
   for (auto &[seq, id, qual] : file_in) {
     if (id.find("chromosome") != std::string::npos) {
-      for (auto j : seq){
-        arguments.sequences.push_back(j);
-      }
-      arguments.sequences.push_back('N'_dna5);
+      arguments.sequences.push_back(seq);
       arguments.ids.push_back(id);
-      seqan3::debug_stream << id << endl;
     }
   }
 //arguments.sequences.shrink_to_fit();
@@ -155,19 +150,23 @@ std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
 }
 
 int main(int argc, char *argv[]) {
-
+  using namespace std::chrono;
+  auto start = std::chrono::system_clock::now();
   input_arguments arguments = parse_cli_arguments(argc, argv);
 
   seqan3::debug_stream << "Building index" << std::endl;
 
-  std::string tree = train(arguments.sequences, arguments.ids[0],
+  std::string tree = train(arguments.sequences[0], arguments.ids[0],
                            arguments.max_depth, arguments.min_count,
                            arguments.threshold, arguments.number_of_parameters,
                            arguments.pruning_method, arguments.estimator,
                            arguments.multi_core, arguments.split_depth);
   std::cout << tree << std::endl;
-
+  auto stop = std::chrono::system_clock::now();
+  auto duration   = duration_cast<seconds>(stop-start);
+  std::cout << "Total runtime with IO: " << duration.count() << " sec" << std::endl;
   return 0;
+
 }
 
 

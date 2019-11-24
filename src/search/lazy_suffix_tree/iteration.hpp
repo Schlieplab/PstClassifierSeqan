@@ -86,7 +86,7 @@ bool include_node(int label_start, int label_end, int count) {
 }
 
 void wrapper(auto &sequence,
-             std::vector<uint> &suffixes,
+             std::vector<int64_t> &suffixes,
              std::vector<int> &table, std::vector<Flag> &flags,
              bool expand_nodes, int start_node) {
   BFIp(&sequence, &suffixes, &table, &flags,
@@ -95,7 +95,7 @@ void wrapper(auto &sequence,
 
 template <seqan3::Alphabet alphabet_t>
 void BFIp(sequence_t<alphabet_t> &sequence,
-                                      std::vector<uint> &suffixes,
+                                      std::vector<int64_t> &suffixes,
                                       std::vector<int> &table, std::vector<Flag> &flags,
                                       bool expand_nodes,  const std::function<bool(int, int, int)> &f,
                                       int start_node, int initial_lcp){
@@ -137,7 +137,7 @@ void BFIp(sequence_t<alphabet_t> &sequence,
 
 template <seqan3::Alphabet alphabet_t>
 void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
-                             std::vector<uint> &suffixes,
+                             std::vector<int64_t> &suffixes,
                              std::vector<int> &table, std::vector<Flag> &flags,
                              const std::function<bool(int, int, int)> &f) {
   breadth_first_iteration(sequence, suffixes, table, flags, false, f, false, 0);
@@ -147,7 +147,7 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
 
 template <seqan3::Alphabet alphabet_t>
 void breadth_first_iteration(sequence_t<alphabet_t> &sequence,    
-                             std::vector<uint> &suffixes,
+                             std::vector<int64_t> &suffixes,
                              std::vector<int> &table, std::vector<Flag> &flags,
                              bool expand_nodes,
                              const std::function<bool(int, int, int)> &f, bool build, int paralell_depth) {
@@ -223,7 +223,7 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
 
 template <seqan3::Alphabet alphabet_t>
 int get_edge_lcp(int node_index, sequence_t<alphabet_t> &sequence,
-                 std::vector<uint> &suffixes, std::vector<int> &table,
+                 std::vector<int64_t> &suffixes, std::vector<int> &table,
                  std::vector<Flag> &flags) {
   if (is_leaf(node_index, flags)) {
     return sequence.size() - table[node_index];

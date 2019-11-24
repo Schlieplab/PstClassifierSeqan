@@ -265,3 +265,38 @@ make: *** [Makefile:121: cmTC_97a49/fast] Error 2
 Source file was:
 static_assert (__cpp_concepts >= 201507);
     int main() {}
+Performing C++ SOURCE FILE Test CONCEPTS_FLAG-std=c++20 failed with the following output:
+Change Dir: /home/ghal/git/DATX05/pstclassifierseqan/src/build/release_w_debug/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_dcd8d/fast && /usr/bin/make -f CMakeFiles/cmTC_dcd8d.dir/build.make CMakeFiles/cmTC_dcd8d.dir/build
+make[1]: Entering directory '/home/ghal/git/DATX05/pstclassifierseqan/src/build/release_w_debug/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_dcd8d.dir/src.cxx.o
+/usr/bin/c++   -I/home/ghal/git/DATX05/pstclassifierseqan/seqan3/include -I/home/ghal/git/DATX05/pstclassifierseqan/seqan3/submodules/sdsl-lite/include -I/home/ghal/git/DATX05/pstclassifierseqan/seqan3/submodules/range-v3/include -I/home/ghal/git/DATX05/pstclassifierseqan/seqan3/submodules/cereal/include  -pthread -DCONCEPTS_FLAG-std=c++20  -pthread -std=c++20   -std=gnu++17 -o CMakeFiles/cmTC_dcd8d.dir/src.cxx.o -c /home/ghal/git/DATX05/pstclassifierseqan/src/build/release_w_debug/CMakeFiles/CMakeTmp/src.cxx
+c++: error: unrecognized command line option ‘-std=c++20’; did you mean ‘-std=c++2a’?
+make[1]: *** [CMakeFiles/cmTC_dcd8d.dir/build.make:66: CMakeFiles/cmTC_dcd8d.dir/src.cxx.o] Error 1
+make[1]: Leaving directory '/home/ghal/git/DATX05/pstclassifierseqan/src/build/release_w_debug/CMakeFiles/CMakeTmp'
+make: *** [Makefile:121: cmTC_dcd8d/fast] Error 2
+
+
+Source file was:
+static_assert (__cpp_concepts >= 201507);
+    int main() {}
+Performing C++ SOURCE FILE Test CONCEPTS_FLAG-std=c++2a failed with the following output:
+Change Dir: /home/ghal/git/DATX05/pstclassifierseqan/src/build/release_w_debug/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_867f6/fast && /usr/bin/make -f CMakeFiles/cmTC_867f6.dir/build.make CMakeFiles/cmTC_867f6.dir/build
+make[1]: Entering directory '/home/ghal/git/DATX05/pstclassifierseqan/src/build/release_w_debug/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_867f6.dir/src.cxx.o
+/usr/bin/c++   -I/home/ghal/git/DATX05/pstclassifierseqan/seqan3/include -I/home/ghal/git/DATX05/pstclassifierseqan/seqan3/submodules/sdsl-lite/include -I/home/ghal/git/DATX05/pstclassifierseqan/seqan3/submodules/range-v3/include -I/home/ghal/git/DATX05/pstclassifierseqan/seqan3/submodules/cereal/include  -pthread -DCONCEPTS_FLAG-std=c++2a  -pthread -std=c++2a   -std=gnu++17 -o CMakeFiles/cmTC_867f6.dir/src.cxx.o -c /home/ghal/git/DATX05/pstclassifierseqan/src/build/release_w_debug/CMakeFiles/CMakeTmp/src.cxx
+<command-line>: warning: ISO C++11 requires whitespace after the macro name
+/home/ghal/git/DATX05/pstclassifierseqan/src/build/release_w_debug/CMakeFiles/CMakeTmp/src.cxx:1:16: error: ‘__cpp_concepts’ was not declared in this scope
+    1 | static_assert (__cpp_concepts >= 201507);
+      |                ^~~~~~~~~~~~~~
+make[1]: *** [CMakeFiles/cmTC_867f6.dir/build.make:66: CMakeFiles/cmTC_867f6.dir/src.cxx.o] Error 1
+make[1]: Leaving directory '/home/ghal/git/DATX05/pstclassifierseqan/src/build/release_w_debug/CMakeFiles/CMakeTmp'
+make: *** [Makefile:121: cmTC_867f6/fast] Error 2
+
+
+Source file was:
+static_assert (__cpp_concepts >= 201507);
+    int main() {}

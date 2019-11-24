@@ -11,7 +11,7 @@ namespace lst::details {
 
 template <seqan3::Alphabet alphabet_t>
 int tree_height(std::vector<int> &depths, sequence_t<alphabet_t> &sequence,
-                std::vector<uint> &suffixes, std::vector<int> &table,
+                std::vector<int64_t> &suffixes, std::vector<int> &table,
                 std::vector<Flag> &flags) {
   std::queue<std::tuple<int, int>> queue{};
   queue.emplace(0, 0);
@@ -38,7 +38,7 @@ int tree_height(std::vector<int> &depths, sequence_t<alphabet_t> &sequence,
   return tree_height;
 }
 
-int get_leaf_index(int node_index, int lcp, std::vector<uint> &suffixes,
+int get_leaf_index(int node_index, int lcp, std::vector<int64_t> &suffixes,
                    std::vector<int> &table, std::vector<Flag> &flags) {
   if (is_leaf(node_index, flags)) {
     return table[node_index] - lcp;
@@ -51,7 +51,7 @@ int get_leaf_index(int node_index, int lcp, std::vector<uint> &suffixes,
 
 template <seqan3::Alphabet alphabet_t>
 void add_explicit_suffix_links(sequence_t<alphabet_t> &sequence,
-                               std::vector<uint> &suffixes,
+                               std::vector<int64_t> &suffixes,
                                std::vector<int> &table,
                                std::vector<Flag> &flags,
                                std::vector<int> &suffix_links) {
@@ -79,7 +79,7 @@ template <seqan3::Alphabet alphabet_t>
 void prepare_suffix_links(std::vector<int> &cause,
                           std::vector<int> &leaf_indices,
                           sequence_t<alphabet_t> &sequence,
-                          std::vector<uint> &suffixes, std::vector<int> &table,
+                          std::vector<int64_t> &suffixes, std::vector<int> &table,
                           std::vector<Flag> &flags) {
   prepare_suffix_links(0, 0, cause, leaf_indices, sequence, suffixes, table,
                        flags);
@@ -89,7 +89,7 @@ template <seqan3::Alphabet alphabet_t>
 int prepare_suffix_links(int node_index, int lcp, std::vector<int> &cause,
                          std::vector<int> &leaf_indices,
                          sequence_t<alphabet_t> &sequence,
-                         std::vector<uint> &suffixes, std::vector<int> &table,
+                         std::vector<int64_t> &suffixes, std::vector<int> &table,
                          std::vector<Flag> &flags) {
   if (is_leaf(node_index, flags)) {
     int leaf_index = get_leaf_index(node_index, lcp, suffixes, table, flags);
@@ -156,7 +156,7 @@ void compute_suffix_links(std::vector<int> &cause, std::vector<int> &branch,
                           std::vector<int> &depths,
                           std::vector<int> &leaf_indices,
                           sequence_t<alphabet_t> &sequence,
-                          std::vector<uint> &suffixes, std::vector<int> &table,
+                          std::vector<int64_t> &suffixes, std::vector<int> &table,
                           std::vector<Flag> &flags,
                           std::vector<int> &suffix_links) {
   std::stack<std::tuple<int, int>> stack{};
