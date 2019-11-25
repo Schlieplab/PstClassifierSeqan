@@ -8,11 +8,13 @@
 #include <tuple>
 #include <vector>
 
-#include <seqan3/alphabet/all.hpp>
 #include <seqan3/alphabet/composite/alphabet_variant.hpp>
+#include <seqan3/alphabet/concept.hpp>
+#include <seqan3/core/concept/tuple.hpp>
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/range/container/bitcompressed_vector.hpp>
-#include <seqan3/range/view/convert.hpp>
+#include <seqan3/range/views/convert.hpp>
+#include <seqan3/range/views/to.hpp>
 
 #include "lazy_suffix_tree/construction.hpp"
 #include "lazy_suffix_tree/iteration.hpp"
@@ -31,7 +33,7 @@ namespace lst {
  * memory in cases where we're searching for only a subset of the suffixes.
  *
  */
-template <seqan3::Alphabet alphabet_t = seqan3::dna5> class LazySuffixTree {
+template <seqan3::alphabet alphabet_t = seqan3::dna5> class LazySuffixTree {
 
 public:
   friend class LazySuffixTreeTest;
@@ -44,22 +46,26 @@ public:
    * @param sequence_ The sequence to build the tree for.
    */
   LazySuffixTree(seqan3::bitcompressed_vector<alphabet_t> &sequence_) {
-    sequence = sequence_ | seqan3::view::convert<seqan3::gapped<alphabet_t>>;
-    sequence.push_back(seqan3::gap{});
+    this->sequence = sequence_ |
+                     seqan3::views::convert<seqan3::gapped<alphabet_t>> |
+                     seqan3::views::to<lst::details::sequence_t<alphabet_t>>;
+    this->sequence.push_back(seqan3::gap{});
 
-    suffixes = std::vector<int>(sequence.size());
-    std::iota(suffixes.begin(), suffixes.end(), 0);
+    suffixes = std::vector<int>(this->sequence.size());
+    std::iota(this->suffixes.begin(), this->suffixes.end(), 0);
 
-    lst::details::expand_root(sequence, suffixes, table, flags);
+    lst::details::expand_root(this->sequence, this->suffixes, this->table,
+                              this->flags);
   }
 
   /**! \brief Fully builds the lazy suffix tree.
    *
    */
   void expand_all() {
-    for (int i = 0; i < table.size(); i++) {
-      if (is_unevaluated(i)) {
-        lst::details::expand_node(i, sequence, suffixes, table, flags);
+    for (int i = 0; i < this->table.size(); i++) {
+      if (this->is_unevaluated(i)) {
+        lst::details::expand_node(i, this->sequence, this->suffixes,
+                                  this->table, this->flags);
       }
     }
   }
@@ -262,7 +268,6 @@ public:
         });
   }
 
-protected:
   lst::details::sequence_t<alphabet_t> sequence;
   std::vector<int> suffixes{};
   std::vector<int> table{0, 2};
@@ -271,6 +276,7 @@ protected:
   std::vector<int> suffix_links{};
   std::vector<lst::details::alphabet_array<alphabet_t>> reverse_suffix_links{};
 
+protected:
   std::vector<int> suffix_indices(int node_index, int og_lcp) {
     if (node_index >= table.size()) {
       throw std::invalid_argument(
@@ -373,7 +379,7 @@ protected:
 
   lst::details::sequence_t<alphabet_t> edge_label(int node_index,
                                                   int edge_lcp) {
-    int edge_start = get_sequence_index(node_index);
+    int edge_start = this->get_sequence_index(node_index);
     lst::details::sequence_t<alphabet_t> edge(
         this->sequence.begin() + edge_start,
         this->sequence.begin() + edge_start + edge_lcp);
@@ -383,7 +389,7 @@ protected:
 
   lst::details::sequence_t<alphabet_t> node_label(int node_index, int lcp,
                                                   int edge_lcp) {
-    int sequence_index = get_sequence_index(node_index);
+    int sequence_index = this->get_sequence_index(node_index);
 
     int node_start = sequence_index - lcp;
     int node_end = sequence_index + edge_lcp;

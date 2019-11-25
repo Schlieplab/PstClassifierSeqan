@@ -1,4 +1,5 @@
-cmake_minimum_required (VERSION 3.4)
+cmake_minimum_required (VERSION 3.4...3.12)
+
 project (pst_classifier_tests CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -66,6 +67,6 @@ test_case(probabilistic_suffix_tree_tests.cpp)
 add_subdirectory(search)
 add_subdirectory(search/lazy_suffix_tree)
 
-add_executable(benchmarks benchmarks.cpp)
-target_link_libraries(benchmarks benchmark)
-target_link_libraries(benchmarks seqan3::seqan3)
+#add_executable(benchmarks benchmarks.cpp)
+#target_link_libraries(benchmarks benchmark)
+#target_link_libraries(benchmarks seqan3::seqan3)

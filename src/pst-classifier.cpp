@@ -6,7 +6,6 @@
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/range/container/bitcompressed_vector.hpp>
-#include <seqan3/range/view/char_to.hpp>
 
 #include "probabilistic_suffix_tree.hpp"
 
@@ -32,8 +31,8 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
 
   input_arguments arguments{};
 
-  seqan3::argument_parser parser{"Build PST/VLMC on the given fasta file.",
-                                 argc, argv, false};
+  seqan3::argument_parser parser{"Pst-Classifier", argc, argv, false};
+  parser.info.short_description = "Build PST/VLMC on the given fasta file.";
 
   parser.add_positional_option(filename, "path to fasta file.");
 

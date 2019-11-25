@@ -4,12 +4,14 @@
 #include <stack>
 #include <vector>
 
+#include <seqan3/alphabet/concept.hpp>
+
 #include "construction.hpp"
 #include "iteration.hpp"
 
 namespace lst::details {
 
-template <seqan3::Alphabet alphabet_t>
+template <seqan3::alphabet alphabet_t>
 int tree_height(std::vector<int> &depths, sequence_t<alphabet_t> &sequence,
                 std::vector<int> &suffixes, std::vector<int> &table,
                 std::vector<Flag> &flags) {
@@ -49,7 +51,7 @@ int get_leaf_index(int node_index, int lcp, std::vector<int> &suffixes,
   }
 }
 
-template <seqan3::Alphabet alphabet_t>
+template <seqan3::alphabet alphabet_t>
 void add_explicit_suffix_links(sequence_t<alphabet_t> &sequence,
                                std::vector<int> &suffixes,
                                std::vector<int> &table,
@@ -75,7 +77,7 @@ void add_explicit_suffix_links(sequence_t<alphabet_t> &sequence,
                        table, flags, suffix_links);
 }
 
-template <seqan3::Alphabet alphabet_t>
+template <seqan3::alphabet alphabet_t>
 void prepare_suffix_links(std::vector<int> &cause,
                           std::vector<int> &leaf_indices,
                           sequence_t<alphabet_t> &sequence,
@@ -85,7 +87,7 @@ void prepare_suffix_links(std::vector<int> &cause,
                        flags);
 }
 
-template <seqan3::Alphabet alphabet_t>
+template <seqan3::alphabet alphabet_t>
 int prepare_suffix_links(int node_index, int lcp, std::vector<int> &cause,
                          std::vector<int> &leaf_indices,
                          sequence_t<alphabet_t> &sequence,
@@ -132,7 +134,6 @@ int prepare_suffix_links(int node_index, int lcp, std::vector<int> &cause,
   }
 }
 
-
 void assign_link(int leaf_index, std::vector<int> &cause,
                  std::vector<int> &branch, std::vector<int> &depths,
                  std::vector<int> &suffix_links) {
@@ -150,7 +151,7 @@ void assign_leaf_link(int node_index, int leaf_index,
   }
 }
 
-template <seqan3::Alphabet alphabet_t>
+template <seqan3::alphabet alphabet_t>
 void compute_suffix_links(std::vector<int> &cause, std::vector<int> &branch,
                           std::vector<int> &depths,
                           std::vector<int> &leaf_indices,

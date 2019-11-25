@@ -4,7 +4,7 @@
 #include <queue>
 #include <vector>
 
-#include <seqan3/alphabet/all.hpp>
+#include <seqan3/alphabet/concept.hpp>
 
 #include "construction.hpp"
 
@@ -70,7 +70,7 @@ int node_occurrences(int node_index, std::vector<int> &table,
   return occurrences;
 }
 
-template <seqan3::Alphabet alphabet_t>
+template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
                              std::vector<int> &suffixes,
                              std::vector<int> &table, std::vector<Flag> &flags,
@@ -78,7 +78,7 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
   breadth_first_iteration(sequence, suffixes, table, flags, true, f);
 }
 
-template <seqan3::Alphabet alphabet_t>
+template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
                              std::vector<int> &suffixes,
                              std::vector<int> &table, std::vector<Flag> &flags,
@@ -113,7 +113,7 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
   }
 }
 
-template <seqan3::Alphabet alphabet_t>
+template <seqan3::alphabet alphabet_t>
 int get_edge_lcp(int node_index, sequence_t<alphabet_t> &sequence,
                  std::vector<int> &suffixes, std::vector<int> &table,
                  std::vector<Flag> &flags) {

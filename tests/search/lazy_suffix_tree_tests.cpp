@@ -8,7 +8,8 @@ using seqan3::operator""_dna5;
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 using seqan3::operator""_dna4;
 #include <seqan3/range/container/bitcompressed_vector.hpp>
-#include <seqan3/range/view/convert.hpp>
+#include <seqan3/range/views/convert.hpp>
+#include <seqan3/range/views/to.hpp>
 
 #include <seqan3/core/debug_stream.hpp>
 
@@ -37,19 +38,21 @@ protected:
   seqan3::bitcompressed_vector<seqan3::dna4> sequence4{};
   lst::LazySuffixTree<seqan3::dna4> tree4{};
 
-  template <seqan3::Alphabet alphabet_t = seqan3::dna5>
+  template <seqan3::alphabet alphabet_t = seqan3::dna5>
   sequence_t<alphabet_t> make_gapped(std::vector<alphabet_t> sequence) {
     std::vector<seqan3::gapped<alphabet_t>> sequence_ =
-        sequence | seqan3::view::convert<seqan3::gapped<alphabet_t>>;
+        sequence | seqan3::views::convert<seqan3::gapped<alphabet_t>> |
+        seqan3::views::to<std::vector<seqan3::gapped<alphabet_t>>>;
 
     return sequence_t<alphabet_t>{sequence_};
   }
 
-  template <seqan3::Alphabet alphabet_t = seqan3::dna5>
+  template <seqan3::alphabet alphabet_t = seqan3::dna5>
   sequence_t<alphabet_t>
   make_gapped_with_gap(std::vector<alphabet_t> sequence) {
     std::vector<seqan3::gapped<alphabet_t>> sequence_ =
-        sequence | seqan3::view::convert<seqan3::gapped<alphabet_t>>;
+        sequence | seqan3::views::convert<seqan3::gapped<alphabet_t>> |
+        seqan3::views::to<std::vector<seqan3::gapped<alphabet_t>>>;
 
     sequence_.push_back(seqan3::gap{});
     return sequence_t<alphabet_t>{sequence_};
@@ -176,24 +179,6 @@ TEST_F(LazySuffixTreeTest, Search) {
   EXPECT_EQ(tree5.search("ACCCC"_dna5).size(), 0);
   EXPECT_EQ(tree5.search("TCTCTCTCTCT"_dna5).size(), 0);
   EXPECT_EQ(tree5.search("ATCT"_dna5).size(), 0);
-}
-
-TEST_F(LazySuffixTreeTest, Find) {
-  auto [a_index, a_lcp] = tree.find("A"_dna5);
-  EXPECT_EQ(a_index, 2);
-  EXPECT_EQ(a_lcp, 0);
-
-  auto [c_index, c_lcp] = tree.find("C"_dna5);
-  EXPECT_EQ(c_index, 4);
-  EXPECT_EQ(c_lcp, 0);
-
-  auto [tt_index, tt_lcp] = tree.find("TT"_dna5);
-  EXPECT_EQ(tt_index, -1);
-  EXPECT_EQ(tt_lcp, -1);
-
-  auto [acgt_index, acgt_lcp] = tree4.find("ACGT"_dna4);
-  EXPECT_EQ(acgt_index, 2);
-  EXPECT_EQ(acgt_lcp, 0);
 }
 
 TEST_F(LazySuffixTreeTest, ExpandImplicitNodes) {

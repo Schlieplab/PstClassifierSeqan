@@ -17,7 +17,7 @@ protected:
     using seqan3::operator""_dna5;
     std::vector<seqan3::dna5> sequence_{"CACAC"_dna5};
     sequence = sequence_t<seqan3::dna5>{
-        sequence_ | seqan3::view::convert<seqan3::gapped<seqan3::dna5>>};
+        sequence_ | seqan3::views::convert<seqan3::gapped<seqan3::dna5>>};
     sequence.push_back(seqan3::gap{});
   }
 
