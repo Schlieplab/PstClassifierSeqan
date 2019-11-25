@@ -1,4 +1,0 @@
-/home/ghal/git/DATX05/pstclassifierseqan/src/build/release/CMakeFiles/rebuild_cache.dir
-/home/ghal/git/DATX05/pstclassifierseqan/src/build/release/CMakeFiles/vlmc.dir
-/home/ghal/git/DATX05/pstclassifierseqan/src/build/release/CMakeFiles/edit_cache.dir
-/home/ghal/git/DATX05/pstclassifierseqan/src/build/release/CMakeFiles/pst-classifier.dir

@@ -8,3 +8,5 @@ build/*
 data/
 experiment/
 readFile.cpp
+src/build/*
+*.fa*

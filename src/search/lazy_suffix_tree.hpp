@@ -46,7 +46,7 @@ public:
   LazySuffixTree(seqan3::bitcompressed_vector<alphabet_t> &sequence_) {
     sequence = sequence_ | seqan3::view::convert<seqan3::gapped<alphabet_t>>;
     sequence.push_back(seqan3::gap{});
-    suffixes = std::vector<int64_t>(sequence.size());
+    suffixes = std::vector<int>(sequence.size());
     std::iota(suffixes.begin(), suffixes.end(), 0);
 
     lst::details::expand_root(sequence, suffixes, table, flags);
@@ -263,7 +263,7 @@ public:
 
 protected:
   lst::details::sequence_t<alphabet_t> sequence;
-  std::vector<int64_t> suffixes{};
+  std::vector<int> suffixes{};
   std::vector<int> table{0, 2};
   std::vector<lst::details::Flag> flags{lst::details::Flag::RIGHT_MOST_CHILD,
                                         lst::details::Flag::NONE};
