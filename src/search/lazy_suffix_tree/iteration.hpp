@@ -118,7 +118,7 @@ int get_edge_lcp(int node_index, sequence_t<alphabet_t> &sequence,
                  std::vector<int> &suffixes, std::vector<int> &table,
                  std::vector<Flag> &flags) {
   if (is_leaf(node_index, flags)) {
-    return sequence.size() - table[node_index];
+    return suffixes.size() - table[node_index];
   }
 
   if (is_unevaluated(node_index, flags)) {
@@ -126,7 +126,7 @@ int get_edge_lcp(int node_index, sequence_t<alphabet_t> &sequence,
         table[node_index], table[node_index + 1], sequence, suffixes);
   }
 
-  int smallest_child_index = sequence.size();
+  int smallest_child_index = suffixes.size();
 
   iterate_children(node_index, table, flags, [&](int index) {
     int table_index = table[index];

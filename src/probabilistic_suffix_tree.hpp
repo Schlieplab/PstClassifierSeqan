@@ -54,9 +54,9 @@ enum Status : unsigned char {
  */
 template <seqan3::alphabet alphabet_t>
 class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
+public:
   friend class ProbabilisticSuffixTreeTest;
 
-public:
   ProbabilisticSuffixTree() = default;
   ProbabilisticSuffixTree(ProbabilisticSuffixTree const &) = default;
   ~ProbabilisticSuffixTree() = default;
@@ -420,7 +420,9 @@ protected:
     lst::details::iterate_children(
         node_index, this->table, this->flags, [&](int child_index) {
           int sequence_index = this->get_sequence_index(child_index);
-          auto char_rank = seqan3::to_rank(this->sequence[sequence_index]);
+          auto character = this->get_character(sequence_index);
+
+          auto char_rank = seqan3::to_rank(character);
           if (this->valid_characters.find(char_rank) ==
               this->valid_characters.end()) {
             return;
@@ -640,12 +642,13 @@ protected:
     lst::details::iterate_children(
         node_index, this->table, this->flags, [&](int child_index) {
           int sequence_index = this->get_sequence_index(child_index);
+          auto character = this->get_character(sequence_index);
 
-          if (this->sequence[sequence_index] == seqan3::gap{}) {
+          if (character == seqan3::gap{}) {
             return;
           }
 
-          int character_rank = seqan3::to_rank(this->sequence[sequence_index]);
+          int character_rank = seqan3::to_rank(character);
 
           child_counts[character_rank] = get_counts(child_index);
         });
@@ -961,7 +964,8 @@ protected:
    */
   bool label_valid(int label_start, int label_end) {
     for (int i = label_start; i < label_end; i++) {
-      auto char_rank = seqan3::to_rank(this->sequence[i]);
+      auto character = this->get_character(i);
+      auto char_rank = seqan3::to_rank(character);
       if (this->valid_characters.find(char_rank) ==
           this->valid_characters.end()) {
         return false;

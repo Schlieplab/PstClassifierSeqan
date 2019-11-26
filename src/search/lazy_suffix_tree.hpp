@@ -45,13 +45,9 @@ public:
   /**! \brief Constructor.
    * @param sequence_ The sequence to build the tree for.
    */
-  LazySuffixTree(seqan3::bitcompressed_vector<alphabet_t> &sequence_) {
-    this->sequence = sequence_ |
-                     seqan3::views::convert<seqan3::gapped<alphabet_t>> |
-                     seqan3::views::to<lst::details::sequence_t<alphabet_t>>;
-    this->sequence.push_back(seqan3::gap{});
-
-    suffixes = std::vector<int>(this->sequence.size());
+  LazySuffixTree(seqan3::bitcompressed_vector<alphabet_t> &sequence_)
+      : sequence(sequence_) {
+    suffixes = std::vector<int>(this->sequence.size() + 1);
     std::iota(this->suffixes.begin(), this->suffixes.end(), 0);
 
     lst::details::expand_root(this->sequence, this->suffixes, this->table,
@@ -88,10 +84,7 @@ public:
           if (is_leaf(node_index)) {
             label = leaf_label(node_index, lcp);
           }
-
-          if (label.size() != 0) {
-            labels.emplace_back(label, occurrences);
-          }
+          labels.emplace_back(label, occurrences);
           return true;
         });
 
@@ -106,20 +99,22 @@ public:
   std::vector<int> search(std::vector<alphabet_t> pattern) {
     if (pattern.size() == 0) {
       std::vector<int> all_suffixes{};
+
       lst::details::iterate_children(0, table, flags, [&](int index) {
-        auto suffixes = suffix_indices(index, 0);
+        auto suffixes = this->suffix_indices(index, 0);
+
         all_suffixes.insert(all_suffixes.end(), suffixes.begin(),
                             suffixes.end());
       });
       return all_suffixes;
     }
 
-    auto [node_index, lcp] = find(pattern);
+    auto [node_index, lcp] = this->find(pattern);
 
     if (node_index == -1) {
       return std::vector<int>{};
     } else {
-      return suffix_indices(node_index, lcp);
+      return this->suffix_indices(node_index, lcp);
     }
   }
 
@@ -227,7 +222,8 @@ public:
 
           int suffix_parent = suffix_links[node_index / 2];
 
-          int character_rank = seqan3::to_rank(this->sequence[node_start]);
+          auto character = this->get_character(node_start);
+          int character_rank = seqan3::to_rank(character);
 
           if (reverse_suffix_links[suffix_parent / 2][character_rank] == -1) {
             reverse_suffix_links[suffix_parent / 2][character_rank] =
@@ -323,15 +319,16 @@ protected:
 
       int edge_lcp;
       if (is_unevaluated(node_index)) {
-        edge_lcp = lst::details::expand_node(node_index, sequence, suffixes,
-                                             table, flags);
+        edge_lcp =
+            lst::details::expand_node(node_index, this->sequence,
+                                      this->suffixes, this->table, this->flags);
       } else {
-        edge_lcp = lst::details::get_edge_lcp(node_index, sequence, suffixes,
-                                              table, flags);
+        edge_lcp = lst::details::get_edge_lcp(node_index, this->sequence,
+                                              this->suffixes, this->table,
+                                              this->flags);
       }
 
-      lst::details::sequence_t<alphabet_t> edge =
-          edge_label(node_index, edge_lcp);
+      auto edge = edge_label(node_index, edge_lcp);
 
       bool edge_match = edge_matches(node_index, pattern_lcp, pattern, edge);
 
@@ -368,8 +365,9 @@ protected:
                     lst::details::sequence_t<alphabet_t> &edge) {
     for (int i = 0; pattern_lcp + i < pattern.size() && i < edge.size(); i++) {
       int sequence_index = table[node_index] + i;
+      auto character = this->get_character(sequence_index);
 
-      if (sequence[sequence_index] != pattern[pattern_lcp + i]) {
+      if (character != pattern[pattern_lcp + i]) {
         return false;
       }
     }
@@ -380,9 +378,14 @@ protected:
   lst::details::sequence_t<alphabet_t> edge_label(int node_index,
                                                   int edge_lcp) {
     int edge_start = this->get_sequence_index(node_index);
+    int edge_end = edge_start + edge_lcp;
+
+    if (edge_end > this->sequence.size()) {
+      edge_end -= 1;
+    }
+
     lst::details::sequence_t<alphabet_t> edge(
-        this->sequence.begin() + edge_start,
-        this->sequence.begin() + edge_start + edge_lcp);
+        this->sequence.begin() + edge_start, this->sequence.begin() + edge_end);
 
     return edge;
   }
@@ -393,6 +396,10 @@ protected:
 
     int node_start = sequence_index - lcp;
     int node_end = sequence_index + edge_lcp;
+    if (node_end > this->sequence.size()) {
+      node_end -= 1;
+    }
+
     lst::details::sequence_t<alphabet_t> label(
         this->sequence.begin() + node_start, this->sequence.begin() + node_end);
 
@@ -413,6 +420,10 @@ protected:
     } else {
       return table[node_index];
     }
+  }
+
+  seqan3::gapped<alphabet_t> get_character(size_t index) {
+    return lst::details::get_character(this->sequence, index);
   }
 
   bool is_leaf(int node_index) {

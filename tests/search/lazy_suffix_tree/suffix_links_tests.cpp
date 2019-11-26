@@ -8,20 +8,16 @@
 
 using namespace lst::details;
 
-#include <seqan3/alphabet/all.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 
-class LazySuffixTreeTest : public ::testing::Test {
+using seqan3::operator""_dna5;
+
+class SuffixLinksTests : public ::testing::Test {
 protected:
   void SetUp() override {
-    using seqan3::operator""_dna5;
-    std::vector<seqan3::dna5> sequence_{"CACAC"_dna5};
-    sequence = sequence_t<seqan3::dna5>{
-        sequence_ | seqan3::views::convert<seqan3::gapped<seqan3::dna5>>};
-    sequence.push_back(seqan3::gap{});
   }
 
-  sequence_t<seqan3::dna5> sequence{};
+  sequence_t<seqan3::dna5> sequence{"CACAC"_dna5};
 
   std::vector<int> table{0, 2, 1, 8,  0, 12, 5, 0, 3, 0,
                          5, 0, 1, 16, 5, 0,  3, 0, 5, 0};
@@ -62,7 +58,7 @@ protected:
   };
 };
 
-TEST_F(LazySuffixTreeTest, TreeHeight) {
+TEST_F(SuffixLinksTests, TreeHeight) {
   std::vector<int> depths(table.size() / 2, -1);
   int height =
       tree_height<seqan3::dna5>(depths, sequence, suffixes, table, flags);
@@ -74,7 +70,7 @@ TEST_F(LazySuffixTreeTest, TreeHeight) {
   EXPECT_EQ(depths, expected_depths);
 }
 
-TEST_F(LazySuffixTreeTest, LeafIndex) {
+TEST_F(SuffixLinksTests, LeafIndex) {
   int leaf_index = get_leaf_index(6, 0, suffixes, table, flags);
   EXPECT_EQ(leaf_index, 5);
 

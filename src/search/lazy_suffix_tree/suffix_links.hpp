@@ -61,10 +61,10 @@ void add_explicit_suffix_links(sequence_t<alphabet_t> &sequence,
   // doi:10.1016/j.ipl.2005.12.012
   // With modifications to allow for unevaluated nodes.
 
-  std::vector<int> cause(sequence.size() + 2, -1);
+  std::vector<int> cause(suffixes.size() + 2, -1);
 
-  std::vector<int> leaf_indices(sequence.size() + 1, -1);
-  leaf_indices[sequence.size()] = 0;
+  std::vector<int> leaf_indices(suffixes.size() + 1, -1);
+  leaf_indices[suffixes.size()] = 0;
 
   prepare_suffix_links(cause, leaf_indices, sequence, suffixes, table, flags);
 
@@ -112,8 +112,8 @@ int prepare_suffix_links(int node_index, int lcp, std::vector<int> &cause,
   } else {
     int edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
 
-    int smallest_child = sequence.size();
-    int second_smallest_child = sequence.size();
+    int smallest_child = suffixes.size();
+    int second_smallest_child = suffixes.size();
 
     iterate_children(node_index, table, flags, [&](int index) {
       int child =
