@@ -33,7 +33,7 @@ namespace lst {
  * memory in cases where we're searching for only a subset of the suffixes.
  *
  */
-template <seqan3::alphabet alphabet_t = seqan3::dna5> class LazySuffixTree {
+template <seqan3::alphabet alphabet_t> class LazySuffixTree {
 
 public:
   friend class LazySuffixTreeTest;
@@ -74,9 +74,8 @@ public:
   get_all_labels() {
     std::vector<std::tuple<lst::details::sequence_t<alphabet_t>, int>> labels{};
 
-    lst::details::breadth_first_iteration(
-        sequence, suffixes, table, flags,
-        [&](int node_index, int lcp, int edge_lcp) -> bool {
+    this->breadth_first_iteration(
+        0, 0, true, [&](int node_index, int lcp, int edge_lcp) -> bool {
           auto label = node_label(node_index, lcp, edge_lcp);
           int occurrences =
               lst::details::node_occurrences(node_index, table, flags);
@@ -100,7 +99,7 @@ public:
     if (pattern.size() == 0) {
       std::vector<int> all_suffixes{};
 
-      lst::details::iterate_children(0, table, flags, [&](int index) {
+      this->iterate_children(0, [&](int index) {
         auto suffixes = this->suffix_indices(index, 0);
 
         all_suffixes.insert(all_suffixes.end(), suffixes.begin(),
@@ -124,14 +123,16 @@ public:
    * Accepts a callback function which for each node gives the start and end
    * index into the sequence, the length of the edge, and the occurrence count.
    *
+   * \param[in] expand_nodes flag determining if the tree will be expanded or
+   * not.
    * \param f callback function which gives the start, end sequence index,
    * edge length and occurrences of each node.
    */
   void
-  breadth_first_traversal(const std::function<bool(int, int, int, int)> &f) {
-    lst::details::breadth_first_iteration(
-        sequence, suffixes, table, flags,
-        [&](int node_index, int lcp, int edge_lcp) -> bool {
+  breadth_first_traversal(bool expand_nodes,
+                          const std::function<bool(int, int, int, int)> &f) {
+    this->breadth_first_iteration(
+        0, 0, true, [&](int node_index, int lcp, int edge_lcp) -> bool {
           int sequence_index = get_sequence_index(node_index);
 
           int node_start = sequence_index - lcp;
@@ -153,7 +154,7 @@ public:
    * This is a convenience for further implementations and not a requirement
    * for the lazy suffix tree.
    */
-  virtual void expand_implicit_nodes() {
+  void expand_implicit_nodes() {
     std::queue<int> queue{};
     queue.push(0);
 
@@ -166,15 +167,26 @@ public:
       }
 
       if (!is_leaf(node_index)) {
-        lst::details::iterate_children(node_index, table, flags,
-                                       [&](int index) { queue.push(index); });
+        this->iterate_children(node_index,
+                               [&](int index) { queue.push(index); });
       }
 
-      int edge_lcp = lst::details::get_edge_lcp(node_index, sequence, suffixes,
-                                                table, flags);
+      int edge_lcp = this->get_edge_lcp(node_index);
       if (edge_lcp > 1) {
-        lst::details::add_implicit_nodes(node_index, edge_lcp, table, flags);
+        this->add_implicit_nodes(node_index, edge_lcp);
       }
+    }
+  }
+
+  /**! \brief Expands the implicit nodes in node_index
+   *
+   * \param node_index The index of the node to expand implicit nodes of.
+   * \param edge_lcp The length of the edge (== number of implicit nodes).
+   */
+  void add_implicit_nodes(int node_index, int edge_lcp) {
+    if (edge_lcp > 1) {
+      lst::details::add_implicit_nodes(node_index, edge_lcp, this->table,
+                                       this->flags);
     }
   }
 
@@ -190,7 +202,8 @@ public:
 
     lst::details::add_explicit_suffix_links(sequence, suffixes, table, flags,
                                             suffix_links);
-    lst::details::add_implicit_suffix_links(table, flags, suffix_links);
+    lst::details::add_implicit_suffix_links(sequence, suffixes, table, flags,
+                                            suffix_links);
     suffix_links[0] = -1;
   }
 
@@ -210,9 +223,8 @@ public:
       reverses.fill(-1);
     }
 
-    lst::details::breadth_first_iteration(
-        sequence, suffixes, table, flags, false,
-        [&](int node_index, int lcp, int edge_lcp) -> bool {
+    this->breadth_first_iteration(
+        0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (this->skip_node(node_index)) {
             return true;
           }
@@ -221,6 +233,10 @@ public:
           int node_start = sequence_index - lcp;
 
           int suffix_parent = suffix_links[node_index / 2];
+
+          if (suffix_parent == -1) {
+            return true;
+          }
 
           auto character = this->get_character(node_start);
           int character_rank = seqan3::to_rank(character);
@@ -237,31 +253,36 @@ public:
    *
    */
   virtual void print() {
-    lst::details::breadth_first_iteration(
-        sequence, suffixes, table, flags, false,
-        [&](int node_index, int lcp, int edge_lcp) -> bool {
-          auto label = node_label(node_index, lcp, edge_lcp);
+    this->debug_print_node(0, 0, 0);
+    seqan3::debug_stream << std::endl;
 
-          if (is_leaf(node_index)) {
-            label = leaf_label(node_index, lcp);
-          }
-
-          seqan3::debug_stream << label << "\t" << node_index << "\t"
-                               << table[node_index] << "\t"
-                               << table[node_index + 1];
-
-          if (suffix_links.size() > node_index / 2) {
-            seqan3::debug_stream << "\t" << suffix_links[node_index / 2];
-          }
-
-          if (reverse_suffix_links.size() > node_index / 2) {
-            seqan3::debug_stream << "\t"
-                                 << reverse_suffix_links[node_index / 2];
-          }
-
+    this->breadth_first_iteration(
+        0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
+          this->debug_print_node(node_index, lcp, edge_lcp);
           seqan3::debug_stream << std::endl;
           return true;
         });
+  }
+
+  virtual void debug_print_node(int node_index, int lcp, int edge_lcp) {
+    auto label = node_label(node_index, lcp, edge_lcp);
+
+    if (is_leaf(node_index)) {
+      label = leaf_label(node_index, lcp);
+    }
+
+    seqan3::debug_stream << label << "\t" << node_index << "\t"
+                         << table[node_index] << "\t" << table[node_index + 1];
+
+    if (this->suffix_links.size() > node_index / 2) {
+      seqan3::debug_stream << "\tSuffix link: "
+                           << this->suffix_links[node_index / 2];
+    }
+
+    if (this->reverse_suffix_links.size() > node_index / 2) {
+      seqan3::debug_stream << "\tReverse suffix links: "
+                           << this->reverse_suffix_links[node_index / 2];
+    }
   }
 
   lst::details::sequence_t<alphabet_t> sequence;
@@ -295,11 +316,10 @@ protected:
           start_indicies.push_back(suffixes[i] - lcp);
         }
       } else {
-        int edge_lcp =
-            lst::details::get_edge_lcp(index, sequence, suffixes, table, flags);
+        int edge_lcp = this->get_edge_lcp(index);
         int new_lcp = lcp + edge_lcp;
-        lst::details::iterate_children(
-            index, table, flags, [&](int i) { queue.emplace(i, new_lcp); });
+        this->iterate_children(index,
+                               [&](int i) { queue.emplace(i, new_lcp); });
       }
     }
 
@@ -323,9 +343,7 @@ protected:
             lst::details::expand_node(node_index, this->sequence,
                                       this->suffixes, this->table, this->flags);
       } else {
-        edge_lcp = lst::details::get_edge_lcp(node_index, this->sequence,
-                                              this->suffixes, this->table,
-                                              this->flags);
+        edge_lcp = this->get_edge_lcp(node_index);
       }
 
       auto edge = edge_label(node_index, edge_lcp);
@@ -345,9 +363,8 @@ protected:
 
       if (!is_leaf(node_index)) {
         int new_lcp = lcp + edge_lcp;
-        lst::details::iterate_children(
-            node_index, table, flags,
-            [&](int index) { queue.emplace(index, new_lcp); });
+        this->iterate_children(
+            node_index, [&](int index) { queue.emplace(index, new_lcp); });
       }
     }
 
@@ -447,6 +464,33 @@ protected:
    */
   virtual bool skip_node(int node_index) {
     return this->is_unevaluated(node_index);
+  }
+
+  /**! \brief Iterates through all suffix tree children of the node with
+   * node_index.
+   *
+   * \param[in] node_index index of node to iterate children of.
+   * \param f function to call on every child.
+   */
+  void iterate_children(int node_index, const std::function<void(int)> &f) {
+    lst::details::iterate_children(node_index, this->table, this->flags, f);
+  }
+
+  /**! \brief Get the edge LCP of the node.
+   *
+   * \param node_index Index of the node.
+   * \return The edge longest common prefix (length of the edge).
+   */
+  int get_edge_lcp(int node_index) {
+    return lst::details::get_edge_lcp(node_index, this->sequence,
+                                      this->suffixes, this->table, this->flags);
+  }
+
+  void breadth_first_iteration(int node_index, int start_lcp, bool expand_nodes,
+                               const std::function<bool(int, int, int)> &f) {
+    lst::details::breadth_first_iteration(node_index, start_lcp, this->sequence,
+                                          this->suffixes, this->table,
+                                          this->flags, expand_nodes, f);
   }
 };
 } // namespace lst

@@ -7,6 +7,7 @@
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/range/container/bitcompressed_vector.hpp>
 
+#include "../src/kl_tree.hpp"
 #include "../src/probabilistic_suffix_tree.hpp"
 
 struct my_traits : seqan3::sequence_file_input_default_traits_dna {
@@ -16,7 +17,7 @@ struct my_traits : seqan3::sequence_file_input_default_traits_dna {
 };
 
 static void HumanHerpesvirus5(benchmark::State &state) {
-  std::string filename{"../NC_006273.2.fa"};
+  std::string filename{"../fasta/NC_006273.2.fa"};
   seqan3::sequence_file_input<my_traits> file_in{filename};
   std::vector<seqan3::bitcompressed_vector<seqan3::dna5>> sequences{};
   std::vector<std::string> ids{};
@@ -31,15 +32,16 @@ static void HumanHerpesvirus5(benchmark::State &state) {
   float threshold = 1.2;
 
   for (auto _ : state) {
-    pst::ProbabilisticSuffixTree<seqan3::dna5> pst{
-        ids[0], sequences[0], max_depth, min_count, threshold};
+    pst::KullbackLieblerTree<seqan3::dna5> pst{ids[0], sequences[0], max_depth,
+                                               min_count, threshold};
+    pst.construct_tree();
   }
 }
 
 BENCHMARK(HumanHerpesvirus5);
 
 static void SaccharomycesCerevisiae(benchmark::State &state) {
-  std::string filename{"../CM010781.1.fa"};
+  std::string filename{"../fasta/CM010781.1.fa"};
   seqan3::sequence_file_input<my_traits> file_in{filename};
   std::vector<seqan3::bitcompressed_vector<seqan3::dna5>> sequences{};
   std::vector<std::string> ids{};
@@ -54,15 +56,16 @@ static void SaccharomycesCerevisiae(benchmark::State &state) {
   float threshold = 1.2;
 
   for (auto _ : state) {
-    pst::ProbabilisticSuffixTree<seqan3::dna5> pst{
-        ids[0], sequences[0], max_depth, min_count, threshold};
+    pst::KullbackLieblerTree<seqan3::dna5> pst{ids[0], sequences[0], max_depth,
+                                               min_count, threshold};
+    pst.construct_tree();
   }
 }
 
 BENCHMARK(SaccharomycesCerevisiae);
 
 static void EColi(benchmark::State &state) {
-  std::string filename{"../CP007136.1.fa"};
+  std::string filename{"../fasta/CP007136.1.fa"};
   seqan3::sequence_file_input<my_traits> file_in{filename};
   std::vector<seqan3::bitcompressed_vector<seqan3::dna5>> sequences{};
   std::vector<std::string> ids{};
@@ -77,15 +80,16 @@ static void EColi(benchmark::State &state) {
   float threshold = 1.2;
 
   for (auto _ : state) {
-    pst::ProbabilisticSuffixTree<seqan3::dna5> pst{
-        ids[0], sequences[0], max_depth, min_count, threshold};
+    pst::KullbackLieblerTree<seqan3::dna5> pst{ids[0], sequences[0], max_depth,
+                                               min_count, threshold};
+    pst.construct_tree();
   }
 }
 
 BENCHMARK(EColi);
 
 static void HumanChr17(benchmark::State &state) {
-  std::string filename{"../NC_000017.11.fa"};
+  std::string filename{"../fasta/NC_000017.11.fa"};
   seqan3::sequence_file_input<my_traits> file_in{filename};
   std::vector<seqan3::bitcompressed_vector<seqan3::dna5>> sequences{};
   std::vector<std::string> ids{};
@@ -100,15 +104,16 @@ static void HumanChr17(benchmark::State &state) {
   float threshold = 1.2;
 
   for (auto _ : state) {
-    pst::ProbabilisticSuffixTree<seqan3::dna5> pst{
-        ids[0], sequences[0], max_depth, min_count, threshold};
+    pst::KullbackLieblerTree<seqan3::dna5> pst{ids[0], sequences[0], max_depth,
+                                               min_count, threshold};
+    pst.construct_tree();
   }
 }
 
 BENCHMARK(HumanChr17);
 
 static void HumanChr1(benchmark::State &state) {
-  std::string filename{"../NC_000001.11.fa"};
+  std::string filename{"../fasta/NC_000001.11.fa"};
   seqan3::sequence_file_input<my_traits> file_in{filename};
   std::vector<seqan3::bitcompressed_vector<seqan3::dna5>> sequences{};
   std::vector<std::string> ids{};
@@ -123,8 +128,9 @@ static void HumanChr1(benchmark::State &state) {
   float threshold = 1.2;
 
   for (auto _ : state) {
-    pst::ProbabilisticSuffixTree<seqan3::dna5> pst{
-        ids[0], sequences[0], max_depth, min_count, threshold};
+    pst::KullbackLieblerTree<seqan3::dna5> pst{ids[0], sequences[0], max_depth,
+                                               min_count, threshold};
+    pst.construct_tree();
   }
 }
 

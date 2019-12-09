@@ -74,19 +74,22 @@ template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
                              std::vector<int> &suffixes,
                              std::vector<int> &table, std::vector<Flag> &flags,
+                             bool expand_nodes,
                              const std::function<bool(int, int, int)> &f) {
-  breadth_first_iteration(sequence, suffixes, table, flags, true, f);
+  breadth_first_iteration(0, 0, sequence, suffixes, table, flags, expand_nodes,
+                          f);
 }
 
 template <seqan3::alphabet alphabet_t>
-void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
+void breadth_first_iteration(int start_index, int start_lcp,
+                             sequence_t<alphabet_t> &sequence,
                              std::vector<int> &suffixes,
                              std::vector<int> &table, std::vector<Flag> &flags,
                              bool expand_nodes,
                              const std::function<bool(int, int, int)> &f) {
   std::queue<std::tuple<int, int>> queue{};
-  iterate_children(0, table, flags,
-                   [&](int index) { queue.emplace(index, 0); });
+  iterate_children(start_index, table, flags,
+                   [&](int index) { queue.emplace(index, start_lcp); });
 
   while (!queue.empty()) {
     auto [node_index, lcp] = queue.front();
@@ -102,6 +105,10 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
     }
 
     bool consider_children = f(node_index, lcp, edge_lcp);
+
+    // It is possible that the call to f expands implicit nodes, need to
+    // recalculate the edge_lcp.
+    edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
 
     if (!consider_children) {
       continue;
