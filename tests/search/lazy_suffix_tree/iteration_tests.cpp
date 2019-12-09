@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <vector>
+
 #include "../../../src/search/lazy_suffix_tree.hpp"
 #include "../../../src/search/lazy_suffix_tree/construction.hpp"
 #include "../../../src/search/lazy_suffix_tree/suffix_links.hpp"
@@ -13,7 +15,6 @@ class IterationTests : public ::testing::Test {
 protected:
   void SetUp() override {
   }
-
   sequence_t<seqan3::dna5> sequence{"CACAC"_dna5};
 
   std::vector<int> table{0, 2, 1, 8,  0, 12, 5, 0, 3, 0,
@@ -41,18 +42,6 @@ protected:
       Flag::NONE, // Added to allow for explicit labels in the tree
   };
   std::vector<int> suffixes{3, 5, 3, 5, 5, 5};
-
-  std::vector<int> unfinished_suffixes{1, 3, 0, 2, 4, 5};
-  ;
-  std::vector<int> unfinished_table{0, 2, 2, 5, 5, 0};
-  std::vector<Flag> unfinished_flags{
-      Flag::UNEVALUATED,
-      Flag::NONE,
-      Flag::UNEVALUATED,
-      Flag::NONE,
-      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
-      Flag::NONE, // Added to allow for explicit labels in the tree
-  };
 };
 
 TEST_F(IterationTests, GetEdgeLCP) {
@@ -84,7 +73,7 @@ TEST_F(IterationTests, IterateChildren) {
 
 TEST_F(IterationTests, BreadthFirstIteration) {
   std::vector<int> visited{};
-  breadth_first_iteration(sequence, suffixes, table, flags,
+  breadth_first_iteration(sequence, suffixes, table, flags, true,
                           [&](int index, int lcp, int edge_lcp) -> bool {
                             visited.push_back(index);
                             return true;

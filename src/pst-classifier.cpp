@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <string>
 #include <vector>
 
@@ -7,7 +8,9 @@
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/range/container/bitcompressed_vector.hpp>
 
+#include "kl_tree.hpp"
 #include "probabilistic_suffix_tree.hpp"
+#include "ps_tree.hpp"
 
 struct input_arguments {
   size_t max_depth{15};
@@ -84,16 +87,29 @@ std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                   std::string id, size_t max_depth, size_t min_count,
                   float threshold, size_t number_of_parameters,
                   std::string pruning_method, std::string estimator) {
-  pst::ProbabilisticSuffixTree<seqan3::dna5> pst{id,
-                                                 sequence,
-                                                 max_depth,
-                                                 min_count,
-                                                 threshold,
-                                                 number_of_parameters,
-                                                 pruning_method,
-                                                 estimator};
 
-  return pst.to_tree();
+  if (estimator == "KL") {
+    pst::KullbackLieblerTree<seqan3::dna5> pst{id,
+                                               sequence,
+                                               max_depth,
+                                               min_count,
+                                               threshold,
+                                               number_of_parameters,
+                                               pruning_method};
+    pst.construct_tree();
+    return pst.to_tree();
+  } else if (estimator == "PS") {
+    pst::PeresShieldsTree<seqan3::dna5> pst{id,
+                                            sequence,
+                                            max_depth,
+                                            min_count,
+                                            number_of_parameters,
+                                            pruning_method};
+    pst.construct_tree();
+    return pst.to_tree();
+  } else {
+    return "";
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -107,5 +123,5 @@ int main(int argc, char *argv[]) {
                            arguments.pruning_method, arguments.estimator);
   std::cout << tree << std::endl;
 
-  return 0;
+  return EXIT_SUCCESS;
 }

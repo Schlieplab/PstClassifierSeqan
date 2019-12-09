@@ -6,7 +6,9 @@
 #include <seqan3/range/container/bitcompressed_vector.hpp>
 #include <seqan3/range/views/to.hpp>
 
+#include "kl_tree.hpp"
 #include "probabilistic_suffix_tree.hpp"
+#include "ps_tree.hpp"
 
 extern "C" {
 const char *train_kl(const char *id_, const char *sequence_, size_t max_depth,
@@ -18,9 +20,9 @@ const char *train_kl(const char *id_, const char *sequence_, size_t max_depth,
       seq | seqan3::views::char_to<seqan3::dna5> |
       seqan3::views::to<seqan3::bitcompressed_vector<seqan3::dna5>>;
 
-  pst::ProbabilisticSuffixTree<seqan3::dna5> pst{id, sequence, max_depth,
-                                                 min_count, threshold};
-
+  pst::KullbackLieblerTree<seqan3::dna5> pst{id, sequence, max_depth, min_count,
+                                             threshold};
+  pst.construct_tree();
   return strdup(pst.to_tree().c_str());
 }
 
@@ -33,9 +35,8 @@ const char *train_ps(const char *id_, const char *sequence_, size_t max_depth,
       seq | seqan3::views::char_to<seqan3::dna5> |
       seqan3::views::to<seqan3::bitcompressed_vector<seqan3::dna5>>;
 
-  pst::ProbabilisticSuffixTree<seqan3::dna5> pst{id, sequence, max_depth,
-                                                 min_count};
-
+  pst::PeresShieldsTree<seqan3::dna5> pst{id, sequence, max_depth, min_count};
+  pst.construct_tree();
   return strdup(pst.to_tree().c_str());
 }
 
@@ -49,10 +50,10 @@ const char *train_ps_parameters(const char *id_, const char *sequence_,
       seq | seqan3::views::char_to<seqan3::dna5> |
       seqan3::views::to<seqan3::bitcompressed_vector<seqan3::dna5>>;
 
-  pst::ProbabilisticSuffixTree<seqan3::dna5> pst{
-      id,  sequence,     max_depth,    min_count,
-      0.0, n_parameters, "parameters", "PS"};
+  pst::PeresShieldsTree<seqan3::dna5> pst{
+      id, sequence, max_depth, min_count, n_parameters, "parameters"};
 
+  pst.construct_tree();
   return strdup(pst.to_tree().c_str());
 }
 
@@ -66,10 +67,10 @@ const char *train_kl_parameters(const char *id_, const char *sequence_,
       seq | seqan3::views::char_to<seqan3::dna5> |
       seqan3::views::to<seqan3::bitcompressed_vector<seqan3::dna5>>;
 
-  pst::ProbabilisticSuffixTree<seqan3::dna5> pst{
-      id,  sequence,     max_depth,    min_count,
-      0.0, n_parameters, "parameters", "KL"};
+  pst::KullbackLieblerTree<seqan3::dna5> pst{
+      id, sequence, max_depth, min_count, 0.0, n_parameters, "parameters"};
 
+  pst.construct_tree();
   return strdup(pst.to_tree().c_str());
 }
 }
