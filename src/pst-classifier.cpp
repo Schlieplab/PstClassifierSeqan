@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <string>
 #include <vector>
 #include <chrono>
@@ -18,7 +19,9 @@
 #include <iostream>
 #include <filesystem>
 
+#include "kl_tree.hpp"
 #include "probabilistic_suffix_tree.hpp"
+#include "ps_tree.hpp"
 
 
 size_t get_chars_in_file(std::string path){
@@ -55,9 +58,8 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
 
   input_arguments arguments{};
 
-
-  seqan3::argument_parser parser{"Build PST/VLMC on the given fasta file.",
-                                 argc, argv, false};
+  seqan3::argument_parser parser{"Pst-Classifier", argc, argv, false};
+  parser.info.short_description = "Build PST/VLMC on the given fasta file.";
 
   parser.add_positional_option(filename, "path to fasta file.");
 
@@ -130,23 +132,30 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
 std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                   std::string id, size_t max_depth, size_t min_count,
                   float threshold, size_t number_of_parameters,
-                  std::string pruning_method, std::string estimator,
-                  bool multi_core, int split_depth){
+                  std::string pruning_method, std::string estimator) {
 
-  pst::ProbabilisticSuffixTree<seqan3::dna5> pst{id,
-                                                 sequence,
-                                                 max_depth,
-                                                 min_count,
-                                                 threshold,
-                                                 number_of_parameters,
-                                                 pruning_method,
-                                                 estimator,
-                                                 multi_core,
-                                                 split_depth};
-
-
-
-  return pst.to_tree();
+  if (estimator == "KL") {
+    pst::KullbackLieblerTree<seqan3::dna5> pst{id,
+                                               sequence,
+                                               max_depth,
+                                               min_count,
+                                               threshold,
+                                               number_of_parameters,
+                                               pruning_method};
+    pst.construct_tree();
+    return pst.to_tree();
+  } else if (estimator == "PS") {
+    pst::PeresShieldsTree<seqan3::dna5> pst{id,
+                                            sequence,
+                                            max_depth,
+                                            min_count,
+                                            number_of_parameters,
+                                            pruning_method};
+    pst.construct_tree();
+    return pst.to_tree();
+  } else {
+    return "";
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -162,58 +171,6 @@ int main(int argc, char *argv[]) {
                            arguments.pruning_method, arguments.estimator,
                            arguments.multi_core, arguments.split_depth);
   std::cout << tree << std::endl;
-  auto stop = std::chrono::system_clock::now();
-  auto duration   = duration_cast<seconds>(stop-start);
-  std::cout << "Total runtime with IO: " << duration.count() << " sec" << std::endl;
-  return 0;
 
+  return EXIT_SUCCESS;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

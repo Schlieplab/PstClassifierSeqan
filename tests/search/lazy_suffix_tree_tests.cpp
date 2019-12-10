@@ -1,59 +1,42 @@
 #include <gtest/gtest.h>
 
+#include <tuple>
+#include <vector>
+
 #include "../../src/search/lazy_suffix_tree.hpp"
 #include "../../src/search/lazy_suffix_tree/construction.hpp"
 
-#include <seqan3/alphabet/nucleotide/dna5.hpp>
-using seqan3::operator""_dna5;
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
-using seqan3::operator""_dna4;
+#include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/range/container/bitcompressed_vector.hpp>
-#include <seqan3/range/view/convert.hpp>
+#include <seqan3/range/views/convert.hpp>
+#include <seqan3/range/views/to.hpp>
 
 #include <seqan3/core/debug_stream.hpp>
 
 using namespace lst::details;
 
+using seqan3::operator""_dna5;
+using seqan3::operator""_dna4;
+
 class LazySuffixTreeTest : public ::testing::Test {
 protected:
   void SetUp() override {
-    sequence = seqan3::bitcompressed_vector<seqan3::dna5>{"CACAC"_dna5};
     tree = lst::LazySuffixTree<seqan3::dna5>{sequence};
 
-    dna_sequence = seqan3::bitcompressed_vector<seqan3::dna5>{"ACGATCGCT"_dna5};
     dna_tree = lst::LazySuffixTree<seqan3::dna5>{dna_sequence};
 
-    sequence4 = seqan3::bitcompressed_vector<seqan3::dna4>{
-        "ACGTACGTACGTACGTACGTACGT"_dna4};
     tree4 = lst::LazySuffixTree{sequence4};
   }
 
-  seqan3::bitcompressed_vector<seqan3::dna5> sequence{};
+  sequence_t<seqan3::dna5> sequence{"CACAC"_dna5};
   lst::LazySuffixTree<seqan3::dna5> tree{};
 
-  seqan3::bitcompressed_vector<seqan3::dna5> dna_sequence{};
+  sequence_t<seqan3::dna5> dna_sequence{"ACGATCGCT"_dna5};
   lst::LazySuffixTree<seqan3::dna5> dna_tree{};
 
-  seqan3::bitcompressed_vector<seqan3::dna4> sequence4{};
+  sequence_t<seqan3::dna4> sequence4{"ACGTACGTACGTACGTACGTACGT"_dna4};
   lst::LazySuffixTree<seqan3::dna4> tree4{};
-
-  template <seqan3::Alphabet alphabet_t = seqan3::dna5>
-  sequence_t<alphabet_t> make_gapped(std::vector<alphabet_t> sequence) {
-    std::vector<seqan3::gapped<alphabet_t>> sequence_ =
-        sequence | seqan3::view::convert<seqan3::gapped<alphabet_t>>;
-
-    return sequence_t<alphabet_t>{sequence_};
-  }
-
-  template <seqan3::Alphabet alphabet_t = seqan3::dna5>
-  sequence_t<alphabet_t>
-  make_gapped_with_gap(std::vector<alphabet_t> sequence) {
-    std::vector<seqan3::gapped<alphabet_t>> sequence_ =
-        sequence | seqan3::view::convert<seqan3::gapped<alphabet_t>>;
-
-    sequence_.push_back(seqan3::gap{});
-    return sequence_t<alphabet_t>{sequence_};
-  }
 };
 
 TEST_F(LazySuffixTreeTest, SimpleTest) {
@@ -93,8 +76,7 @@ TEST_F(LazySuffixTreeTest, SimpleTest) {
 }
 
 TEST_F(LazySuffixTreeTest, LongerTests) {
-  seqan3::bitcompressed_vector<seqan3::dna5> longer_sequence{
-      "CACACACACACACACACACACACAGT"_dna5};
+  sequence_t<seqan3::dna5> longer_sequence{"CACACACACACACACACACACACAGT"_dna5};
   lst::LazySuffixTree<seqan3::dna5> tree{longer_sequence};
   tree.expand_all();
   EXPECT_TRUE(tree.table.size() != 0);
@@ -105,28 +87,28 @@ TEST_F(LazySuffixTreeTest, LongerTests) {
 
 TEST_F(LazySuffixTreeTest, LabelSets) {
   std::vector<std::tuple<sequence_t<seqan3::dna5>, int>> expected_labels{
-      std::make_tuple(make_gapped("AC"_dna5), 2),
-      std::make_tuple(make_gapped("C"_dna5), 3),
-      std::make_tuple(make_gapped_with_gap(""_dna5), 1),
-      std::make_tuple(make_gapped_with_gap("ACAC"_dna5), 1),
-      std::make_tuple(make_gapped_with_gap("AC"_dna5), 1),
-      std::make_tuple(make_gapped("CAC"_dna5), 2),
-      std::make_tuple(make_gapped_with_gap("C"_dna5), 1),
-      std::make_tuple(make_gapped_with_gap("CACAC"_dna5), 1),
-      std::make_tuple(make_gapped_with_gap("CAC"_dna5), 1)};
+      std::make_tuple(sequence_t<seqan3::dna5>{"AC"_dna5}, 2),
+      std::make_tuple(sequence_t<seqan3::dna5>{"C"_dna5}, 3),
+      std::make_tuple(sequence_t<seqan3::dna5>{""_dna5}, 1),
+      std::make_tuple(sequence_t<seqan3::dna5>{"ACAC"_dna5}, 1),
+      std::make_tuple(sequence_t<seqan3::dna5>{"AC"_dna5}, 1),
+      std::make_tuple(sequence_t<seqan3::dna5>{"CAC"_dna5}, 2),
+      std::make_tuple(sequence_t<seqan3::dna5>{"C"_dna5}, 1),
+      std::make_tuple(sequence_t<seqan3::dna5>{"CACAC"_dna5}, 1),
+      std::make_tuple(sequence_t<seqan3::dna5>{"CAC"_dna5}, 1)};
   auto labels = tree.get_all_labels();
 
   EXPECT_EQ(labels, expected_labels);
 
   std::vector<std::tuple<sequence_t<seqan3::dna4>, int>> double_expected_labels{
-      std::make_tuple(make_gapped<seqan3::dna4>("A"_dna4), 3),
-      std::make_tuple(make_gapped_with_gap<seqan3::dna4>("TAA"_dna4), 1),
-      std::make_tuple(make_gapped_with_gap<seqan3::dna4>(""_dna4), 1),
-      std::make_tuple(make_gapped_with_gap<seqan3::dna4>("AA"_dna4), 1),
-      std::make_tuple(make_gapped_with_gap<seqan3::dna4>("ATAA"_dna4), 1),
-      std::make_tuple(make_gapped_with_gap<seqan3::dna4>("A"_dna4), 1)};
+      std::make_tuple(sequence_t<seqan3::dna4>{"A"_dna4}, 3),
+      std::make_tuple(sequence_t<seqan3::dna4>{"TAA"_dna4}, 1),
+      std::make_tuple(sequence_t<seqan3::dna4>{""_dna4}, 1),
+      std::make_tuple(sequence_t<seqan3::dna4>{"AA"_dna4}, 1),
+      std::make_tuple(sequence_t<seqan3::dna4>{"ATAA"_dna4}, 1),
+      std::make_tuple(sequence_t<seqan3::dna4>{"A"_dna4}, 1)};
 
-  seqan3::bitcompressed_vector<seqan3::dna4> double_sequence{"ATAA"_dna4};
+  sequence_t<seqan3::dna4> double_sequence{"ATAA"_dna4};
   lst::LazySuffixTree<seqan3::dna4> double_tree{double_sequence};
   auto double_labels = double_tree.get_all_labels();
   EXPECT_EQ(double_labels, double_expected_labels);
@@ -149,7 +131,8 @@ TEST_F(LazySuffixTreeTest, Search) {
   c_indicies = tree.search("C"_dna5);
   EXPECT_EQ(c_indicies, (std::vector<int>{4, 0, 2}));
 
-  EXPECT_EQ(tree.search("ACGT"_dna5), (std::vector<int>{}));
+  auto indices = tree.search("ACGT"_dna5);
+  EXPECT_EQ(indices, (std::vector<int>{}));
 
   EXPECT_EQ(tree.search(""_dna5).size(), 6);
 
@@ -178,44 +161,26 @@ TEST_F(LazySuffixTreeTest, Search) {
   EXPECT_EQ(tree5.search("ATCT"_dna5).size(), 0);
 }
 
-TEST_F(LazySuffixTreeTest, Find) {
-  auto [a_index, a_lcp] = tree.find("A"_dna5);
-  EXPECT_EQ(a_index, 2);
-  EXPECT_EQ(a_lcp, 0);
-
-  auto [c_index, c_lcp] = tree.find("C"_dna5);
-  EXPECT_EQ(c_index, 4);
-  EXPECT_EQ(c_lcp, 0);
-
-  auto [tt_index, tt_lcp] = tree.find("TT"_dna5);
-  EXPECT_EQ(tt_index, -1);
-  EXPECT_EQ(tt_lcp, -1);
-
-  auto [acgt_index, acgt_lcp] = tree4.find("ACGT"_dna4);
-  EXPECT_EQ(acgt_index, 2);
-  EXPECT_EQ(acgt_lcp, 0);
-}
-
 TEST_F(LazySuffixTreeTest, ExpandImplicitNodes) {
   tree.expand_all();
   tree.expand_implicit_nodes();
 
   std::vector<std::tuple<sequence_t<seqan3::dna5>, int>> expected_labels{
-      std::make_tuple(make_gapped("A"_dna5), 2),
-      std::make_tuple(make_gapped("C"_dna5), 3),
-      std::make_tuple(make_gapped_with_gap(""_dna5), 1),
-      std::make_tuple(make_gapped("AC"_dna5), 2),
-      std::make_tuple(make_gapped("CA"_dna5), 2),
-      std::make_tuple(make_gapped_with_gap("C"_dna5), 1),
-      std::make_tuple(make_gapped("ACA"_dna5), 1),
-      std::make_tuple(make_gapped_with_gap("AC"_dna5), 1),
-      std::make_tuple(make_gapped("CAC"_dna5), 2),
-      std::make_tuple(make_gapped("ACAC"_dna5), 1),
-      std::make_tuple(make_gapped("CACA"_dna5), 1),
-      std::make_tuple(make_gapped_with_gap("CAC"_dna5), 1),
-      std::make_tuple(make_gapped_with_gap("ACAC"_dna5), 1),
-      std::make_tuple(make_gapped("CACAC"_dna5), 1),
-      std::make_tuple(make_gapped_with_gap("CACAC"_dna5), 1)};
+      std::make_tuple(sequence_t<seqan3::dna5>{"A"_dna5}, 2),
+      std::make_tuple(sequence_t<seqan3::dna5>{"C"_dna5}, 3),
+      std::make_tuple(sequence_t<seqan3::dna5>{""_dna5}, 1),
+      std::make_tuple(sequence_t<seqan3::dna5>{"AC"_dna5}, 2),
+      std::make_tuple(sequence_t<seqan3::dna5>{"CA"_dna5}, 2),
+      std::make_tuple(sequence_t<seqan3::dna5>{"C"_dna5}, 1),
+      std::make_tuple(sequence_t<seqan3::dna5>{"ACA"_dna5}, 1),
+      std::make_tuple(sequence_t<seqan3::dna5>{"AC"_dna5}, 1),
+      std::make_tuple(sequence_t<seqan3::dna5>{"CAC"_dna5}, 2),
+      std::make_tuple(sequence_t<seqan3::dna5>{"ACAC"_dna5}, 1),
+      std::make_tuple(sequence_t<seqan3::dna5>{"CACA"_dna5}, 1),
+      std::make_tuple(sequence_t<seqan3::dna5>{"CAC"_dna5}, 1),
+      std::make_tuple(sequence_t<seqan3::dna5>{"ACAC"_dna5}, 1),
+      std::make_tuple(sequence_t<seqan3::dna5>{"CACAC"_dna5}, 1),
+      std::make_tuple(sequence_t<seqan3::dna5>{"CACAC"_dna5}, 1)};
 
   auto labels = tree.get_all_labels();
 

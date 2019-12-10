@@ -3,9 +3,14 @@
 #include <functional>
 #include <queue>
 #include <vector>
+<<<<<<< HEAD
 #include <mutex>
 #include <thread>
 #include <seqan3/alphabet/all.hpp>
+=======
+
+#include <seqan3/alphabet/concept.hpp>
+>>>>>>> f7e97d15beffaf5e810ffec4ad512d51361fcb30
 
 #include "construction.hpp"
 
@@ -135,11 +140,13 @@ void BFIp(sequence_t<alphabet_t> &sequence,
 }
 
 
-template <seqan3::Alphabet alphabet_t>
+template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
                              std::vector<int> &suffixes,
                              std::vector<int> &table, std::vector<Flag> &flags,
+                             bool expand_nodes,
                              const std::function<bool(int, int, int)> &f) {
+<<<<<<< HEAD
   breadth_first_iteration(sequence, suffixes, table, flags, false, f, false, 0);
 }
 
@@ -147,6 +154,15 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
 
 template <seqan3::Alphabet alphabet_t>
 void breadth_first_iteration(sequence_t<alphabet_t> &sequence,    
+=======
+  breadth_first_iteration(0, 0, sequence, suffixes, table, flags, expand_nodes,
+                          f);
+}
+
+template <seqan3::alphabet alphabet_t>
+void breadth_first_iteration(int start_index, int start_lcp,
+                             sequence_t<alphabet_t> &sequence,
+>>>>>>> f7e97d15beffaf5e810ffec4ad512d51361fcb30
                              std::vector<int> &suffixes,
                              std::vector<int> &table, std::vector<Flag> &flags,
                              bool expand_nodes,
@@ -154,8 +170,8 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
 
 
   std::queue<std::tuple<int, int>> queue{};
-  iterate_children(0, table, flags,
-                   [&](int index) { queue.emplace(index, 0); });
+  iterate_children(start_index, table, flags,
+                   [&](int index) { queue.emplace(index, start_lcp); });
 
    // Calculate lower and upper bound for nodes index counting
   int node_lower_bound = 2;
@@ -210,6 +226,10 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
 
     bool consider_children = f(node_index, lcp, edge_lcp);
 
+    // It is possible that the call to f expands implicit nodes, need to
+    // recalculate the edge_lcp.
+    edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
+
     if (!consider_children) {
       continue;
     }
@@ -220,13 +240,17 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
   }
 }
 
+<<<<<<< HEAD
 
 template <seqan3::Alphabet alphabet_t>
+=======
+template <seqan3::alphabet alphabet_t>
+>>>>>>> f7e97d15beffaf5e810ffec4ad512d51361fcb30
 int get_edge_lcp(int node_index, sequence_t<alphabet_t> &sequence,
                  std::vector<int> &suffixes, std::vector<int> &table,
                  std::vector<Flag> &flags) {
   if (is_leaf(node_index, flags)) {
-    return sequence.size() - table[node_index];
+    return suffixes.size() - table[node_index];
   }
 
   if (is_unevaluated(node_index, flags)) {
@@ -234,7 +258,7 @@ int get_edge_lcp(int node_index, sequence_t<alphabet_t> &sequence,
         table[node_index], table[node_index + 1], sequence, suffixes);
   }
 
-  int smallest_child_index = sequence.size();
+  int smallest_child_index = suffixes.size();
 
   iterate_children(node_index, table, flags, [&](int index) {
     int table_index = table[index];

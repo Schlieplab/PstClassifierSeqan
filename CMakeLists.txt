@@ -1,26 +1,14 @@
-cmake_minimum_required(VERSION 3.15)
-project(pstclassifierseqan)
+cmake_minimum_required (VERSION 3.4...3.12)
 
-set(CMAKE_CXX_STANDARD 14)
+project(PstClassifierSeqan CXX)
 
-include_directories(src)
-include_directories(src/search)
-include_directories(src/search/lazy_suffix_tree)
-include_directories(tests)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(pstclassifierseqan
-        src/search/lazy_suffix_tree/construction.hpp
-        src/search/lazy_suffix_tree/iteration.hpp
-        src/search/lazy_suffix_tree/suffix_links.hpp
-        src/search/lazy_suffix_tree.hpp
-        src/CMakeLists.txt
-        src/probabilistic_suffix_tree.hpp
-        src/pst-classifier.cpp
-        src/vlmc.cpp
-        tests/search/lazy_suffix_tree/construction_tests.cpp
-        tests/search/lazy_suffix_tree/iteration_tests.cpp
-        tests/search/lazy_suffix_tree/suffix_links_tests.cpp
-        tests/search/lazy_suffix_tree_tests.cpp
-        tests/benchmarks.cpp
-        tests/probabilistic_suffix_tree_tests.cpp
-        CMakeLists.txt)
+
+set(SeqAn3_DIR "${CMAKE_SOURCE_DIR}/seqan3/build_system")
+find_package(SeqAn3 REQUIRED)
+set(SEQAN3_INCLUDED TRUE)
+
+add_subdirectory(src)
+add_subdirectory(tests)

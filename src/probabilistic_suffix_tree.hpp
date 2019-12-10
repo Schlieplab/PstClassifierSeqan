@@ -14,8 +14,12 @@
 #include <vector>
 #include <string>
 
-#include <seqan3/alphabet/all.hpp>
-#include <seqan3/range/view/to_char.hpp>
+#include <seqan3/alphabet/concept.hpp>
+#include <seqan3/alphabet/nucleotide/dna4.hpp>
+#include <seqan3/core/debug_stream.hpp>
+#include <seqan3/range/all.hpp>
+#include <seqan3/range/container/bitcompressed_vector.hpp>
+#include <seqan3/range/views/to.hpp>
 
 #include "search/lazy_suffix_tree.hpp"
 #include "search/lazy_suffix_tree/iteration.hpp"
@@ -56,8 +60,9 @@ bool timeMessurement = true;
  *
  **
  */
-template <seqan3::Alphabet alphabet_t>
+template <seqan3::alphabet alphabet_t>
 class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
+public:
   friend class ProbabilisticSuffixTreeTest;
 
   ProbabilisticSuffixTree() = default;
@@ -70,6 +75,7 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
    */
   ProbabilisticSuffixTree(std::string id,
                           seqan3::bitcompressed_vector<alphabet_t> &sequence)
+<<<<<<< HEAD
       : ProbabilisticSuffixTree(id, sequence, 15, 100, 1.2, 0, "cutoff", "PS", false, 1) {}
 
   /*!\brief Constructor with KL pruning.
@@ -112,46 +118,48 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
                           std::string estimator)
       : ProbabilisticSuffixTree(id, sequence, max_depth, freq, cutoff_value, 0,
                                 "cutoff", estimator, false, 1) {}
+=======
+      : ProbabilisticSuffixTree(id, sequence, 15, 100, 1.2, 0, "cutoff") {}
+>>>>>>> f7e97d15beffaf5e810ffec4ad512d51361fcb30
 
   /*!\brief Constructor.
    * \param[in] id_ The id of the model.
    * \param[in] sequence_ The text to construct from.
    * \param[in] max_depth_ Max length of a branch/context in the tree.
    * \param[in] freq_ Min frequency of each context/node in the tree.
-   * \param[in] cutoff_value_ Cutoff value for the similarity-pruning.
    * \param[in] number_of_parameters_ Number of parameters to keep in the model,
    * for "parameters" pruning.
-   * \param[in] pruning_method_ Pruning method, either "cutoff" (which depends
-   * on the `cutoff_value_`) or "parameters" (which depend on the
-   * `number_of_parameters_`)
-   * \param[in] estimator_ Name of the estimator,
-   * either "KL" (Kullback-Liebler) or "PS" (Peres-Shields).
+   * \param[in] pruning_method_ Pruning method, either "cutoff" or "parameters"
+   * (which depend on the `number_of_parameters_`)
    */
   ProbabilisticSuffixTree(std::string id_,
                           seqan3::bitcompressed_vector<alphabet_t> &sequence_,
-                          size_t max_depth_, size_t freq_, float cutoff_value_,
+                          size_t max_depth_, size_t freq_,
                           size_t number_of_parameters_,
                           std::string pruning_method_, std::string estimator_,
                           bool multi_core_, int split_depth_ )
       : lst::LazySuffixTree<alphabet_t>(sequence_), id(id_), freq(freq_),
-        max_depth(max_depth_), cutoff_value(cutoff_value_),
-        number_of_parameters(number_of_parameters_),
+        max_depth(max_depth_), number_of_parameters(number_of_parameters_),
         pruning_method(pruning_method_), estimator(estimator_){
     multi_core = multi_core_;
     split_depth = split_depth_;
     using seqan3::operator""_dna4;
     seqan3::dna4_vector dna4{"ACGT"_dna4};
     std::vector<seqan3::gapped<alphabet_t>> characters{
-        dna4 | seqan3::view::convert<seqan3::gapped<alphabet_t>>};
+        dna4 | seqan3::views::convert<seqan3::gapped<alphabet_t>> |
+        seqan3::views::to<std::vector<seqan3::gapped<alphabet_t>>>};
 
-    for (auto &c : characters) {
-      valid_characters.insert(c);
+    for (auto c : characters) {
+      auto char_rank = seqan3::to_rank(c);
+      valid_characters.insert(char_rank);
     }
+  }
 
-    if (estimator_ == "PS") {
-      this->cutoff_value = std::pow(float(sequence_.size()), 3.0 / 4.0);
-    }
-
+  /*! \brief Construct tree
+   * Constructs the PST by applying the support and similarity pruning
+   * steps from the VOMC construction algorithm.
+   */
+  void construct_tree() {
     this->support_pruning();
     this->similarity_pruning();
   }
@@ -161,51 +169,41 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
    * etc.
    */
   void print() {
-    lst::details::breadth_first_iteration(
-        this->sequence, this->suffixes, this->table, this->flags,
-        [&](int node_index, int lcp, int edge_lcp) -> bool {
+    this->debug_print_node(0, 0, 0);
+    seqan3::debug_stream << std::endl;
+
+    this->breadth_first_iteration(
+        0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (this->is_excluded(node_index)) {
             return true;
           }
-
-          auto label = this->node_label(node_index, lcp, edge_lcp);
-
-          if (this->is_leaf(node_index)) {
-            label = this->leaf_label(node_index, lcp);
-          }
-
-          seqan3::debug_stream << label << "\t" << node_index << "\t"
-                               << this->table[node_index] << "\t"
-                               << this->table[node_index + 1];
-
-          if (this->suffix_links.size() > node_index / 2) {
-            seqan3::debug_stream << "\t" << this->suffix_links[node_index / 2];
-          }
-
-          if (this->reverse_suffix_links.size() > node_index / 2) {
-            seqan3::debug_stream << "\t"
-                                 << this->reverse_suffix_links[node_index / 2];
-          }
-
-          if (this->suffix_links.size() > node_index / 2 &&
-              this->suffix_links[node_index / 2] != -1) {
-            seqan3::debug_stream << "\tDelta: "
-                                 << this->calculate_delta(node_index);
-
-            seqan3::debug_stream << "\tLeaf: " << this->is_pst_leaf(node_index);
-
-            seqan3::debug_stream << "\tTerminal: "
-                                 << this->is_terminal(node_index);
-          }
-
-          if (this->status.size() > node_index / 2) {
-            seqan3::debug_stream << "\tStatus: "
-                                 << this->status[node_index / 2];
-          }
+          this->debug_print_node(node_index, lcp, edge_lcp);
 
           seqan3::debug_stream << std::endl;
           return true;
         });
+  }
+
+  void debug_print_node(int node_index, int lcp, int edge_lcp) {
+    lst::LazySuffixTree<alphabet_t>::debug_print_node(node_index, lcp,
+                                                      edge_lcp);
+
+    if (this->reverse_suffix_links.size() > node_index / 2) {
+      seqan3::debug_stream << "\tLeaf: " << this->is_leaf(node_index);
+    }
+
+    if (this->suffix_links.size() > node_index / 2 &&
+        this->suffix_links[node_index / 2] != -1) {
+      seqan3::debug_stream << "\tDelta: " << this->calculate_delta(node_index);
+
+      seqan3::debug_stream << "\tPST Leaf: " << this->is_pst_leaf(node_index);
+
+      seqan3::debug_stream << "\tTerminal: " << this->is_terminal(node_index);
+    }
+
+    if (this->status.size() > node_index / 2) {
+      seqan3::debug_stream << "\tStatus: " << this->status[node_index / 2];
+    }
   }
 
   /*! \brief Outputs the tree in a .tree format.
@@ -242,9 +240,8 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
 
     this->append_node_string(0, 0, 0, tree_string);
 
-    lst::details::breadth_first_iteration(
-        this->sequence, this->suffixes, this->table, this->flags,
-        [&](int node_index, int lcp, int edge_lcp) -> bool {
+    this->breadth_first_iteration(
+        0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (this->is_included(node_index)) {
             this->append_node_string(node_index, lcp, edge_lcp, tree_string);
           }
@@ -255,16 +252,51 @@ class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
     return tree_string.str();
   }
 
-protected:
+  /**! \brief Counts the number of terminal nodes in the tree.
+   *
+   * \return vector of indices to all terminal nodes.
+   */
+  int count_terminal_nodes() {
+    int n_terminal_nodes = 0;
+
+    this->breadth_first_iteration(
+        0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
+          if (this->is_included(node_index) && this->is_terminal(node_index)) {
+            n_terminal_nodes += 1;
+          }
+          return true;
+        });
+
+    return n_terminal_nodes;
+  }
+
+  void pst_breadth_first_iteration(const int start_index, const int start_level,
+                                   const std::function<bool(int, int)> &f) {
+    std::queue<std::tuple<int, int>> queue{};
+
+    queue.emplace(start_index, start_level);
+
+    while (!queue.empty()) {
+      auto [node_index, level] = queue.front();
+      queue.pop();
+
+      if (f(node_index, level)) {
+        for (auto child : this->reverse_suffix_links[node_index / 2]) {
+          if (child != -1 && !this->skip_node(child)) {
+            queue.emplace(child, level + 1);
+          }
+        }
+      }
+    }
+  }
+
   std::string id;
 
-  std::unordered_set<seqan3::gapped<alphabet_t>> valid_characters{};
+  std::unordered_set<int> valid_characters{};
   size_t freq;
   size_t max_depth;
-  float cutoff_value;
   size_t number_of_parameters;
   std::string pruning_method;
-  std::string estimator;
 
   std::vector<Status> status{};
 
@@ -272,6 +304,7 @@ protected:
   std::vector<std::array<float, seqan3::alphabet_size<alphabet_t>>>
       probabilities{};
 
+protected:
   /**! \brief Support pruning phase of the algorithm.
    * \details
    * Extends a lazy suffix tree as long as the counts of each node is above
@@ -360,26 +393,48 @@ protected:
    *
    * Also saves the count of the node as well as if it is included or excluded.
    */
-   void build_tree() {
-     lst::details::breadth_first_iteration(
-         this->sequence, this->suffixes, this->table, this->flags, true,
-         [&](int node_index, int lcp, int edge_lcp) -> bool {
-           int count = lst::details::node_occurrences(node_index, this->table,
-                                                      this->flags);
-          this->counts.resize(this->table.size() / 2, -1);
-          this->counts[node_index / 2] = count;
-
-          int label_start = this->table[node_index] - lcp;
-          int label_end = this->table[node_index] + edge_lcp;
-
-          this->status.resize(this->table.size() / 2, Status::NONE);
-          if (include_node(label_start, label_end, count)) {
-            this->status[node_index / 2] = Status::INCLUDED;
-            return true;
+  void build_tree() {
+    this->breadth_first_iteration(
+        0, 0, true, [&](int node_index, int lcp, int edge_lcp) -> bool {
+          int count = lst::details::node_occurrences(node_index, this->table,
+                                                     this->flags);
+          if (edge_lcp > 1) {
+            int max_extension = edge_lcp;
+            if (lcp + edge_lcp > this->max_depth) {
+              max_extension = this->max_depth - lcp;
+            }
+            this->add_implicit_nodes(node_index, max_extension);
+            edge_lcp = 1;
           }
-          this->status[node_index / 2] = Status::EXCLUDED;
-          return false;
-        }, multi_core, split_depth);
+
+          this->counts.resize(this->table.size() / 2, -1);
+          this->status.resize(this->table.size() / 2, Status::NONE);
+
+          return this->check_node(node_index, lcp, edge_lcp, count);
+        });
+  }
+
+  /**! Check if the node with node_index should be included.
+   *
+   * \param node_index The index of the node.
+   * \param lcp The LCP of the node.
+   * \param edge_lcp The edge length (lcp) of the node.
+   * \return if the node was included.
+   */
+  bool check_node(int node_index, int lcp, int edge_lcp, int count) {
+    this->counts[node_index / 2] = count;
+
+    int label_start = this->table[node_index] - lcp;
+    int label_end = this->table[node_index] + edge_lcp;
+
+    if (!this->is_leaf(node_index) &&
+        this->include_node(label_start, label_end, count)) {
+      this->status[node_index / 2] = Status::INCLUDED;
+      return true;
+    } else {
+      this->status[node_index / 2] = Status::EXCLUDED;
+      return false;
+    }
   }
 
   /**! \brief Computes and saves the forward probabilities of each node.
@@ -392,23 +447,17 @@ protected:
    */
   void compute_probabilities() {
     this->probabilities.resize(this->table.size() / 2);
+    this->assign_node_probabilities(0);
 
-    std::queue<int> queue{};
-    queue.push(0);
+    this->breadth_first_iteration(
+        0, 0, false, [&](int node_index, int lcp, int edge_lcp) {
+          if (this->is_leaf(node_index) || this->skip_node(node_index)) {
+            return false;
+          }
 
-    while (!queue.empty()) {
-      int node_index = queue.front();
-      queue.pop();
-
-      if (this->is_leaf(node_index) || this->skip_node(node_index)) {
-        continue;
-      }
-
-      this->assign_node_probabilities(node_index);
-
-      lst::details::iterate_children(node_index, this->table, this->flags,
-                                     [&](int index) { queue.push(index); });
-    }
+          this->assign_node_probabilities(node_index);
+          return true;
+        });
   }
 
   /**! \brief Assigns probabilities for the node.
@@ -445,16 +494,18 @@ protected:
    */
   bool add_pseudo_counts(int node_index) {
     int n_children = 0;
-    lst::details::iterate_children(
-        node_index, this->table, this->flags, [&](int child_index) {
-          int sequence_index = this->get_sequence_index(child_index);
-          auto c = this->sequence[sequence_index];
-          if (this->valid_characters.find(c) == this->valid_characters.end()) {
-            return;
-          }
+    this->iterate_children(node_index, [&](int child_index) {
+      int sequence_index = this->get_sequence_index(child_index);
+      auto character = this->get_character(sequence_index);
 
-          n_children += 1;
-        });
+      auto char_rank = seqan3::to_rank(character);
+      if (this->valid_characters.find(char_rank) ==
+          this->valid_characters.end()) {
+        return;
+      }
+
+      n_children += 1;
+    });
     return n_children != this->valid_characters.size();
   }
 
@@ -468,9 +519,9 @@ protected:
     this->status.resize(this->table.size() / 2, Status::NONE);
     std::stack<std::tuple<int, Status>> stack{};
 
-    lst::details::iterate_children(
-        0, this->table, this->flags,
-        [&](int child_index) { stack.emplace(child_index, Status::INCLUDED); });
+    this->iterate_children(0, [&](int child_index) {
+      stack.emplace(child_index, Status::INCLUDED);
+    });
 
     while (!stack.empty()) {
       auto [node_index, parent_status] = stack.top();
@@ -497,33 +548,8 @@ protected:
    * threshold.  For each removed node, the parent is added to be considered if
    * it now a leaf.
    */
-  void cutoff_prune() {
-    std::vector<int> pst_leaves = get_pst_leaves();
-    std::queue<int> bottom_up{};
-    for (int v : pst_leaves) {
-      bottom_up.push(v);
-    }
-
-    while (!bottom_up.empty()) {
-      int node_index = bottom_up.front();
-      bottom_up.pop();
-
-      if (node_index == 0) {
-        continue;
-      }
-
-      float delta = calculate_delta(node_index);
-
-      if (delta < this->cutoff_value) {
-        this->status[node_index / 2] = Status::EXCLUDED;
-
-        int parent_index = this->suffix_links[node_index / 2];
-        if (this->is_pst_leaf(parent_index)) {
-          bottom_up.push(parent_index);
-        }
-      }
-    }
-  }
+  virtual void cutoff_prune() { parameters_prune(); }
+  virtual float calculate_delta(int node_index) { return 0.0; }
 
   /**! \brief Removes all nodes until a specified number of parameters are left.
    *
@@ -535,7 +561,7 @@ protected:
    * it now a leaf.
    */
   void parameters_prune() {
-    std::vector<int> pst_leaves = this->get_pst_leaves();
+    auto pst_leaves = this->get_pst_leaves();
 
     auto cmp = [](std::tuple<int, float> left, std::tuple<int, float> right) {
       return std::get<1>(left) < std::get<1>(right);
@@ -544,7 +570,7 @@ protected:
                         std::vector<std::tuple<int, float>>, decltype(cmp)>
         queue{cmp};
 
-    for (int v : pst_leaves) {
+    for (auto v : pst_leaves) {
       queue.emplace(v, -this->calculate_delta(v));
     }
 
@@ -574,93 +600,6 @@ protected:
     }
   }
 
-  float calculate_delta(int node_index) {
-    if (this->estimator == "PS") {
-      return ps_delta(node_index);
-    } else if (this->estimator == "KL") {
-      return kl_delta(node_index);
-    } else {
-      return 0.0;
-    }
-  }
-
-  /**! \brief Kullback-Liebler delta value for pruning.
-   * \details
-   * Based on the relative probabilities between the node and its parent
-   * combined with the absolute count of the node.
-   *
-   * \param node_index Index to get delta for.
-   * \return Delta value.
-   */
-  float kl_delta(int node_index) {
-    int parent_index = this->suffix_links[node_index / 2];
-    if (parent_index == -1) {
-      throw std::invalid_argument(
-          "[kl_delta] Given node does not have a parent.");
-    }
-
-    float delta = 0;
-    for (auto c : this->valid_characters) {
-      if (c == seqan3::gap{}) {
-        continue;
-      }
-      auto char_rank = seqan3::to_rank(c);
-      float prob = this->probabilities[node_index / 2][char_rank];
-      float parent_prob = this->probabilities[parent_index / 2][char_rank];
-
-      if (parent_prob == 0 || prob == 0) {
-        continue;
-      }
-      delta += prob * std::log(prob / parent_prob);
-
-    }
-    delta *= this->get_counts(node_index);
-
-    return delta;
-  }
-
-  /**! \brief Peres-Shields delta value for pruning.
-   * \details
-   * Based on the relative counts between children of the node and its parent.
-   * See 10.2202/1544-6115.1214 for details.
-   *
-   * \param node_index Index to get delta for.
-   * \return Delta value.
-   */
-  float ps_delta(int node_index) {
-    int parent_index = this->suffix_links[node_index / 2];
-    if (parent_index == -1) {
-      throw std::invalid_argument(
-          "[ps_delta] Given node does not have a parent.");
-    }
-
-    float delta = 0;
-    float node_count = this->get_counts(node_index);
-    float parent_count = this->get_counts(parent_index);
-
-    std::array<int, seqan3::alphabet_size<alphabet_t>> node_child_counts =
-        get_child_counts(node_index, true);
-
-    std::array<int, seqan3::alphabet_size<alphabet_t>> parent_child_counts =
-        get_child_counts(parent_index, true);
-
-    for (auto c : this->valid_characters) {
-      if (c == seqan3::gap{}) {
-        continue;
-      }
-      auto char_rank = seqan3::to_rank(c);
-      float new_delta = std::abs(
-          float(node_child_counts[char_rank]) -
-          (float(parent_child_counts[char_rank]) / parent_count) * node_count);
-
-      if (delta < new_delta) {
-        delta = new_delta;
-      }
-    }
-
-    return delta;
-  }
-
   /**! \brief Finds the counts of all (forward) children for the node.
    *
    * \param node_index Index to get child counts for.
@@ -671,26 +610,22 @@ protected:
   get_child_counts(int node_index, bool with_pseudo_counts) {
     std::array<int, seqan3::alphabet_size<alphabet_t>> child_counts{};
 
-    lst::details::iterate_children(
-        node_index, this->table, this->flags, [&](int child_index) {
-          int sequence_index = this->get_sequence_index(child_index);
+    this->iterate_children(node_index, [&](int child_index) {
+      int sequence_index = this->get_sequence_index(child_index);
+      auto character = this->get_character(sequence_index);
 
-          if (this->sequence[sequence_index] == seqan3::gap{}) {
-            return;
-          }
+      if (character == seqan3::gap{}) {
+        return;
+      }
 
-          int character_rank = seqan3::to_rank(this->sequence[sequence_index]);
+      int character_rank = seqan3::to_rank(character);
 
-          child_counts[character_rank] = get_counts(child_index);
-        });
+      child_counts[character_rank] = get_counts(child_index);
+    });
 
     bool add_pseudo_counts = this->add_pseudo_counts(node_index);
     if (with_pseudo_counts && add_pseudo_counts) {
-      for (auto c : this->valid_characters) {
-        if (c == seqan3::gap{}) {
-          continue;
-        }
-        auto char_rank = seqan3::to_rank(c);
+      for (auto char_rank : this->valid_characters) {
         child_counts[char_rank] += 1;
       }
     }
@@ -705,36 +640,16 @@ protected:
   std::vector<int> get_pst_leaves() {
     std::vector<int> bottom_nodes{};
 
-    lst::details::breadth_first_iteration(
-        this->sequence, this->suffixes, this->table, this->flags,
-        [&](int node_index, int lcp, int edge_lcp) -> bool {
+    this->breadth_first_iteration(
+        0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (this->is_included(node_index) && this->is_pst_leaf(node_index)) {
-            bottom_nodes.push_back(node_index);
+            bottom_nodes.emplace_back(node_index);
           }
 
           return true;
         });
 
     return bottom_nodes;
-  }
-
-  /**! \brief Finds all terminal nodes in the tree.
-   *
-   * \return vector of indices to all terminal nodes.
-   */
-  int count_terminal_nodes() {
-    int n_terminal_nodes = 0;
-
-    lst::details::breadth_first_iteration(
-        this->sequence, this->suffixes, this->table, this->flags,
-        [&](int node_index, int lcp, int edge_lcp) -> bool {
-          if (this->is_included(node_index) && this->is_terminal(node_index)) {
-            n_terminal_nodes += 1;
-          }
-          return true;
-        });
-
-    return n_terminal_nodes;
   }
 
   /**! \brief Checks if the node is a leaf in the PST.
@@ -746,8 +661,7 @@ protected:
    * \return If all children are missing.
    */
   bool is_pst_leaf(int node_index) {
-    for (auto c : this->valid_characters) {
-      auto char_rank = seqan3::to_rank(c);
+    for (auto char_rank : this->valid_characters) {
       int child_index = this->reverse_suffix_links[node_index / 2][char_rank];
 
       if (child_index == 0 || child_index == -1) {
@@ -771,8 +685,7 @@ protected:
    * \return If the node is terminal (has any missing children).
    */
   bool is_terminal(int node_index) {
-    for (auto c : this->valid_characters) {
-      auto char_rank = seqan3::to_rank(c);
+    for (auto char_rank : this->valid_characters) {
       int child_index = this->reverse_suffix_links[node_index / 2][char_rank];
 
       if (child_index == 0) {
@@ -797,8 +710,7 @@ protected:
    * \return True if removed index is the only missing child of node_index
    */
   bool became_terminal(int node_index, int removed_index) {
-    for (auto c : this->valid_characters) {
-      auto char_rank = seqan3::to_rank(c);
+    for (auto char_rank : this->valid_characters) {
       int child_index = this->reverse_suffix_links[node_index / 2][char_rank];
 
       if (child_index == 0) {
@@ -825,6 +737,9 @@ protected:
   int get_counts(int node_index) {
     if (node_index == -1) {
       return 0;
+    }
+    if (node_index == 0) {
+      return this->sequence.size();
     }
 
     int c = this->counts[node_index / 2];
@@ -860,7 +775,8 @@ protected:
     if (this->is_leaf(node_index)) {
       label_ = this->leaf_label(node_index, lcp);
     }
-    std::string label = label_ | seqan3::view::to_char;
+    std::string label =
+        label_ | seqan3::views::to_char | seqan3::views::to<std::string>;
     if (node_index == 0) {
       label = "#";
     }
@@ -892,9 +808,7 @@ protected:
     auto child_counts = this->get_child_counts(node_index, true);
 
     std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -1);
-    for (auto c : this->valid_characters) {
-      auto char_rank = seqan3::to_rank(c);
-
+    for (auto char_rank : this->valid_characters) {
       output[char_rank] = child_counts[char_rank];
     };
 
@@ -923,8 +837,7 @@ protected:
     std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -1);
 
     auto reverse_children = this->reverse_suffix_links[node_index / 2];
-    for (auto c : this->valid_characters) {
-      auto char_rank = seqan3::to_rank(c);
+    for (auto char_rank : this->valid_characters) {
 
       int reverse_child = reverse_children[char_rank];
       int count = get_counts(reverse_child);
@@ -957,9 +870,7 @@ protected:
     std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -2);
 
     auto reverse_children = this->reverse_suffix_links[node_index / 2];
-    for (auto c : this->valid_characters) {
-      auto char_rank = seqan3::to_rank(c);
-
+    for (auto char_rank : this->valid_characters) {
       int reverse_child = reverse_children[char_rank];
 
       if (reverse_child == 0 || reverse_child == -1 ||
@@ -986,9 +897,8 @@ protected:
    */
   int nodes_in_tree() {
     int n_nodes = 1;
-    lst::details::breadth_first_iteration(
-        this->sequence, this->suffixes, this->table, this->flags,
-        [&](int node_index, int lcp, int edge_lcp) -> bool {
+    this->breadth_first_iteration(
+        0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (is_included(node_index)) {
             n_nodes += 1;
           }
@@ -1026,7 +936,9 @@ protected:
   bool label_valid(int label_start, int label_end) {
 
     for (int i = label_start; i < label_end; i++) {
-      if (this->valid_characters.find(this->sequence[i]) ==
+      auto character = this->get_character(i);
+      auto char_rank = seqan3::to_rank(character);
+      if (this->valid_characters.find(char_rank) ==
           this->valid_characters.end()) {
         return false;
       }
