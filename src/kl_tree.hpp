@@ -77,9 +77,6 @@ public:
                                             number_of_parameters,
                                             pruning_method),
         cutoff_value(cutoff_value_) {
-
-    this->support_pruning();
-    this->similarity_pruning();
   }
 
 protected:
