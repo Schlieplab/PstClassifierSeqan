@@ -13,12 +13,12 @@ std::mutex l1;
 std::mutex l2;
 std::mutex l3;
 std::mutex l4;
-std::mutex sort_suffix_lock;
-std::mutex add_child_lock;
-std::mutex lcp_lock;
+
 
 namespace lst::details {
-
+    std::mutex sort_suffix_lock;
+    std::mutex add_child_lock;
+    std::mutex lcp_lock;
 template <seqan3::alphabet alphabet_t>
 using sequence_t = seqan3::bitcompressed_vector<alphabet_t>;
 
@@ -250,6 +250,7 @@ int expand_node(int node_index, sequence_t<alphabet_t> &sequence,
 
 void add_implicit_nodes(int node_index, int edge_lcp, std::vector<int> &table,
                         std::vector<Flag> &flags) {
+  std::lock_guard<std::mutex> lock(add_child_lock);
   int previous_child = table[node_index + 1];
   table[node_index + 1] = table.size();
 

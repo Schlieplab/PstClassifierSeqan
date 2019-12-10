@@ -26,7 +26,7 @@ public:
    */
   KullbackLieblerTree(std::string id,
                       seqan3::bitcompressed_vector<alphabet_t> &sequence)
-      : KullbackLieblerTree(id, sequence, 15, 100, 1.2, 192, "cutoff") {}
+      : KullbackLieblerTree(id, sequence, 15, 100, 1.2, 192, "cutoff", false, 0) {}
 
   /*!\brief Constructor for parameters pruning.
    * \param[in] id_ The id of the model.
@@ -42,7 +42,7 @@ public:
                       size_t number_of_parameters)
       : ProbabilisticSuffixTree<alphabet_t>(id, sequence, max_depth, freq, 1.2,
                                             number_of_parameters,
-                                            "parameters") {}
+                                            "parameters", false, 0) {}
 
   /*!\brief Constructor for threshold pruning.
    * \param[in] id_ The id of the model.
@@ -55,7 +55,7 @@ public:
                       seqan3::bitcompressed_vector<alphabet_t> &sequence,
                       size_t max_depth, size_t freq, float cutoff_value_)
       : ProbabilisticSuffixTree<alphabet_t>(id, sequence, max_depth, freq, 192,
-                                            "cutoff"),
+                                            "cutoff", false, 0),
         cutoff_value(cutoff_value_) {}
 
   /*!\brief Constructor for threshold pruning.
@@ -72,14 +72,12 @@ public:
   KullbackLieblerTree(std::string id,
                       seqan3::bitcompressed_vector<alphabet_t> &sequence,
                       size_t max_depth, size_t freq, float cutoff_value_,
-                      size_t number_of_parameters, std::string pruning_method)
+                      size_t number_of_parameters, std::string pruning_method,
+                      bool multi_core, int split_depth)
       : ProbabilisticSuffixTree<alphabet_t>(id, sequence, max_depth, freq,
                                             number_of_parameters,
-                                            pruning_method),
-        cutoff_value(cutoff_value_) {
+                                            pruning_method, multi_core, split_depth){
 
-    this->support_pruning();
-    this->similarity_pruning();
   }
 
 protected:

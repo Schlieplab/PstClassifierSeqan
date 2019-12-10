@@ -45,23 +45,13 @@ public:
   /**! \brief Constructor.
    * @param sequence_ The sequence to build the tree for.
    */
-<<<<<<< HEAD
-  LazySuffixTree(seqan3::bitcompressed_vector<alphabet_t> &sequence_) {
-    sequence = sequence_ | seqan3::view::convert<seqan3::gapped<alphabet_t>>;
-    sequence.push_back(seqan3::gap{});
-    suffixes = std::vector<int>(sequence.size());
-    std::iota(suffixes.begin(), suffixes.end(), 0);
-
-    lst::details::expand_root(sequence, suffixes, table, flags);
-=======
-  LazySuffixTree(seqan3::bitcompressed_vector<alphabet_t> &sequence_)
-      : sequence(sequence_) {
+  LazySuffixTree(seqan3::bitcompressed_vector<alphabet_t> &sequence_, bool multi_core_, int split_depth_)
+      : sequence(sequence_), multi_core(multi_core_), split_depth(split_depth_) {
     suffixes = std::vector<int>(this->sequence.size() + 1);
     std::iota(this->suffixes.begin(), this->suffixes.end(), 0);
 
     lst::details::expand_root(this->sequence, this->suffixes, this->table,
                               this->flags);
->>>>>>> f7e97d15beffaf5e810ffec4ad512d51361fcb30
   }
 
   /**! \brief Fully builds the lazy suffix tree.
@@ -233,14 +223,8 @@ public:
       reverses.fill(-1);
     }
 
-<<<<<<< HEAD
-    lst::details::breadth_first_iteration(
-        sequence, suffixes, table, flags,
-        [&](int node_index, int lcp, int edge_lcp) -> bool {
-=======
     this->breadth_first_iteration(
         0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
->>>>>>> f7e97d15beffaf5e810ffec4ad512d51361fcb30
           if (this->skip_node(node_index)) {
             return true;
           }
@@ -269,15 +253,8 @@ public:
    *
    */
   virtual void print() {
-<<<<<<< HEAD
-    lst::details::breadth_first_iteration(
-        sequence, suffixes, table, flags,
-        [&](int node_index, int lcp, int edge_lcp) -> bool {
-          auto label = node_label(node_index, lcp, edge_lcp);
-=======
     this->debug_print_node(0, 0, 0);
     seqan3::debug_stream << std::endl;
->>>>>>> f7e97d15beffaf5e810ffec4ad512d51361fcb30
 
     this->breadth_first_iteration(
         0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
@@ -308,6 +285,7 @@ public:
     }
   }
 
+protected:
   lst::details::sequence_t<alphabet_t> sequence;
   std::vector<int> suffixes{};
   std::vector<int> table{0, 2};
@@ -316,7 +294,9 @@ public:
   std::vector<int> suffix_links{};
   std::vector<lst::details::alphabet_array<alphabet_t>> reverse_suffix_links{};
 
-protected:
+  bool multi_core;
+  int split_depth;
+
   std::vector<int> suffix_indices(int node_index, int og_lcp) {
     if (node_index >= table.size()) {
       throw std::invalid_argument(
@@ -511,9 +491,11 @@ protected:
 
   void breadth_first_iteration(int node_index, int start_lcp, bool expand_nodes,
                                const std::function<bool(int, int, int)> &f) {
+
     lst::details::breadth_first_iteration(node_index, start_lcp, this->sequence,
                                           this->suffixes, this->table,
-                                          this->flags, expand_nodes, f);
+                                          this->flags, expand_nodes, f,
+                                          this->multi_core, this->split_depth);
   }
 };
 } // namespace lst

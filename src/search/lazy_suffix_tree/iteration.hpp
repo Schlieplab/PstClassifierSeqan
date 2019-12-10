@@ -3,14 +3,9 @@
 #include <functional>
 #include <queue>
 #include <vector>
-<<<<<<< HEAD
 #include <mutex>
 #include <thread>
-#include <seqan3/alphabet/all.hpp>
-=======
-
 #include <seqan3/alphabet/concept.hpp>
->>>>>>> f7e97d15beffaf5e810ffec4ad512d51361fcb30
 
 #include "construction.hpp"
 
@@ -90,15 +85,8 @@ bool include_node(int label_start, int label_end, int count) {
          label_valid(label_start, label_end);
 }
 
-void wrapper(auto &sequence,
-             std::vector<int> &suffixes,
-             std::vector<int> &table, std::vector<Flag> &flags,
-             bool expand_nodes, int start_node) {
-  BFIp(&sequence, &suffixes, &table, &flags,
-        expand_nodes, start_node);
-}
 
-template <seqan3::Alphabet alphabet_t>
+template <seqan3::alphabet alphabet_t>
 void BFIp(sequence_t<alphabet_t> &sequence,
                                       std::vector<int> &suffixes,
                                       std::vector<int> &table, std::vector<Flag> &flags,
@@ -146,27 +134,17 @@ void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
                              std::vector<int> &table, std::vector<Flag> &flags,
                              bool expand_nodes,
                              const std::function<bool(int, int, int)> &f) {
-<<<<<<< HEAD
-  breadth_first_iteration(sequence, suffixes, table, flags, false, f, false, 0);
-}
-
-
-
-template <seqan3::Alphabet alphabet_t>
-void breadth_first_iteration(sequence_t<alphabet_t> &sequence,    
-=======
   breadth_first_iteration(0, 0, sequence, suffixes, table, flags, expand_nodes,
-                          f);
+                          f, false, 0);
 }
 
 template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration(int start_index, int start_lcp,
                              sequence_t<alphabet_t> &sequence,
->>>>>>> f7e97d15beffaf5e810ffec4ad512d51361fcb30
                              std::vector<int> &suffixes,
                              std::vector<int> &table, std::vector<Flag> &flags,
                              bool expand_nodes,
-                             const std::function<bool(int, int, int)> &f, bool build, int paralell_depth) {
+                             const std::function<bool(int, int, int)> &f, bool &build, int paralell_depth) {
 
 
   std::queue<std::tuple<int, int>> queue{};
@@ -200,13 +178,14 @@ void breadth_first_iteration(int start_index, int start_lcp,
       for (int j = node_lower_bound; j < node_upper_bound+1; j+=2) {
         // Filter out all nodes with N as label
         if (sequence[table[j]].to_rank() != 3 && sequence[table[j]].to_rank() != 5) {
-          seqan3::debug_stream << "Node_ID: " << j << " |Table[Node_id]: " << table[j]<< " |Sequence[Table[node_id]]: " << sequence[table[j]] << " " << sequence[table[j]].to_rank() << std::endl;
+          seqan3::debug_stream << "Node_ID: " << j << " | Table[Node_id]: " << table[j]<< " | Sequence[Table[node_id]]: " << sequence[table[j]] << " " << sequence[table[j]].to_rank() << std::endl;
           int edge_lcp = get_edge_lcp(j, sequence, suffixes, table, flags);
           threads[thread_index] = std::thread(BFIp<seqan3::dna5>, std::ref(sequence), std::ref(suffixes),
                                               std::ref(table), std::ref(flags), expand_nodes, f, j, edge_lcp);
           thread_index++;
         }
       }
+      build = false;
       for (int i = 0; i < number_of_threads; ++i) {
         seqan3::debug_stream << i << std::endl;
         threads[i].join();
@@ -240,12 +219,7 @@ void breadth_first_iteration(int start_index, int start_lcp,
   }
 }
 
-<<<<<<< HEAD
-
-template <seqan3::Alphabet alphabet_t>
-=======
 template <seqan3::alphabet alphabet_t>
->>>>>>> f7e97d15beffaf5e810ffec4ad512d51361fcb30
 int get_edge_lcp(int node_index, sequence_t<alphabet_t> &sequence,
                  std::vector<int> &suffixes, std::vector<int> &table,
                  std::vector<Flag> &flags) {

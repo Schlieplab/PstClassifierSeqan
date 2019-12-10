@@ -7,7 +7,7 @@
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/range/container/bitcompressed_vector.hpp>
-#include <seqan3/range/view/char_to.hpp>
+#include <seqan3/range/views/char_to.hpp>
 #include <seqan3/io/sequence_file/all.hpp>
 #include <seqan3/alphabet/all.hpp>
 #include <seqan3/std/filesystem>
@@ -111,10 +111,8 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
 
 
   for (auto &[seq, id, qual] : file_in) {
-    if (id.find("chromosome") != std::string::npos) {
       arguments.sequences.push_back(seq);
       arguments.ids.push_back(id);
-    }
   }
 //arguments.sequences.shrink_to_fit();
 //arguments.sequences = mergeVectors(arguments.sequences);
@@ -132,7 +130,8 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
 std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                   std::string id, size_t max_depth, size_t min_count,
                   float threshold, size_t number_of_parameters,
-                  std::string pruning_method, std::string estimator) {
+                  std::string pruning_method, std::string estimator,
+                  bool multi_core, int split_depth) {
 
   if (estimator == "KL") {
     pst::KullbackLieblerTree<seqan3::dna5> pst{id,
@@ -141,7 +140,9 @@ std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                                                min_count,
                                                threshold,
                                                number_of_parameters,
-                                               pruning_method};
+                                               pruning_method,
+                                               multi_core,
+                                               split_depth};
     pst.construct_tree();
     return pst.to_tree();
   } else if (estimator == "PS") {
@@ -150,7 +151,9 @@ std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                                             max_depth,
                                             min_count,
                                             number_of_parameters,
-                                            pruning_method};
+                                            pruning_method,
+                                            multi_core,
+                                            split_depth};
     pst.construct_tree();
     return pst.to_tree();
   } else {

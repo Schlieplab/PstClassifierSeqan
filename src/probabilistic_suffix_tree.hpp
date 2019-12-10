@@ -75,52 +75,9 @@ public:
    */
   ProbabilisticSuffixTree(std::string id,
                           seqan3::bitcompressed_vector<alphabet_t> &sequence)
-<<<<<<< HEAD
-      : ProbabilisticSuffixTree(id, sequence, 15, 100, 1.2, 0, "cutoff", "PS", false, 1) {}
 
-  /*!\brief Constructor with KL pruning.
-   * \param[in] id The id of the model.
-   * \param[in] sequence The text to construct from.
-   * \param[in] max_depth Max length of a branch/context in the tree.
-   * \param[in] freq Min frequency of each context/node in the tree.
-   * \param[in] cutoff_value Cutoff value for the similarity-pruning.
-   */
-  ProbabilisticSuffixTree(std::string id,
-                          seqan3::bitcompressed_vector<alphabet_t> &sequence,
-                          size_t max_depth, size_t freq, float cutoff_value)
-      : ProbabilisticSuffixTree(id, sequence, max_depth, freq, cutoff_value, 0,
-                                "cutoff", "KL", false, 1) {}
+      : ProbabilisticSuffixTree(id, sequence, 15, 100, 1.2, 0, "cutoff", false, 0) {}
 
-  /*!\brief Constructor with PS pruning.
-   * \param[in] id The id of the model.
-   * \param[in] sequence The text to construct from.
-   * \param[in] max_depth Max length of a branch/context in the tree.
-   * \param[in] freq Min frequency of each context/node in the tree.
-   */
-  ProbabilisticSuffixTree(std::string id,
-                          seqan3::bitcompressed_vector<alphabet_t> &sequence,
-                          size_t max_depth, size_t freq)
-      : ProbabilisticSuffixTree(id, sequence, max_depth, freq, cutoff_value, 0,
-                                "cutoff", "PS", false, 1) {}
-
-  /*!\brief Constructor with cutoff pruning.
-   * \param[in] id The id of the model.
-   * \param[in] sequence The text to construct from.
-   * \param[in] max_depth Max length of a branch/context in the tree.
-   * \param[in] freq Min frequency of each context/node in the tree.
-   * \param[in] cutoff_value Cutoff value for the similarity-pruning.
-   * \param[in] estimator Name of the estimator, either "KL" (Kullback-Liebler)
-   * or "PS" (Peres-Shields).
-   */
-  ProbabilisticSuffixTree(std::string id,
-                          seqan3::bitcompressed_vector<alphabet_t> &sequence,
-                          size_t max_depth, size_t freq, float cutoff_value,
-                          std::string estimator)
-      : ProbabilisticSuffixTree(id, sequence, max_depth, freq, cutoff_value, 0,
-                                "cutoff", estimator, false, 1) {}
-=======
-      : ProbabilisticSuffixTree(id, sequence, 15, 100, 1.2, 0, "cutoff") {}
->>>>>>> f7e97d15beffaf5e810ffec4ad512d51361fcb30
 
   /*!\brief Constructor.
    * \param[in] id_ The id of the model.
@@ -136,13 +93,11 @@ public:
                           seqan3::bitcompressed_vector<alphabet_t> &sequence_,
                           size_t max_depth_, size_t freq_,
                           size_t number_of_parameters_,
-                          std::string pruning_method_, std::string estimator_,
+                          std::string pruning_method_,
                           bool multi_core_, int split_depth_ )
-      : lst::LazySuffixTree<alphabet_t>(sequence_), id(id_), freq(freq_),
+      : lst::LazySuffixTree<alphabet_t>(sequence_, multi_core_, split_depth_), id(id_), freq(freq_),
         max_depth(max_depth_), number_of_parameters(number_of_parameters_),
-        pruning_method(pruning_method_), estimator(estimator_){
-    multi_core = multi_core_;
-    split_depth = split_depth_;
+        pruning_method(pruning_method_){
     using seqan3::operator""_dna4;
     seqan3::dna4_vector dna4{"ACGT"_dna4};
     std::vector<seqan3::gapped<alphabet_t>> characters{
@@ -290,21 +245,23 @@ public:
     }
   }
 
-  std::string id;
 
-  std::unordered_set<int> valid_characters{};
-  size_t freq;
-  size_t max_depth;
-  size_t number_of_parameters;
-  std::string pruning_method;
-
-  std::vector<Status> status{};
-
-  std::vector<int> counts{};
-  std::vector<std::array<float, seqan3::alphabet_size<alphabet_t>>>
-      probabilities{};
 
 protected:
+    std::string id;
+
+    std::unordered_set<int> valid_characters{};
+    size_t freq;
+    size_t max_depth;
+    size_t number_of_parameters;
+    std::string pruning_method;
+
+    std::vector<Status> status{};
+
+    std::vector<int> counts{};
+    std::vector<std::array<float, seqan3::alphabet_size<alphabet_t>>>
+            probabilities{};
+
   /**! \brief Support pruning phase of the algorithm.
    * \details
    * Extends a lazy suffix tree as long as the counts of each node is above
