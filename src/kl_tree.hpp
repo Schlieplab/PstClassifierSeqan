@@ -76,8 +76,7 @@ public:
       : ProbabilisticSuffixTree<alphabet_t>(id, sequence, max_depth, freq,
                                             number_of_parameters,
                                             pruning_method),
-        cutoff_value(cutoff_value_) {
-  }
+        cutoff_value(cutoff_value_) {}
 
 protected:
   float cutoff_value = 1.2;
