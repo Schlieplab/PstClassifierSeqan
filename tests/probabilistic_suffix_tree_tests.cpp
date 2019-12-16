@@ -262,10 +262,11 @@ TEST_F(ProbabilisticSuffixTreeTest, CorrectNumberOfParameters) {
 TEST_F(ProbabilisticSuffixTreeTest, PSTBreadthFirstIteration) {
   std::vector<int> visited{};
 
-  probabilisticSuffixTree.pst_breadth_first_iteration(0, 0, [&](int index, int level) {
-    visited.push_back(index);
-    return true;
-  });
+  probabilisticSuffixTree.pst_breadth_first_iteration(
+      0, 0, [&](int index, int level) {
+        visited.push_back(index);
+        return true;
+      });
 
   std::vector<int> expected_visited{0, 2, 4, 6, 14, 18, 10, 20};
 
@@ -275,10 +276,11 @@ TEST_F(ProbabilisticSuffixTreeTest, PSTBreadthFirstIteration) {
 TEST_F(ProbabilisticSuffixTreeTest, PSTBreadthFirstIterationSubtree) {
   std::vector<int> visited{};
 
-  probabilisticSuffixTree.pst_breadth_first_iteration(2, 1, [&](int index, int level) {
-    visited.push_back(index);
-    return true;
-  });
+  probabilisticSuffixTree.pst_breadth_first_iteration(
+      2, 1, [&](int index, int level) {
+        visited.push_back(index);
+        return true;
+      });
 
   std::vector<int> expected_visited{2, 14, 18};
 
