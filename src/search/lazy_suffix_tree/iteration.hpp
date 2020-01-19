@@ -127,7 +127,6 @@ void BFIp(sequence_t<alphabet_t> &sequence,
 
 }
 
-
 template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
                              std::vector<int> &suffixes,

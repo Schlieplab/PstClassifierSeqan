@@ -285,7 +285,6 @@ public:
     }
   }
 
-protected:
   lst::details::sequence_t<alphabet_t> sequence;
   std::vector<int> suffixes{};
   std::vector<int> table{0, 2};

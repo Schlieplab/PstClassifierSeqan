@@ -65,6 +65,7 @@ void add_leaf(int index, std::vector<int> &table, std::vector<Flag> &flags,
   flags.push_back(Flag::NONE);
 }
 
+
 template <seqan3::alphabet alphabet_t>
 seqan3::gapped<alphabet_t> get_character(sequence_t<alphabet_t> &sequence,
                                          size_t index) {

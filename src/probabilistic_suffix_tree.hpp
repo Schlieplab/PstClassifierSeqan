@@ -214,13 +214,15 @@ public:
   int count_terminal_nodes() {
     int n_terminal_nodes = 0;
 
-    this->breadth_first_iteration(
-        0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
-          if (this->is_included(node_index) && this->is_terminal(node_index)) {
-            n_terminal_nodes += 1;
-          }
-          return true;
-        });
+    this->pst_breadth_first_iteration(0, 0,
+      [&](int node_index, int level) -> bool {
+        if (this->is_included(node_index) && this->is_terminal(node_index)) {
+          n_terminal_nodes += 1;
+        }
+
+        return true;
+      });
+
 
     return n_terminal_nodes;
   }
@@ -245,16 +247,13 @@ public:
     }
   }
 
+  std::string id;
 
-
-protected:
-    std::string id;
-
-    std::unordered_set<int> valid_characters{};
-    size_t freq;
-    size_t max_depth;
-    size_t number_of_parameters;
-    std::string pruning_method;
+  std::unordered_set<int> valid_characters{};
+  size_t freq;
+  size_t max_depth;
+  size_t number_of_parameters;
+  std::string pruning_method;
 
     std::vector<Status> status{};
 
@@ -262,6 +261,7 @@ protected:
     std::vector<std::array<float, seqan3::alphabet_size<alphabet_t>>>
             probabilities{};
 
+protected:
   /**! \brief Support pruning phase of the algorithm.
    * \details
    * Extends a lazy suffix tree as long as the counts of each node is above
@@ -276,9 +276,9 @@ protected:
     auto t1 = high_resolution_clock::now();
     this->build_tree();
     auto t2 = high_resolution_clock::now();
-    this->expand_implicit_nodes();
+    //this->expand_implicit_nodes();
     auto t3 = high_resolution_clock::now();
-    this->add_implicit_node_status();
+    //this->add_implicit_node_status();
     auto t4 = high_resolution_clock::now();
     this->add_suffix_links();
     auto t5 = high_resolution_clock::now();
@@ -352,7 +352,8 @@ protected:
    */
   void build_tree() {
     this->breadth_first_iteration(
-        0, 0, true, [&](int node_index, int lcp, int edge_lcp) -> bool {
+        0, 0, true,
+        [&](int node_index, int lcp, int edge_lcp) -> bool {
           int count = lst::details::node_occurrences(node_index, this->table,
                                                      this->flags);
           if (edge_lcp > 1) {
@@ -363,10 +364,9 @@ protected:
             this->add_implicit_nodes(node_index, max_extension);
             edge_lcp = 1;
           }
-
           this->counts.resize(this->table.size() / 2, -1);
+          this->counts[node_index / 2] = count;
           this->status.resize(this->table.size() / 2, Status::NONE);
-
           return this->check_node(node_index, lcp, edge_lcp, count);
         });
   }
@@ -379,8 +379,6 @@ protected:
    * \return if the node was included.
    */
   bool check_node(int node_index, int lcp, int edge_lcp, int count) {
-    this->counts[node_index / 2] = count;
-
     int label_start = this->table[node_index] - lcp;
     int label_end = this->table[node_index] + edge_lcp;
 
@@ -390,6 +388,20 @@ protected:
       return true;
     } else {
       this->status[node_index / 2] = Status::EXCLUDED;
+
+      // If this node is part of an expanded implicit node, we want to exclude
+      // the rest of the implicit nodes as well.
+
+
+      // DOES THIS HAVE IMPACT??
+      /*
+      this->breadth_first_iteration(
+          node_index, lcp, false,
+          [&](int index, int lcp, int edge_lcp) -> bool {
+            this->status[index / 2] = Status::EXCLUDED;
+            return true;
+          });
+      */
       return false;
     }
   }
@@ -464,36 +476,6 @@ protected:
       n_children += 1;
     });
     return n_children != this->valid_characters.size();
-  }
-
-  /**! \brief Assigns node status to implicit nodes.
-   * \details
-   * Iterates through all nodes and assigns the status for implicit nodes
-   * to the status of their parent.
-   *
-   */
-  void add_implicit_node_status() {
-    this->status.resize(this->table.size() / 2, Status::NONE);
-    std::stack<std::tuple<int, Status>> stack{};
-
-    this->iterate_children(0, [&](int child_index) {
-      stack.emplace(child_index, Status::INCLUDED);
-    });
-
-    while (!stack.empty()) {
-      auto [node_index, parent_status] = stack.top();
-      stack.pop();
-
-      Status node_status = this->status[node_index / 2];
-      if ((node_status & Status::NONE) == Status::NONE) {
-        this->status[node_index / 2] = Status(parent_status);
-      }
-
-      iterate_children(
-          node_index, this->table, this->flags, [&](int child_index) {
-            stack.emplace(child_index, this->status[node_index / 2]);
-          });
-    }
   }
 
   /**! \brief Removes all nodes from the tree with a delta value below
@@ -597,8 +579,8 @@ protected:
   std::vector<int> get_pst_leaves() {
     std::vector<int> bottom_nodes{};
 
-    this->breadth_first_iteration(
-        0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
+    this->pst_breadth_first_iteration(
+        0, 0, [&](int node_index, int level) -> bool {
           if (this->is_included(node_index) && this->is_pst_leaf(node_index)) {
             bottom_nodes.emplace_back(node_index);
           }
@@ -853,14 +835,14 @@ protected:
    * \return The number of nodes in the tree.
    */
   int nodes_in_tree() {
-    int n_nodes = 1;
-    this->breadth_first_iteration(
-        0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
-          if (is_included(node_index)) {
-            n_nodes += 1;
-          }
-          return true;
-        });
+    int n_nodes = 0;
+    this->pst_breadth_first_iteration(0, 0,
+      [&](int node_index, int level) -> bool {
+        if (is_included(node_index)) {
+          n_nodes += 1;
+        }
+        return true;
+      });
 
     return n_nodes;
   }

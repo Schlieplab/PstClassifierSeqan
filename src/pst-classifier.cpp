@@ -7,31 +7,10 @@
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/range/container/bitcompressed_vector.hpp>
-#include <seqan3/range/views/char_to.hpp>
-#include <seqan3/io/sequence_file/all.hpp>
-#include <seqan3/alphabet/all.hpp>
-#include <seqan3/std/filesystem>
-#include <stdio.h>
-#include <stdlib.h>
-#include <fstream>
-#include <streambuf>
-#include <cerrno>
-#include <iostream>
-#include <filesystem>
 
 #include "kl_tree.hpp"
 #include "probabilistic_suffix_tree.hpp"
 #include "ps_tree.hpp"
-
-
-size_t get_chars_in_file(std::string path){
-  std::ifstream   file(path);
-  file.seekg(0, std::ios_base::end);
-  size_t size = file.tellg();
-  file.seekg(0, std::ios_base::beg);
-  return size;
-}
-
 
 struct input_arguments {
   size_t max_depth{15};
@@ -41,7 +20,6 @@ struct input_arguments {
   std::string pruning_method{"cutoff"};
   std::string estimator{"KL"};
   std::vector<seqan3::bitcompressed_vector<seqan3::dna5>> sequences{};
-  //seqan3::bitcompressed_vector<seqan3::dna5> sequences{};
   std::vector<std::string> ids{};
   bool multi_core{false};
   int split_depth{1};
