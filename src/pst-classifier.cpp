@@ -92,11 +92,6 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
       arguments.sequences.push_back(seq);
       arguments.ids.push_back(id);
   }
-//arguments.sequences.shrink_to_fit();
-//arguments.sequences = mergeVectors(arguments.sequences);
-  seqan3::debug_stream << arguments.sequences.size() << std::endl;
-//arguments.sequences.push_back(tmp);
-
 
 
   auto stop = std::chrono::system_clock::now();

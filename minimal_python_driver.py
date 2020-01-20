@@ -75,7 +75,7 @@ def PSTConstruction(arg):
     # Example: adapt to extract features you are interested in
     if not arg.quiet:
         print('----------------------------------------------------------')
-        print('Processing the records:\n{}'.format(' | '.join(identifiers)))
+        print('Processing the file:\n{}'.format(arg.file))
         #print(f'Its description is: \n{descriptions[0]}')
         print(f'The genome assembly contains {chromosome_count} chromosomes, {scaffold_count} scaffolds, and {other_rec_count} other records.')
         print(f'Length of combined sequences is {len(sequence)} nucleotides.')
@@ -95,8 +95,6 @@ def PSTConstruction(arg):
                 arg.estimator.encode(),
                 arg.multi_core,
                 arg.split_depth)
-
-
 
 
     if arg.outputfile:

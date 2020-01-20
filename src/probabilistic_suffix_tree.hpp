@@ -32,10 +32,8 @@ enum Status : unsigned char {
   EXCLUDED = 1 << 2,
 };
 
-bool multi_core = true;
-//bool paralell = false;
-int  split_depth = 1;
 
+//Used for printing time messurements to the terminal.
 bool timeMessurement = true;
 //bool timeMessurement = false;
 
@@ -128,7 +126,7 @@ public:
     seqan3::debug_stream << std::endl;
 
     this->breadth_first_iteration(
-        0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
+        0, 0, false, [&](int_fast64_t node_index, int_fast64_t lcp, int_fast64_t edge_lcp) -> bool {
           if (this->is_excluded(node_index)) {
             return true;
           }
@@ -139,7 +137,7 @@ public:
         });
   }
 
-  void debug_print_node(int node_index, int lcp, int edge_lcp) {
+  void debug_print_node(int_fast64_t node_index, int_fast64_t lcp, int_fast64_t edge_lcp) {
     lst::LazySuffixTree<alphabet_t>::debug_print_node(node_index, lcp,
                                                       edge_lcp);
 
@@ -196,7 +194,7 @@ public:
     this->append_node_string(0, 0, 0, tree_string);
 
     this->breadth_first_iteration(
-        0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
+        0, 0, false, [&](int_fast64_t node_index, int_fast64_t lcp, int_fast64_t edge_lcp) -> bool {
           if (this->is_included(node_index)) {
             this->append_node_string(node_index, lcp, edge_lcp, tree_string);
           }
@@ -215,7 +213,7 @@ public:
     int n_terminal_nodes = 0;
 
     this->pst_breadth_first_iteration(0, 0,
-      [&](int node_index, int level) -> bool {
+      [&](int_fast64_t node_index, int level) -> bool {
         if (this->is_included(node_index) && this->is_terminal(node_index)) {
           n_terminal_nodes += 1;
         }
@@ -227,9 +225,9 @@ public:
     return n_terminal_nodes;
   }
 
-  void pst_breadth_first_iteration(const int start_index, const int start_level,
+  void pst_breadth_first_iteration(const int_fast64_t start_index, const int start_level,
                                    const std::function<bool(int, int)> &f) {
-    std::queue<std::tuple<int, int>> queue{};
+    std::queue<std::tuple<int_fast64_t, int>> queue{};
 
     queue.emplace(start_index, start_level);
 
@@ -257,7 +255,7 @@ public:
 
     std::vector<Status> status{};
 
-    std::vector<int> counts{};
+    std::vector<int_fast64_t> counts{};
     std::vector<std::array<float, seqan3::alphabet_size<alphabet_t>>>
             probabilities{};
 
@@ -353,14 +351,20 @@ protected:
   void build_tree() {
     this->breadth_first_iteration(
         0, 0, true,
-        [&](int node_index, int lcp, int edge_lcp) -> bool {
-          int count = lst::details::node_occurrences(node_index, this->table,
+        [&](int_fast64_t node_index, int_fast64_t lcp,
+            int_fast64_t edge_lcp) -> bool {
+
+          int_fast64_t count = lst::details::node_occurrences(node_index,
+                                                     this->table,
                                                      this->flags);
           if (edge_lcp > 1) {
-            int max_extension = edge_lcp;
+
+            int_fast64_t max_extension = edge_lcp;
             if (lcp + edge_lcp > this->max_depth) {
+
               max_extension = this->max_depth - lcp;
             }
+
             this->add_implicit_nodes(node_index, max_extension);
             edge_lcp = 1;
           }
@@ -378,9 +382,11 @@ protected:
    * \param edge_lcp The edge length (lcp) of the node.
    * \return if the node was included.
    */
-  bool check_node(int node_index, int lcp, int edge_lcp, int count) {
-    int label_start = this->table[node_index] - lcp;
-    int label_end = this->table[node_index] + edge_lcp;
+  bool check_node(int_fast64_t node_index, int_fast64_t lcp,
+                  int_fast64_t edge_lcp, int_fast64_t count) {
+
+    int_fast64_t label_start = this->table[node_index] - lcp;
+    int_fast64_t label_end   = this->table[node_index] + edge_lcp;
 
     if (!this->is_leaf(node_index) &&
         this->include_node(label_start, label_end, count)) {
@@ -419,7 +425,7 @@ protected:
     this->assign_node_probabilities(0);
 
     this->breadth_first_iteration(
-        0, 0, false, [&](int node_index, int lcp, int edge_lcp) {
+        0, 0, false, [&](int_fast64_t node_index, int_fast64_t lcp, int_fast64_t edge_lcp) {
           if (this->is_leaf(node_index) || this->skip_node(node_index)) {
             return false;
           }
@@ -437,11 +443,11 @@ protected:
    *
    * \param[in] node_index
    */
-  void assign_node_probabilities(int node_index) {
+  void assign_node_probabilities(int_fast64_t node_index) {
     auto child_counts = this->get_child_counts(node_index, true);
 
     float child_sum = 0;
-    for (int c : child_counts) {
+    for (auto c : child_counts) {
       child_sum += c;
     }
 
@@ -461,10 +467,10 @@ protected:
    * \param[in] node_index node to check for pseudo counts for.
    * \return true if pseudo counts should be added.
    */
-  bool add_pseudo_counts(int node_index) {
+  bool add_pseudo_counts(int_fast64_t node_index) {
     int n_children = 0;
-    this->iterate_children(node_index, [&](int child_index) {
-      int sequence_index = this->get_sequence_index(child_index);
+    this->iterate_children(node_index, [&](int_fast64_t child_index) {
+      int_fast64_t sequence_index = this->get_sequence_index(child_index);
       auto character = this->get_character(sequence_index);
 
       auto char_rank = seqan3::to_rank(character);
@@ -488,7 +494,7 @@ protected:
    * it now a leaf.
    */
   virtual void cutoff_prune() { parameters_prune(); }
-  virtual float calculate_delta(int node_index) { return 0.0; }
+  virtual float calculate_delta(int_fast64_t node_index) { return 0.0; }
 
   /**! \brief Removes all nodes until a specified number of parameters are left.
    *
@@ -502,11 +508,11 @@ protected:
   void parameters_prune() {
     auto pst_leaves = this->get_pst_leaves();
 
-    auto cmp = [](std::tuple<int, float> left, std::tuple<int, float> right) {
+    auto cmp = [](std::tuple<int_fast64_t, float> left, std::tuple<int_fast64_t, float> right) {
       return std::get<1>(left) < std::get<1>(right);
     };
-    std::priority_queue<std::tuple<int, float>,
-                        std::vector<std::tuple<int, float>>, decltype(cmp)>
+    std::priority_queue<std::tuple<int_fast64_t, float>,
+                        std::vector<std::tuple<int_fast64_t, float>>, decltype(cmp)>
         queue{cmp};
 
     for (auto v : pst_leaves) {
@@ -525,7 +531,7 @@ protected:
         continue;
       }
 
-      int parent_index = this->suffix_links[node_index / 2];
+      int_fast64_t parent_index = this->suffix_links[node_index / 2];
 
       this->status[node_index / 2] = Status::EXCLUDED;
 
@@ -545,12 +551,12 @@ protected:
    * \param with_pseudo_counts Flag for if pseudo counts should be used.
    * \return Array of counts for each children.
    */
-  std::array<int, seqan3::alphabet_size<alphabet_t>>
-  get_child_counts(int node_index, bool with_pseudo_counts) {
-    std::array<int, seqan3::alphabet_size<alphabet_t>> child_counts{};
+  std::array<int_fast64_t, seqan3::alphabet_size<alphabet_t>>
+  get_child_counts(int_fast64_t node_index, bool with_pseudo_counts) {
+    std::array<int_fast64_t, seqan3::alphabet_size<alphabet_t>> child_counts{};
 
-    this->iterate_children(node_index, [&](int child_index) {
-      int sequence_index = this->get_sequence_index(child_index);
+    this->iterate_children(node_index, [&](int_fast64_t child_index) {
+      int_fast64_t sequence_index = this->get_sequence_index(child_index);
       auto character = this->get_character(sequence_index);
 
       if (character == seqan3::gap{}) {
@@ -558,7 +564,6 @@ protected:
       }
 
       int character_rank = seqan3::to_rank(character);
-
       child_counts[character_rank] = get_counts(child_index);
     });
 
@@ -576,11 +581,11 @@ protected:
    *
    * \return vector of indices to all pst leaves.
    */
-  std::vector<int> get_pst_leaves() {
-    std::vector<int> bottom_nodes{};
+  std::vector<int_fast64_t> get_pst_leaves() {
+    std::vector<int_fast64_t> bottom_nodes{};
 
     this->pst_breadth_first_iteration(
-        0, 0, [&](int node_index, int level) -> bool {
+        0, 0, [&](int_fast64_t node_index, int level) -> bool {
           if (this->is_included(node_index) && this->is_pst_leaf(node_index)) {
             bottom_nodes.emplace_back(node_index);
           }
@@ -599,9 +604,9 @@ protected:
    * \param[in] node_index Node to check.
    * \return If all children are missing.
    */
-  bool is_pst_leaf(int node_index) {
+  bool is_pst_leaf(int_fast64_t node_index) {
     for (auto char_rank : this->valid_characters) {
-      int child_index = this->reverse_suffix_links[node_index / 2][char_rank];
+      int_fast64_t child_index = this->reverse_suffix_links[node_index / 2][char_rank];
 
       if (child_index == 0 || child_index == -1) {
         continue;
@@ -623,9 +628,9 @@ protected:
    * \param[in] node_index Node index to check.
    * \return If the node is terminal (has any missing children).
    */
-  bool is_terminal(int node_index) {
+  bool is_terminal(int_fast64_t node_index) {
     for (auto char_rank : this->valid_characters) {
-      int child_index = this->reverse_suffix_links[node_index / 2][char_rank];
+      int_fast64_t child_index = this->reverse_suffix_links[node_index / 2][char_rank];
 
       if (child_index == 0) {
         continue;
@@ -648,9 +653,9 @@ protected:
    * \param[in] removed_index Index of child to node, recently excluded.
    * \return True if removed index is the only missing child of node_index
    */
-  bool became_terminal(int node_index, int removed_index) {
+  bool became_terminal(int_fast64_t node_index, int_fast64_t removed_index) {
     for (auto char_rank : this->valid_characters) {
-      int child_index = this->reverse_suffix_links[node_index / 2][char_rank];
+      int_fast64_t child_index = this->reverse_suffix_links[node_index / 2][char_rank];
 
       if (child_index == 0) {
         continue;
@@ -673,7 +678,7 @@ protected:
    * \param[in] node_index
    * \return count of the node
    */
-  int get_counts(int node_index) {
+  int_fast64_t get_counts(int_fast64_t node_index) {
     if (node_index == -1) {
       return 0;
     }
@@ -681,7 +686,7 @@ protected:
       return this->sequence.size();
     }
 
-    int c = this->counts[node_index / 2];
+    int_fast64_t c = this->counts[node_index / 2];
     if (c == -1) {
       c = lst::details::node_occurrences(node_index, this->table, this->flags);
       this->counts[node_index / 2] = c;
@@ -689,11 +694,11 @@ protected:
     return c;
   }
 
-  bool is_included(int node_index) {
+  bool is_included(int_fast64_t node_index) {
     return (status[node_index / 2] & Status::INCLUDED) == Status::INCLUDED;
   }
 
-  bool is_excluded(int node_index) {
+  bool is_excluded(int_fast64_t node_index) {
     return (status[node_index / 2] & Status::EXCLUDED) == Status::EXCLUDED;
   }
 
@@ -707,10 +712,10 @@ protected:
    * \param[in] edge_lcp Length of edge.
    * \param tree_string The output stream to write to.
    */
-  void append_node_string(int node_index, int lcp, int edge_lcp,
-                          std::ostringstream &tree_string) {
-    auto label_ = this->node_label(node_index, lcp, edge_lcp);
+  void append_node_string(int_fast64_t node_index, int_fast64_t lcp,
+                          int_fast64_t edge_lcp, std::ostringstream &tree_string) {
 
+    auto label_ = this->node_label(node_index, lcp, edge_lcp);
     if (this->is_leaf(node_index)) {
       label_ = this->leaf_label(node_index, lcp);
     }
@@ -742,11 +747,12 @@ protected:
    * \param[in] node_index The node index to operate on.
    * \param tree_string The output stream to write to.
    */
-  void append_child_counts(int node_index, std::ostringstream &tree_string) {
+  void append_child_counts(int_fast64_t node_index,
+                           std::ostringstream &tree_string) {
 
     auto child_counts = this->get_child_counts(node_index, true);
 
-    std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -1);
+    std::vector<int_fast64_t> output(seqan3::alphabet_size<alphabet_t>, -1);
     for (auto char_rank : this->valid_characters) {
       output[char_rank] = child_counts[char_rank];
     };
@@ -770,16 +776,16 @@ protected:
    * \param[in] node_index The node index to operate on.
    * \param tree_string The output stream to write to.
    */
-  void append_reverse_child_counts(int node_index,
+  void append_reverse_child_counts(int_fast64_t node_index,
                                    std::ostringstream &tree_string) {
 
-    std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -1);
+    std::vector<int_fast64_t> output(seqan3::alphabet_size<alphabet_t>, -1);
 
     auto reverse_children = this->reverse_suffix_links[node_index / 2];
     for (auto char_rank : this->valid_characters) {
 
-      int reverse_child = reverse_children[char_rank];
-      int count = get_counts(reverse_child);
+      int_fast64_t reverse_child = reverse_children[char_rank];
+      int_fast64_t count = get_counts(reverse_child);
 
       output[char_rank] = count;
     };
@@ -803,14 +809,14 @@ protected:
    * \param[in] node_index The node index to operate on.
    * \param tree_string The output stream to write to.
    */
-  void append_reverse_children(int node_index,
+  void append_reverse_children(int_fast64_t node_index,
                                std::ostringstream &tree_string) {
 
-    std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -2);
+    std::vector<int_fast64_t> output(seqan3::alphabet_size<alphabet_t>, -2);
 
     auto reverse_children = this->reverse_suffix_links[node_index / 2];
     for (auto char_rank : this->valid_characters) {
-      int reverse_child = reverse_children[char_rank];
+      int_fast64_t reverse_child = reverse_children[char_rank];
 
       if (reverse_child == 0 || reverse_child == -1 ||
           this->is_excluded(reverse_child)) {
@@ -834,10 +840,10 @@ protected:
    *
    * \return The number of nodes in the tree.
    */
-  int nodes_in_tree() {
-    int n_nodes = 0;
+  int_fast64_t nodes_in_tree() {
+    int_fast64_t n_nodes = 0;
     this->pst_breadth_first_iteration(0, 0,
-      [&](int node_index, int level) -> bool {
+      [&](int_fast64_t node_index, int level) -> bool {
         if (is_included(node_index)) {
           n_nodes += 1;
         }
@@ -859,8 +865,9 @@ protected:
    * \param count number of times the label occurs in the sequence.
    * \return true if the node should be included.
    */
-  bool include_node(int label_start, int label_end, int count) {
-    int label_length = label_end - label_start;
+  bool include_node(int_fast64_t label_start, int_fast64_t label_end,
+                    int_fast64_t count) {
+    int_fast64_t label_length = label_end - label_start;
 
     return label_length < this->max_depth && count >= this->freq &&
            label_valid(label_start, label_end);
@@ -872,9 +879,9 @@ protected:
    * \param[in] label_end ending index of the label in the sequence.
    * \return true if the label is valid, false otherwise.
    */
-  bool label_valid(int label_start, int label_end) {
+  bool label_valid(int_fast64_t label_start, int_fast64_t label_end) {
 
-    for (int i = label_start; i < label_end; i++) {
+    for (int_fast64_t i = label_start; i < label_end; i++) {
       auto character = this->get_character(i);
       auto char_rank = seqan3::to_rank(character);
       if (this->valid_characters.find(char_rank) ==
@@ -888,7 +895,7 @@ protected:
 
   /** \copydoc lst::LazySuffixTree.skip_node()
    */
-  bool skip_node(int node_index) {
+  bool skip_node(int_fast64_t node_index) {
     return this->is_unevaluated(node_index) || this->is_excluded(node_index);
   }
 };

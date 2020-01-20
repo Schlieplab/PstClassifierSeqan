@@ -33,19 +33,20 @@ enum Flag : unsigned char {
   UNEVALUATED = 1 << 2,
 };
 
-bool is_leaf(int node_index, std::vector<Flag> &flags) {
+bool is_leaf(int_fast64_t node_index, std::vector<Flag> &flags) {
   return (flags[node_index] & Flag::LEAF) == Flag::LEAF;
 }
 
-bool is_unevaluated(int node_index, std::vector<Flag> &flags) {
+bool is_unevaluated(int_fast64_t node_index, std::vector<Flag> &flags) {
   return (flags[node_index] & Flag::UNEVALUATED) == Flag::UNEVALUATED;
 }
 
-bool is_rightmostchild(int node_index, std::vector<Flag> &flags) {
+bool is_rightmostchild(int_fast64_t node_index, std::vector<Flag> &flags) {
   return (flags[node_index] & Flag::RIGHT_MOST_CHILD) == Flag::RIGHT_MOST_CHILD;
 }
 
-void add_branching_node(int index, int count, std::vector<int> &table,
+void add_branching_node(int_fast64_t index, int_fast64_t count,
+                        std::vector<int_fast64_t> &table,
                         std::vector<Flag> &flags) {
   table.push_back(index);
   table.push_back(index + count);
@@ -54,8 +55,10 @@ void add_branching_node(int index, int count, std::vector<int> &table,
   flags.push_back(Flag::NONE);
 }
 
-void add_leaf(int index, std::vector<int> &table, std::vector<Flag> &flags,
-              std::vector<int> &suffixes) {
+void add_leaf(int_fast64_t index,
+              std::vector<int_fast64_t> &table,
+              std::vector<Flag> &flags,
+              std::vector<int_fast64_t> &suffixes) {
   table.push_back(suffixes[index]);
   // Add extra index for leaves to allow for explicit nodes.
   // It's not technically needed.
@@ -68,7 +71,7 @@ void add_leaf(int index, std::vector<int> &table, std::vector<Flag> &flags,
 
 template <seqan3::alphabet alphabet_t>
 seqan3::gapped<alphabet_t> get_character(sequence_t<alphabet_t> &sequence,
-                                         size_t index) {
+                                         int_fast64_t index) {
   if (index >= sequence.size()) {
     return seqan3::gapped<alphabet_t>(seqan3::gap{});
   } else {
@@ -77,10 +80,11 @@ seqan3::gapped<alphabet_t> get_character(sequence_t<alphabet_t> &sequence,
 }
 
 template <seqan3::alphabet alphabet_t>
-int longest_common_prefix(int lower_bound, int upper_bound,
-                          sequence_t<alphabet_t> &sequence,
-                          std::vector<int> &suffixes) {
-  for (int prefix_length = 0;; prefix_length++) {
+int_fast64_t longest_common_prefix(int_fast64_t lower_bound,
+                                   int_fast64_t upper_bound,
+                                   sequence_t<alphabet_t> &sequence,
+                                   std::vector<int_fast64_t> &suffixes) {
+  for (int_fast64_t prefix_length = 0;; prefix_length++) {
     if (prefix_length + suffixes[upper_bound - 1] >= suffixes.size()) {
       return prefix_length - 1;
     }
@@ -88,7 +92,7 @@ int longest_common_prefix(int lower_bound, int upper_bound,
     auto character =
         get_character(sequence, suffixes[lower_bound] + prefix_length);
 
-    for (int i = lower_bound + 1; i < upper_bound; i++) {
+    for (int_fast64_t i = lower_bound + 1; i < upper_bound; i++) {
       if (get_character(sequence, suffixes[i] + prefix_length) != character) {
         return prefix_length;
       }
@@ -99,13 +103,18 @@ int longest_common_prefix(int lower_bound, int upper_bound,
 }
 
 template <seqan3::alphabet alphabet_t>
-int add_lcp_to_suffixes(int lower_bound, int upper_bound,
-                         sequence_t<alphabet_t> &sequence,
-                         std::vector<int> &suffixes) {
+int_fast64_t add_lcp_to_suffixes(int_fast64_t lower_bound,
+                                 int_fast64_t upper_bound,
+                                 sequence_t<alphabet_t> &sequence,
+                                 std::vector<int_fast64_t> &suffixes) {
 
-  int lcp = longest_common_prefix(lower_bound, upper_bound, sequence, suffixes);
+  int_fast64_t lcp = longest_common_prefix(lower_bound,
+                                           upper_bound,
+                                           sequence,
+                                           suffixes);
+
   std::lock_guard<std::mutex> lock(lcp_lock);
-  for (int i = lower_bound; i < upper_bound; i++) {
+  for (int_fast64_t i = lower_bound; i < upper_bound; i++) {
     suffixes[i] += lcp;
   }
   return lcp;
@@ -114,11 +123,13 @@ int add_lcp_to_suffixes(int lower_bound, int upper_bound,
 
 
 template <seqan3::alphabet alphabet_t>
-void add_children(alphabet_array<alphabet_t> &counts, int lower_bound,
-                  std::vector<int> &suffixes, std::vector<int> &table,
+void add_children(alphabet_array<alphabet_t> &counts,
+                  int_fast64_t lower_bound,
+                  std::vector<int_fast64_t> &suffixes,
+                  std::vector<int_fast64_t> &table,
                   std::vector<Flag> &flags) {
   bool last_added_leaf = false;
-  int index = lower_bound;
+  int_fast64_t index = lower_bound;
 
   for (auto count : counts) {
     if (count == 0) {
@@ -134,7 +145,7 @@ void add_children(alphabet_array<alphabet_t> &counts, int lower_bound,
     index += count;
   }
 
-  int right_most_child_index = flags.size() - 2;
+  int_fast64_t right_most_child_index = flags.size() - 2;
 
   if (last_added_leaf) {
     // Should be 1, but I've addded a value to leaves to allow for
@@ -160,20 +171,22 @@ alphabet_array<alphabet_t> suffix_pointers(alphabet_array<alphabet_t> &counts) {
 }
 
 template <seqan3::alphabet alphabet_t>
-void sort_suffixes(alphabet_array<alphabet_t> counts, int lower_bound,
-                   int upper_bound, sequence_t<alphabet_t> &sequence,
-                   std::vector<int> &suffixes) {
+void sort_suffixes(alphabet_array<alphabet_t> counts,
+                   int_fast64_t lower_bound,
+                   int_fast64_t upper_bound,
+                   sequence_t<alphabet_t> &sequence,
+                   std::vector<int_fast64_t> &suffixes) {
 
-  std::vector<int> temp_suffixes(suffixes.begin() + lower_bound,
-                                 suffixes.begin() + upper_bound);
-  std::vector<int> temp_storage;
+  std::vector<int_fast64_t> temp_suffixes(suffixes.begin() + lower_bound,
+                                          suffixes.begin() + upper_bound);
+  std::vector<int_fast64_t> temp_storage;
   auto pointers = suffix_pointers<alphabet_t>(counts);
 
-  for (int i = lower_bound; i < upper_bound; i++) {
+  for (int_fast64_t i = lower_bound; i < upper_bound; i++) {
     auto character = get_character(sequence, temp_suffixes[i - lower_bound]);
     int character_rank = seqan3::to_rank(character);
 
-    int suffix_index = pointers[character_rank] + lower_bound;
+    int_fast64_t suffix_index = pointers[character_rank] + lower_bound;
 
     temp_storage.push_back(suffix_index);
     temp_storage.push_back(temp_suffixes[i - lower_bound]);
@@ -181,15 +194,16 @@ void sort_suffixes(alphabet_array<alphabet_t> counts, int lower_bound,
   }
 
   std::lock_guard<std::mutex> lock(sort_suffix_lock);
-  for (int j = 0; j < temp_storage.size(); j += 2) {
+  for (auto j = 0; j < temp_storage.size(); j += 2) {
     suffixes[temp_storage[j]] = temp_storage[j + 1];
   }
 
 }
 template <seqan3::alphabet alphabet_t>
-alphabet_array<alphabet_t> count_suffixes(int lower_bound, int upper_bound,
+alphabet_array<alphabet_t> count_suffixes(int_fast64_t lower_bound,
+                                          int_fast64_t upper_bound,
                                           sequence_t<alphabet_t> &sequence,
-                                          std::vector<int> &suffixes) {
+                                          std::vector<int_fast64_t> &suffixes) {
   if (upper_bound > suffixes.size()) {
     seqan3::debug_stream << "Upper Bound " << upper_bound << " Suffix Size " << suffixes.size() << std::endl;
     throw std::invalid_argument("[COUNT SUFFIXES] Upper bound is larger than "
@@ -200,8 +214,9 @@ alphabet_array<alphabet_t> count_suffixes(int lower_bound, int upper_bound,
   }
   alphabet_array<alphabet_t> count{};
 
-  for (int i = lower_bound; i < upper_bound; i++) {
-    auto character = get_character(sequence, suffixes[i]);
+  for (int_fast64_t i = lower_bound; i < upper_bound; i++) {
+
+    auto character     = get_character(sequence, suffixes[i]);
     int character_rank = seqan3::to_rank(character);
     count[character_rank] += 1;
   }
@@ -210,10 +225,12 @@ alphabet_array<alphabet_t> count_suffixes(int lower_bound, int upper_bound,
 }
 
 template <seqan3::alphabet alphabet_t>
-void expand_root(sequence_t<alphabet_t> &sequence, std::vector<int> &suffixes,
-                 std::vector<int> &table, std::vector<Flag> &flags) {
-  int lower_bound = 0;
-  int upper_bound = suffixes.size();
+void expand_root(sequence_t<alphabet_t> &sequence,
+                 std::vector<int_fast64_t> &suffixes,
+                 std::vector<int_fast64_t> &table,
+                 std::vector<Flag> &flags) {
+  int_fast64_t lower_bound = 0;
+  int_fast64_t upper_bound = suffixes.size();
 
   auto counts = count_suffixes(lower_bound, upper_bound, sequence, suffixes);
 
@@ -223,22 +240,29 @@ void expand_root(sequence_t<alphabet_t> &sequence, std::vector<int> &suffixes,
 }
 
 template <seqan3::alphabet alphabet_t>
-int expand_node(int node_index, sequence_t<alphabet_t> &sequence,
-                std::vector<int> &suffixes, std::vector<int> &table,
+int_fast64_t expand_node(int_fast64_t node_index,
+                sequence_t<alphabet_t> &sequence,
+                std::vector<int_fast64_t> &suffixes,
+                std::vector<int_fast64_t> &table,
                 std::vector<Flag> &flags) {
 
   if (!is_unevaluated(node_index, flags)) {
     throw std::invalid_argument("[EXPAND NODE] Given node is already expanded");
   }
 
-  int lower_bound  = table[node_index];
-  int upper_bound  = table[node_index + 1];
+  int_fast64_t lower_bound  = table[node_index];
+  int_fast64_t upper_bound  = table[node_index + 1];
   table[node_index]= suffixes[lower_bound];
-  int lcp = add_lcp_to_suffixes(lower_bound, upper_bound, sequence, suffixes);
+  int_fast64_t lcp = add_lcp_to_suffixes(lower_bound,
+                                         upper_bound,
+                                         sequence,
+                                         suffixes);
 
+  alphabet_array<alphabet_t> counts = count_suffixes(lower_bound,
+                                                     upper_bound,
+                                                     sequence,
+                                                     suffixes);
 
-  alphabet_array<alphabet_t> counts =
-      count_suffixes(lower_bound, upper_bound, sequence, suffixes);
   sort_suffixes(counts, lower_bound, upper_bound, sequence, suffixes);
 
   std::lock_guard<std::mutex> lock(add_child_lock);
@@ -249,14 +273,16 @@ int expand_node(int node_index, sequence_t<alphabet_t> &sequence,
   return lcp;
 }
 
-void add_implicit_nodes(int node_index, int edge_lcp, std::vector<int> &table,
+void add_implicit_nodes(int_fast64_t node_index, int_fast64_t edge_lcp,
+                        std::vector<int_fast64_t> &table,
                         std::vector<Flag> &flags) {
+
   std::lock_guard<std::mutex> lock(add_child_lock);
-  int previous_child = table[node_index + 1];
+  int_fast64_t previous_child = table[node_index + 1];
   table[node_index + 1] = table.size();
 
-  int start = table[node_index];
-  for (int i = start + 1; i < start + edge_lcp; i++) {
+  int_fast64_t start = table[node_index];
+  for (auto i = start + 1; i < start + edge_lcp; i++) {
     table.push_back(i);
     table.push_back(table.size() + 1);
 
