@@ -1,10 +1,11 @@
 import ctypes
 import argparse
+import gzip
+from mimetypes import guess_type
+from functools import partial
 from Bio import SeqIO
-
+from Bio.SeqIO.FastaIO import SimpleFastaParser
 import multiprocessing as mlp
-import threading
-import logging
 import time
 import os
 from datetime import datetime
@@ -43,62 +44,57 @@ def setPath(identifier):
     path = f"{resultPath}/{str(file)}.tree"
     return path
 
-def printTree(identifier, result, arg):
-    result = result[0]
-    if result:
-        global path
-        decodedResult = result.decode().split('\n')
-        # If terminal is not quietd and Outputfile is asked for
-        if not arg.quiet and arg.outputfile:
-            with open(path, 'w') as f:
-                f.write("%s\n" % arg)
-                for line in decodedResult:
-                    f.write("%s\n" % line)
-            return
-
-        if not arg.quiet:
-            for line in decodedResult:
-                print(line)
-            return
-
-        # if terminal is quietd, but outputfile is asked for.
-
-            return decodedResult
-
-    else:
-        print('No result.')
-
-
 def PSTConstruction(arg):
-    record      = next(SeqIO.parse(open(arg.file, 'r'),'fasta'))
-    identifier  = str(record.id).encode()
-    description = record.description
-    sequence    = str(record.seq).encode("utf-8")
+    sequence         = ''
+    identifiers      = []
+    descriptions     = []
+    chromosome_count = 0
+    scaffold_count   = 0
+    other_rec_count  = 0
+    encoding = guess_type(arg.file)[1]  # uses file extension
+    _open = partial(gzip.open, mode='rt') if encoding == 'gzip' else open
 
+    start_r = time.time()
+    with _open(arg.file) as f:
+        #for record in SeqIO.parse(f, 'fasta'):
+        for value in SimpleFastaParser(f):
+            id, seq = value
+            identifiers.append(id.split(' ')[0])
+            descriptions.append(id)
+            sequence = sequence + seq
+    stop_r = time.time()
+
+    for desc in descriptions:
+        if 'chromosome' in desc:
+            chromosome_count += 1
+        elif 'scaffold' in desc:
+            scaffold_count   += 1
+        else:
+            other_rec_count  +=1
 
     # Example: adapt to extract features you are interested in
-    print('----------------------------------------------------------')
-    print('Processing the record: {}:'.format(identifier.decode()))
-    amount_of_nucleotides = len(sequence)
     if not arg.quiet:
         print('----------------------------------------------------------')
-        print('Processing the record {}:'.format(identifier.decode()))
-        print('Its description is: \n{}'.format(description))
-        print('Its sequence contains {} nucleotides.'.format(amount_of_nucleotides))
+        print('Processing the records:\n{}'.format(' | '.join(identifiers)))
+        #print(f'Its description is: \n{descriptions[0]}')
+        print(f'The genome assembly contains {chromosome_count} chromosomes, {scaffold_count} scaffolds, and {other_rec_count} other records.')
+        print(f'Length of combined sequences is {len(sequence)} nucleotides.')
+        print(f'Reading the file took {stop_r - start_r} seconds.')
         print('----------------------------------------------------------')
         print('Generating PST...')
     else:
         print('Tree output quieted.')
 
-    PST = train(identifier, sequence,
-            arg.max_depth,
-            arg.min_count,
-            arg.threshold,
-            arg.number_of_parameters,
-            arg.pruning_method.encode(),
-            arg.estimator.encode(),
-            arg.multi_core,
-            arg.split_depth)
+    PST = train(identifiers[0].encode("utf-8"),
+                sequence.encode("utf-8"),
+                arg.max_depth,
+                arg.min_count,
+                arg.threshold,
+                arg.number_of_parameters,
+                arg.pruning_method.encode(),
+                arg.estimator.encode(),
+                arg.multi_core,
+                arg.split_depth)
 
 
 
@@ -113,7 +109,6 @@ def PSTConstruction(arg):
     if not arg.quiet:
         print(PST.decode())
 
-    return PST, arg
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -207,9 +202,6 @@ if __name__ == '__main__':
                                    accuracy.')
 
     args = parser.parse_args()
-    #mlp.log_to_stderr()
-    #logger = mlp.get_logger()
-    #logger.setLevel(logging.INFO)
     start = time.time()
     PSTConstruction(args)
     end = time.time()
