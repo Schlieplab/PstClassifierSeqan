@@ -1,5 +1,5 @@
 **/cmake-build-*
-build/*
+build*/*
 build_tests/
 .idea/*
 data/
@@ -10,3 +10,4 @@ src/build/*
 **/*.tree
 experimentation
 Results
+scripts/

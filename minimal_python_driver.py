@@ -12,7 +12,7 @@ from datetime import datetime
 
 global path
 
-lib = ctypes.cdll.LoadLibrary("./build/libvlmc.so")
+lib = ctypes.cdll.LoadLibrary("./build-debug/libvlmc.so")
 
 
 ## Importing VLMC library training fucntion calls.

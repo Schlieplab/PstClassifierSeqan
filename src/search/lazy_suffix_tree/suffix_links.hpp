@@ -22,15 +22,15 @@ namespace lst::details {
  * \return the heigh of the tree (longest node contained).
  */
 template <seqan3::alphabet alphabet_t>
-int tree_height(std::vector<int_fast64_t> &depths,
+    int64_t tree_height(std::vector<int_fast64_t> &depths,
                 sequence_t<alphabet_t> &sequence,
                 std::vector<int_fast64_t> &suffixes,
                 std::vector<int_fast64_t> &table,
                 std::vector<Flag> &flags) {
 
-  std::queue<std::tuple<int_fast64_t, int>> queue{};
+  std::queue<std::tuple<int_fast64_t, int64_t>> queue{};
   queue.emplace(0, 0);
-  int tree_height = 0;
+  int64_t tree_height = 0;
 
   while (!queue.empty()) {
     auto [node_index, parent_depth] = queue.front();
@@ -111,7 +111,7 @@ void add_explicit_suffix_links(sequence_t<alphabet_t> &sequence,
                        flags);
 
   std::vector<int_fast64_t> depths(table.size() / 2, -1);
-  int height = tree_height(depths, sequence, suffixes, table, flags);
+  int64_t height = tree_height(depths, sequence, suffixes, table, flags);
 
   std::vector<int_fast64_t> branch(height + 1, -1);
 

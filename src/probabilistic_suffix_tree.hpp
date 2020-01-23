@@ -209,11 +209,11 @@ public:
    *
    * \return vector of indices to all terminal nodes.
    */
-  int count_terminal_nodes() {
-    int n_terminal_nodes = 0;
+  int64_t count_terminal_nodes() {
+    int64_t n_terminal_nodes = 0;
 
     this->pst_breadth_first_iteration(0, 0,
-      [&](int_fast64_t node_index, int level) -> bool {
+      [&](int_fast64_t node_index, int64_t level) -> bool {
         if (this->is_included(node_index) && this->is_terminal(node_index)) {
           n_terminal_nodes += 1;
         }
@@ -225,9 +225,9 @@ public:
     return n_terminal_nodes;
   }
 
-  void pst_breadth_first_iteration(const int_fast64_t start_index, const int start_level,
-                                   const std::function<bool(int, int)> &f) {
-    std::queue<std::tuple<int_fast64_t, int>> queue{};
+  void pst_breadth_first_iteration(const int_fast64_t start_index, const int64_t start_level,
+                                   const std::function<bool(int64_t, int64_t)> &f) {
+    std::queue<std::tuple<int_fast64_t, int64_t>> queue{};
 
     queue.emplace(start_index, start_level);
 
@@ -357,7 +357,7 @@ protected:
           int_fast64_t count = lst::details::node_occurrences(node_index,
                                                      this->table,
                                                      this->flags);
-          if (edge_lcp > 1) {
+          if (edge_lcp > 1 && not this->multi_core) {
 
             int_fast64_t max_extension = edge_lcp;
             if (lcp + edge_lcp > this->max_depth) {
@@ -400,14 +400,15 @@ protected:
 
 
       // DOES THIS HAVE IMPACT??
-      /*
-      this->breadth_first_iteration(
-          node_index, lcp, false,
-          [&](int index, int lcp, int edge_lcp) -> bool {
-            this->status[index / 2] = Status::EXCLUDED;
-            return true;
-          });
-      */
+      if (not this->multi_core) {
+        this->breadth_first_iteration(
+                node_index, lcp, false,
+                [&](int_fast64_t index, int_fast64_t lcp,
+                        int_fast64_t edge_lcp) -> bool {
+                    this->status[index / 2] = Status::EXCLUDED;
+                    return true;
+                });
+      }
       return false;
     }
   }
@@ -468,7 +469,7 @@ protected:
    * \return true if pseudo counts should be added.
    */
   bool add_pseudo_counts(int_fast64_t node_index) {
-    int n_children = 0;
+    int64_t n_children = 0;
     this->iterate_children(node_index, [&](int_fast64_t child_index) {
       int_fast64_t sequence_index = this->get_sequence_index(child_index);
       auto character = this->get_character(sequence_index);
@@ -585,7 +586,7 @@ protected:
     std::vector<int_fast64_t> bottom_nodes{};
 
     this->pst_breadth_first_iteration(
-        0, 0, [&](int_fast64_t node_index, int level) -> bool {
+        0, 0, [&](int_fast64_t node_index, int64_t level) -> bool {
           if (this->is_included(node_index) && this->is_pst_leaf(node_index)) {
             bottom_nodes.emplace_back(node_index);
           }
@@ -843,7 +844,7 @@ protected:
   int_fast64_t nodes_in_tree() {
     int_fast64_t n_nodes = 0;
     this->pst_breadth_first_iteration(0, 0,
-      [&](int_fast64_t node_index, int level) -> bool {
+      [&](int_fast64_t node_index, int64_t level) -> bool {
         if (is_included(node_index)) {
           n_nodes += 1;
         }

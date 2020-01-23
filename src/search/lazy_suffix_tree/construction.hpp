@@ -24,7 +24,7 @@ using sequence_t = seqan3::bitcompressed_vector<alphabet_t>;
 
 template <seqan3::alphabet alphabet_t = seqan3::dna5>
 using alphabet_array =
-    std::array<int, seqan3::alphabet_size<seqan3::gapped<alphabet_t>>>;
+    std::array<int_fast64_t, seqan3::alphabet_size<seqan3::gapped<alphabet_t>>>;
 
 enum Flag : unsigned char {
   NONE = 0,
@@ -161,13 +161,35 @@ template <seqan3::alphabet alphabet_t>
 alphabet_array<alphabet_t> suffix_pointers(alphabet_array<alphabet_t> &counts) {
   alphabet_array<alphabet_t> pointers{};
 
-  int counter = 0;
-  for (int i = 0; i < counts.size(); i++) {
+  int_fast64_t counter = 0;
+  for (int_fast64_t i = 0; i < counts.size(); i++) {
     pointers[i] = counter;
     counter += counts[i];
   }
 
   return pointers;
+}
+
+template <seqan3::alphabet alphabet_t>
+void sort_suffixes_root(alphabet_array<alphabet_t> counts,
+                        int64_t lower_bound, int64_t upper_bound,
+                        sequence_t<alphabet_t> &sequence,
+                        std::vector<int64_t > &suffixes) {
+  std::vector<int64_t> temp_suffixes(suffixes.begin() + lower_bound,
+                                     suffixes.begin() + upper_bound);
+
+  auto pointers = suffix_pointers<alphabet_t>(counts);
+
+  for (int64_t i = lower_bound; i < upper_bound; i++) {
+    auto character = get_character(sequence, temp_suffixes[i - lower_bound]);
+    int character_rank = seqan3::to_rank(character);
+
+    int64_t suffix_index = pointers[character_rank] + lower_bound;
+
+    suffixes[suffix_index] = temp_suffixes[i - lower_bound];
+
+    pointers[character_rank] += 1;
+  }
 }
 
 template <seqan3::alphabet alphabet_t>
@@ -234,7 +256,7 @@ void expand_root(sequence_t<alphabet_t> &sequence,
 
   auto counts = count_suffixes(lower_bound, upper_bound, sequence, suffixes);
 
-  sort_suffixes(counts, lower_bound, upper_bound, sequence, suffixes);
+  sort_suffixes_root(counts, lower_bound, upper_bound, sequence, suffixes);
 
   add_children<alphabet_t>(counts, lower_bound, suffixes, table, flags);
 }

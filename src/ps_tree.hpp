@@ -77,7 +77,7 @@ protected:
    */
   void cutoff_prune() {
     this->pst_breadth_first_iteration(
-        0, 0, [&](int_fast64_t node_index, int level) -> bool {
+        0, 0, [&](int_fast64_t node_index, int64_t level) -> bool {
           int_fast64_t parent_index = this->suffix_links[node_index / 2];
 
           if (node_index == 0) {
@@ -93,7 +93,7 @@ protected:
         });
   }
 
-  bool should_prune_subtree(int_fast64_t node_index, int level) {
+  bool should_prune_subtree(int_fast64_t node_index, int64_t level) {
     float delta = this->calculate_delta(node_index);
 
 
@@ -115,14 +115,14 @@ protected:
   }
 
   std::vector<float> get_subtree_level_deltas(const int_fast64_t node_index,
-                                              const int level) {
+                                              const int64_t level) {
     std::vector<float> deltas{};
     float level_max_delta{this->calculate_delta(node_index)};
-    int current_level{level};
+    int64_t current_level{level};
 
     this->pst_breadth_first_iteration(
         node_index, level,
-        [&](const int_fast64_t child_index, const int child_level) -> bool {
+        [&](const int_fast64_t child_index, const int64_t child_level) -> bool {
           if (child_level > current_level) {
             deltas.push_back(level_max_delta);
 
@@ -138,12 +138,12 @@ protected:
     return deltas;
   }
 
-  float get_subtree_max_delta(const int_fast64_t node_index, const int level) {
+  float get_subtree_max_delta(const int_fast64_t node_index, const int64_t level) {
     float max_delta{0.0};
 
     this->pst_breadth_first_iteration(
         node_index, level,
-        [&](const int_fast64_t child_index, const int child_level) -> bool {
+        [&](const int_fast64_t child_index, const int64_t child_level) -> bool {
           if (node_index == child_index) {
             return true;
           }
@@ -181,7 +181,7 @@ protected:
    */
   void exclude_subtree(const int_fast64_t node_index) {
     this->pst_breadth_first_iteration(node_index, 0,
-        [&](const int_fast64_t child_index, const int child_level) {
+        [&](const int_fast64_t child_index, const int64_t child_level) {
           if (node_index != child_index)
             this->status[child_index / 2] = Status::EXCLUDED;
           return true;

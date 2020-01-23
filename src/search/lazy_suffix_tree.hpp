@@ -137,18 +137,18 @@ public:
    */
   void
   breadth_first_traversal(bool expand_nodes,
-                          const std::function<bool(int, int, int, int)> &f) {
+                          const std::function<bool(int_fast64_t, int_fast64_t, int_fast64_t, int_fast64_t)> &f) {
     this->breadth_first_iteration(
-        0, 0, true, [&](int node_index, int lcp, int edge_lcp) -> bool {
-          int sequence_index = get_sequence_index(node_index);
+        0, 0, true, [&](int_fast64_t node_index, int_fast64_t lcp, int_fast64_t edge_lcp) -> bool {
+          int_fast64_t sequence_index = get_sequence_index(node_index);
 
-          int node_start = sequence_index - lcp;
-          int node_end = sequence_index + edge_lcp;
+          int_fast64_t node_start = sequence_index - lcp;
+          int_fast64_t node_end = sequence_index + edge_lcp;
 
           if (is_leaf(node_index)) {
             node_end = suffixes.size() - 1;
           }
-          int occurrences =
+          int_fast64_t occurrences =
               lst::details::node_occurrences(node_index, table, flags);
 
           return f(node_start, node_end, edge_lcp, occurrences);
@@ -487,7 +487,7 @@ public:
    * \param f function to call on every child.
    */
   void iterate_children(int_fast64_t node_index,
-                        const std::function<void(int)> &f) {
+                        const std::function<void(int_fast64_t)> &f) {
 
     lst::details::iterate_children(node_index, this->table, this->flags, f);
   }

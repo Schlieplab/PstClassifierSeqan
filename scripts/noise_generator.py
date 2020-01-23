@@ -19,7 +19,7 @@ def chunkIt(seq, num):
 
 def genNumbers(w):
     global k
-    sequence = random.choices(['A', 'C', 'G', 'T'], weights=w, k=k)
+    sequence = random.choices(['A', 'C', 'G', 'T', 'N'], weights=w, k=k)
     return sequence
 
 def merge_subsequences(result):
@@ -44,14 +44,14 @@ def main(weights):
     sequence = "".join(tmp)
     sequence = [sequence[x:x+60] for x in range(0, len(sequence), 60)]
     DNAnoise = f">XD_424242.42 NOISE chromosome X, Weights: {weights}\n"
-    with open(f'noise{weights}.fa', 'w') as f:
+    with open(f'noise.fa', 'w') as f:
             f.write(DNAnoise)
             for s in sequence:
                 f.write(f'{s}\n')
 
 if __name__ == '__main__':
-    weights = [[0.1, 0.4, 0.3, 0.2], [0.7, 0.1, 0.1, 0.1], [0.3, 0.3, 0.3, 0.1]]#, [0.15, 0.15, 0.4, 0.3]]                                                               ]
+    weights = [[0.24, 0.24, 0.24, 0.24, 0.04]]#, [0.7, 0.1, 0.1, 0.1], [0.3, 0.3, 0.3, 0.1]]#, [0.15, 0.15, 0.4, 0.3]]                                                               ]
     global k
-    k = 1666666
+    k = 100000000
     for w in weights:
         main(w)

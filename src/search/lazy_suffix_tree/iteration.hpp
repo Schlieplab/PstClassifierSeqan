@@ -148,7 +148,7 @@ void breadth_first_iteration(int_fast64_t start_index, int_fast64_t start_lcp,
        std::vector<int_fast64_t> &table,
        std::vector<Flag> &flags, bool expand_nodes,
        const std::function<bool(int_fast64_t, int_fast64_t, int_fast64_t)> &f,
-       bool &build, int paralell_depth) {
+       bool &multi_core, int paralell_depth) {
 
 
   std::queue<std::tuple<int_fast64_t, int_fast64_t>> queue{};
@@ -167,7 +167,7 @@ void breadth_first_iteration(int_fast64_t start_index, int_fast64_t start_lcp,
   while (!queue.empty()) {
     auto [node_index, lcp] = queue.front();
     // Enter if all serial nodes are expanded.
-    if (node_index > node_upper_bound && build){
+    if (node_index > node_upper_bound && multi_core){
       int number_of_threads = 4;
       int thread_index      = 0;
       // Spawn threads
@@ -195,7 +195,7 @@ void breadth_first_iteration(int_fast64_t start_index, int_fast64_t start_lcp,
           thread_index++;
         }
       }
-      build = false;
+      multi_core = false;
       for (int i = 0; i < number_of_threads; ++i) {
         seqan3::debug_stream << i << std::endl;
         threads[i].join();
