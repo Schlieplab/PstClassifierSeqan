@@ -365,6 +365,7 @@ protected:
 
           int64_t count = lst::details::node_occurrences(node_index,
                                                      this->table,
+                                                     this->sequence,
                                                      this->flags);
           /*
           if (edge_lcp > 1 && not this->multi_core) {
@@ -518,7 +519,7 @@ protected:
       }
 
       iterate_children(
-              node_index, this->table, this->flags, [&](int64_t child_index) {
+              node_index, this->table, this->sequence, this->flags, [&](int64_t child_index) {
                   stack.emplace(child_index, this->status[node_index / 2]);
               });
     }
@@ -728,7 +729,7 @@ protected:
 
     int64_t c = this->counts[node_index / 2];
     if (c == -1) {
-      c = lst::details::node_occurrences(node_index, this->table, this->flags);
+      c = lst::details::node_occurrences(node_index, this->table, this->sequence, this->flags);
       this->counts[node_index / 2] = c;
     }
     return c;

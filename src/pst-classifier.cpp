@@ -22,7 +22,7 @@ struct input_arguments {
   std::vector<seqan3::bitcompressed_vector<seqan3::dna5>> sequences{};
   std::vector<std::string> ids{};
   bool multi_core{false};
-  int split_depth{1};
+  int paralell_depth{1};
 };
 
 struct my_traits : seqan3::sequence_file_input_default_traits_dna {
@@ -71,7 +71,7 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
   parser.add_flag(arguments.multi_core, 'm', "multi-core" ,
                   "Enable Multi-core utilisation.");
 
-  parser.add_option(arguments.split_depth, 's', "split-depth",
+  parser.add_option(arguments.paralell_depth, 's', "split-depth",
                     "Depth where to start the split into threads "
                     "Higher value increase the number of threads spawned. Default 1");
   try {
@@ -104,7 +104,7 @@ std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                   std::string id, size_t max_depth, size_t min_count,
                   float threshold, size_t number_of_parameters,
                   std::string pruning_method, std::string estimator,
-                  bool multi_core, int split_depth) {
+                  bool multi_core, int paralell_depth) {
 
   if (estimator == "KL") {
     pst::KullbackLieblerTree<seqan3::dna5> pst{id,
@@ -115,7 +115,7 @@ std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                                                number_of_parameters,
                                                pruning_method,
                                                multi_core,
-                                               split_depth};
+                                               paralell_depth};
     pst.construct_tree();
     return pst.to_tree();
   } else if (estimator == "PS") {
@@ -126,7 +126,7 @@ std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                                             number_of_parameters,
                                             pruning_method,
                                             multi_core,
-                                            split_depth};
+                                            paralell_depth};
     pst.construct_tree();
     return pst.to_tree();
   } else {
@@ -145,7 +145,7 @@ int main(int argc, char *argv[]) {
                            arguments.max_depth, arguments.min_count,
                            arguments.threshold, arguments.number_of_parameters,
                            arguments.pruning_method, arguments.estimator,
-                           arguments.multi_core, arguments.split_depth);
+                           arguments.multi_core, arguments.paralell_depth);
   //std::cout << tree << std::endl;
   auto stop = std::chrono::system_clock::now();
   auto duration   = duration_cast<seconds>(stop-start);

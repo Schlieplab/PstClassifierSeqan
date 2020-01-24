@@ -16,7 +16,7 @@ extern "C" {
                     size_t max_depth, size_t min_count,
                     float threshold, size_t number_of_parameters,
                     const char *pruning_method_, const char *estimator_,
-                    bool multi_core, size_t split_depth) {
+                    bool multi_core, size_t paralell_depth) {
 
 
     std::string id = std::string(id_);
@@ -35,7 +35,7 @@ extern "C" {
     std::string tree = train(sequence, id, max_depth, min_count,
                              threshold, number_of_parameters,
                              pruning_method, estimator,
-                             multi_core, split_depth);
+                             multi_core, paralell_depth);
 
     return strdup(tree.c_str());
   }

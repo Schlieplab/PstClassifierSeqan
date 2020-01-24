@@ -59,11 +59,11 @@ public:
   PeresShieldsTree(std::string id,
                    seqan3::bitcompressed_vector<alphabet_t> &sequence,
                    size_t max_depth, size_t freq, size_t number_of_parameters,
-                   std::string pruning_method, bool multi_core, int split_depth)
+                   std::string pruning_method, bool multi_core, int paralell_depth)
       : ProbabilisticSuffixTree<alphabet_t>(id, sequence, max_depth, freq,
                                             number_of_parameters,
                                             pruning_method, multi_core,
-                                            split_depth) {}
+                                            paralell_depth) {}
 
 protected:
   /**! \brief Removes all nodes from the tree with a delta value below

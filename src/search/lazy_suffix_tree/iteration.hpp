@@ -27,9 +27,12 @@ int64_t next_child_index(int64_t node_index,
   return node_index;
 }
 
+template <seqan3::alphabet alphabet_t>
 void iterate_children(int64_t node_index, std::vector<int64_t> &table,
+                      sequence_t<alphabet_t> &sequence,
                       std::vector<Flag> &flags,
                       const std::function<void(int64_t)> &f) {
+
   if (is_leaf(node_index, flags) || is_unevaluated(node_index, flags)) {
     return;
   }
@@ -38,7 +41,6 @@ void iterate_children(int64_t node_index, std::vector<int64_t> &table,
 
   for (int64_t i = first_child; i <= table.size();) {
     f(i);
-
     if (is_rightmostchild(i, flags)) {
       break;
     }
@@ -46,9 +48,12 @@ void iterate_children(int64_t node_index, std::vector<int64_t> &table,
   }
 }
 
+template <seqan3::alphabet alphabet_t>
 int64_t node_occurrences(int64_t node_index,
-                              std::vector<int64_t> &table,
-                     std::vector<Flag> &flags) {
+                         std::vector<int64_t> &table,
+                         sequence_t<alphabet_t> &sequence,
+                         std::vector<Flag> &flags) {
+
   if (node_index > table.size()) {
     throw std::invalid_argument(
         "[NODE OCCURRENCES] Given node index is too large.");
@@ -68,10 +73,10 @@ int64_t node_occurrences(int64_t node_index,
     } else if (is_unevaluated(index, flags)) {
       occurrences += table[index + 1] - table[index];
     } else {
-      iterate_children(index, table, flags,
-        [&](int64_t i) {
-          queue.push(i);
-        });
+      iterate_children(index, table, sequence, flags,
+                       [&](int64_t i) {
+                           queue.push(i);
+                       });
     }
   }
   return occurrences;
@@ -98,8 +103,8 @@ void BFIp(sequence_t<alphabet_t> &sequence,
           int64_t start_node, int64_t initial_lcp){
 
   std::queue<std::tuple<int64_t, int64_t>> queue{};
-  iterate_children(start_node, table, flags,
-                [&](int64_t index) { queue.emplace(index, initial_lcp); });
+  iterate_children(start_node, table, sequence, flags,
+                   [&](int64_t index) { queue.emplace(index, initial_lcp); });
 
   while (!queue.empty()) {
     auto [node_index, lcp] = queue.front();
@@ -124,7 +129,7 @@ void BFIp(sequence_t<alphabet_t> &sequence,
 
     int64_t new_lcp = lcp + edge_lcp;
 
-    iterate_children(node_index, table, flags,
+    iterate_children(node_index, table, sequence, flags,
                    [&](int64_t index) { queue.emplace(index, new_lcp); });
   }
   std::cout << "Thread started for Node_ID: " << std::setw(4) << start_node << " returning." << std::endl;
@@ -152,7 +157,7 @@ void breadth_first_iteration(int64_t start_index, int64_t start_lcp,
 
 
   std::queue<std::tuple<int64_t, int64_t>> queue{};
-  iterate_children(start_index, table, flags,
+  iterate_children(start_index, table, sequence, flags,
                    [&](int64_t index) { queue.emplace(index, start_lcp); });
 
    // Calculate lower and upper bound for nodes index counting
@@ -205,6 +210,8 @@ void breadth_first_iteration(int64_t start_index, int64_t start_lcp,
         threads[i].join();
       }
       seqan3::debug_stream << "All threads returned." << std::endl;
+      multi_core = true;
+      return;
     }
     queue.pop();
 
@@ -217,6 +224,8 @@ void breadth_first_iteration(int64_t start_index, int64_t start_lcp,
       edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
     }
 
+
+
     bool consider_children = f(node_index, lcp, edge_lcp);
 
     // It is possible that the call to f expands implicit nodes, need to
@@ -228,7 +237,7 @@ void breadth_first_iteration(int64_t start_index, int64_t start_lcp,
     }
 
     int64_t new_lcp = lcp + edge_lcp;
-    iterate_children(node_index, table, flags,
+    iterate_children(node_index, table, sequence, flags,
                      [&](int64_t index) { queue.emplace(index, new_lcp); });
   }
 
@@ -251,17 +260,18 @@ int64_t get_edge_lcp(int64_t node_index,
 
   int64_t smallest_child_index = suffixes.size();
 
-  iterate_children(node_index, table, flags, [&](int64_t index) {
-    int64_t table_index = table[index];
+  iterate_children(node_index, table, sequence, flags,
+          [&](int64_t index) {
+            int64_t table_index = table[index];
 
-    if (is_unevaluated(index, flags)) {
-      table_index = suffixes[table[index]];
-    }
+            if (is_unevaluated(index, flags)) {
+              table_index = suffixes[table[index]];
+            }
 
-    if (table_index < smallest_child_index) {
-      smallest_child_index = table_index;
-    }
-  });
+            if (table_index < smallest_child_index) {
+              smallest_child_index = table_index;
+            }
+          });
 
   return smallest_child_index - table[node_index];
 }

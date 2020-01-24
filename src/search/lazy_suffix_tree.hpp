@@ -50,7 +50,7 @@ public:
                          int split_depth_) :
                          sequence(sequence_),
                          multi_core(multi_core_),
-                         split_depth(split_depth_) {
+                         paralell_depth(split_depth_) {
 
     suffixes = std::vector<int64_t>(this->sequence.size() + 1);
     std::iota(this->suffixes.begin(), this->suffixes.end(), 0);
@@ -85,7 +85,7 @@ public:
 
           auto label = node_label(node_index, lcp, edge_lcp);
           int64_t occurrences =
-              lst::details::node_occurrences(node_index, table, flags);
+              lst::details::node_occurrences(node_index, table, sequence, flags);
 
           if (is_leaf(node_index)) {
             label = leaf_label(node_index, lcp);
@@ -149,7 +149,7 @@ public:
             node_end = suffixes.size() - 1;
           }
           int64_t occurrences =
-              lst::details::node_occurrences(node_index, table, flags);
+              lst::details::node_occurrences(node_index, table, sequence, flags);
 
           return f(node_start, node_end, edge_lcp, occurrences);
         });
@@ -208,7 +208,7 @@ public:
     std::fill(suffix_links.begin(), suffix_links.end(), -1);
     seqan3::debug_stream << "Adding Explicit Suffix links" << std::endl;
     lst::details::add_explicit_suffix_links(sequence, suffixes, table, flags,
-                                            suffix_links);
+                                            suffix_links, multi_core, paralell_depth);
     seqan3::debug_stream << "Adding Implicit Suffix links" << std::endl;
     lst::details::add_implicit_suffix_links(sequence, suffixes, table, flags,
                                             suffix_links);
@@ -304,7 +304,7 @@ public:
   std::vector<lst::details::alphabet_array<alphabet_t>> reverse_suffix_links{};
 
   bool multi_core;
-  int split_depth;
+  int paralell_depth;
 
   std::vector<int64_t> suffix_indices(int64_t node_index,
                                            int64_t og_lcp) {
@@ -490,7 +490,7 @@ public:
   void iterate_children(int64_t node_index,
                         const std::function<void(int64_t)> &f) {
 
-    lst::details::iterate_children(node_index, this->table, this->flags, f);
+    lst::details::iterate_children(node_index, this->table, this->sequence, this->flags, f);
   }
 
   /**! \brief Get the edge LCP of the node.
@@ -509,7 +509,7 @@ public:
       lst::details::breadth_first_iteration(node_index, start_lcp, this->sequence,
                                             this->suffixes, this->table,
                                             this->flags, expand_nodes, f,
-                                            this->multi_core, this->split_depth);
+                                            this->multi_core, this->paralell_depth);
   }
 };
 } // namespace lst
