@@ -80,7 +80,7 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
     seqan3::debug_stream << "[PARSER ERROR] " << ext.what() << '\n';
     return arguments;
   }
-  seqan3::debug_stream << "The text was: " << filename << "\n";
+  seqan3::debug_stream << "Running version 0.4\nThe text was: " << filename << "\n";
   using namespace std::chrono;
   using namespace seqan3;
   auto start = std::chrono::system_clock::now();
@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
                            arguments.threshold, arguments.number_of_parameters,
                            arguments.pruning_method, arguments.estimator,
                            arguments.multi_core, arguments.paralell_depth);
-  //std::cout << tree << std::endl;
+  std::cout << tree << std::endl;
   auto stop = std::chrono::system_clock::now();
   auto duration   = duration_cast<seconds>(stop-start);
   std::cout << "Total runtime with IO: " << duration.count() << " sec" << std::endl;

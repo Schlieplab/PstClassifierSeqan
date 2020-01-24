@@ -39,7 +39,7 @@ void tree_height_paralell(std::vector<int64_t> &depths,
 
     depths[node_index / 2] = node_depth;
 
-    iterate_children(node_index, table, sequence, flags,
+    iterate_children(node_index, table, flags,
                      [&](int64_t index) {
                          queue.emplace(index, node_depth);
                      });
@@ -68,21 +68,20 @@ int64_t tree_height(std::vector<int64_t> &depths,
             std::vector<int64_t> &suffixes,
             std::vector<int64_t> &table,
             std::vector<Flag> &flags,
-            bool &multi_core, int &paralell_depth) {
+            bool &multi_core, int paralell_depth) {
 
-  std::queue<std::tuple<int64_t, int64_t>> queue{};
-  queue.emplace(0, 0);
+  std::queue<std::tuple<int64_t, int64_t, int>> queue{};
+  queue.emplace(0, 0, 0);
   int64_t tree_height = 0;
-  int level = 0;
-  seqan3::debug_stream << paralell_depth;
   while (!queue.empty()) {
-    if (paralell_depth == level){
+    auto [node_index, parent_depth, level] = queue.front();
+    if (paralell_depth == level && multi_core){
       std::thread threads[queue.size()];
       int thread_index = 0;
       while (!queue.empty()) {
-        auto [node_index, parent_depth] = queue.front();
+        auto [node_index, parent_depth, level] = queue.front();
         queue.pop();
-        //if (sequence[table[node_index]].to_rank() != 3 && sequence[table[node_index]].to_rank() != 5) {
+        if (sequence[table[node_index]].to_rank() != 3 && sequence[table[node_index]].to_rank() != 5) {
           depths[node_index / 2] = parent_depth +
                   get_edge_lcp(node_index, sequence, suffixes, table, flags);
 
@@ -97,7 +96,7 @@ int64_t tree_height(std::vector<int64_t> &depths,
                               std::ref(tree_height),
                               node_index, parent_depth);
           thread_index++;
-       // }
+        }
       }
       for (int i = 0; i < thread_index; ++i) {
         threads[i].join();
@@ -105,18 +104,18 @@ int64_t tree_height(std::vector<int64_t> &depths,
       seqan3::debug_stream << "All threads returned." << std::endl;
       return tree_height;
     }
-    auto [node_index, parent_depth] = queue.front();
     queue.pop();
 
     int64_t node_depth = parent_depth +
             get_edge_lcp(node_index, sequence, suffixes, table, flags);
     depths[node_index / 2] = node_depth;
 
-    iterate_children(node_index, table, sequence, flags,
+    level++;
+    iterate_children(node_index, table, flags,
                      [&](int64_t index) {
-                       queue.emplace(index, node_depth);
+                       queue.emplace(index, node_depth, level);
                      });
-    level +=1;
+
     if (node_depth > tree_height) {
       tree_height = node_depth;
     }
@@ -171,7 +170,7 @@ void add_explicit_suffix_links(sequence_t<alphabet_t> &sequence,
                                std::vector<int64_t> &table,
                                std::vector<Flag> &flags,
                                std::vector<int64_t> &suffix_links,
-                               bool &multi_core, int &paralell_depth) {
+                               bool &multi_core, int paralell_depth) {
   std::vector<int64_t> cause(suffixes.size() + 2, -1);
 
   std::vector<int64_t> leaf_indices(suffixes.size() + 1, -1);
@@ -191,7 +190,8 @@ void add_explicit_suffix_links(sequence_t<alphabet_t> &sequence,
 
   seqan3::debug_stream << "    Computing Suffix Links..." <<  std::endl;
   compute_suffix_links(cause, branch, depths, leaf_indices, sequence, suffixes,
-                       table, flags, suffix_links);
+                       table, flags, suffix_links, multi_core, paralell_depth);
+  multi_core = false;
   auto stop = high_resolution_clock::now();
 
   auto duration = duration_cast<seconds>(stop - start);
@@ -260,7 +260,7 @@ int64_t prepare_suffix_links(int64_t node_index, int64_t lcp,
     int64_t smallest_child        = suffixes.size();
     int64_t second_smallest_child = suffixes.size();
 
-    iterate_children(node_index, table, sequence, flags, [&](int64_t index) {
+    iterate_children(node_index, table,  flags, [&](int64_t index) {
       int64_t child = prepare_suffix_links(index, lcp + edge_lcp,
                                                 cause, leaf_indices,
                                                 sequence, suffixes,
@@ -314,6 +314,54 @@ void assign_leaf_link(int64_t node_index, int64_t leaf_index,
  * \param[out] suffix_links The suffix link for each node.
  */
 template <seqan3::alphabet alphabet_t>
+void compute_suffix_links_paralell(std::vector<int64_t> &cause,
+                                   std::vector<int64_t> &branch,
+                                   std::vector<int64_t> &depths,
+                                   std::vector<int64_t> &leaf_indices,
+                                   sequence_t<alphabet_t> &sequence,
+                                   std::vector<int64_t> &suffixes,
+                                   std::vector<int64_t> &table,
+                                   std::vector<Flag> &flags,
+                                   std::vector<int64_t> &suffix_links,
+                                   int64_t node_index, int64_t lcp) {
+
+ std::stack<std::tuple<int64_t, int64_t>> stack{};
+ stack.emplace(node_index, lcp);
+ while (!stack.empty()) {
+   auto [node_index, lcp] = stack.top();
+   stack.pop();
+
+   if (!is_leaf(node_index, flags)) {
+     branch[depths[node_index / 2]] = node_index;
+   }
+
+   if (is_leaf(node_index, flags)) {
+     int64_t leaf_index = get_leaf_index(node_index, lcp, suffixes,
+                                              table, flags);
+
+     assign_link(leaf_index, cause, branch, depths, suffix_links);
+     assign_leaf_link(node_index, leaf_index, suffix_links, leaf_indices);
+   }
+
+   if (is_unevaluated(node_index, flags)) {
+     // Maybe possible to stop this iteration early.
+     for (auto i = table[node_index]; i < table[node_index + 1]; i++) {
+       int64_t leaf_index = suffixes[i] - lcp;
+       assign_link(leaf_index, cause, branch, depths, suffix_links);
+     }
+   }
+
+   int64_t edge_lcp = get_edge_lcp(node_index, sequence, suffixes,
+                                        table, flags);
+
+   iterate_children(node_index, table, flags,
+                    [&](int64_t index) {
+                      stack.emplace(index, lcp + edge_lcp);
+                    });
+ }
+}
+
+template <seqan3::alphabet alphabet_t>
 void compute_suffix_links(std::vector<int64_t> &cause,
                           std::vector<int64_t> &branch,
                           std::vector<int64_t> &depths,
@@ -322,11 +370,43 @@ void compute_suffix_links(std::vector<int64_t> &cause,
                           std::vector<int64_t> &suffixes,
                           std::vector<int64_t> &table,
                           std::vector<Flag> &flags,
-                          std::vector<int64_t> &suffix_links) {
+                          std::vector<int64_t> &suffix_links,
+                          bool &multi_core, int paralell_depth) {
+
   std::stack<std::tuple<int64_t, int64_t>> stack{};
   stack.emplace(0, 0);
-
+  int level = 0;
   while (!stack.empty()) {
+    if (1 == level && multi_core){
+      std::thread threads[stack.size()];
+      int thread_index = 0;
+      while (!stack.empty()) {
+        auto [node_index, lcp] = stack.top();
+        stack.pop();
+        if (sequence[table[node_index]].to_rank() != 3 && sequence[table[node_index]].to_rank() != 5) {
+          seqan3::debug_stream << "Node_ID: " << std::setw(4) << node_index << " | Table[Node_id]: " << table[node_index]<< " | Sequence[Table[node_id]]: " << sequence[table[node_index]] << " " << sequence[table[node_index]].to_rank() << std::endl;
+          threads[thread_index] =
+                  std::thread(compute_suffix_links_paralell<seqan3::dna5>,
+                                                            std::ref(cause),
+                                                            std::ref(branch),
+                                                            std::ref(depths),
+                                                            std::ref(leaf_indices),
+                                                            std::ref(sequence),
+                                                            std::ref(suffixes),
+                                                            std::ref(table),
+                                                            std::ref(flags),
+                                                            std::ref(suffix_links),
+                                                            node_index, lcp);
+          thread_index++;
+        }
+      }
+      for (int i = 0; i < thread_index; ++i) {
+        threads[i].join();
+      }
+      seqan3::debug_stream << "All threads returned." << std::endl;
+      return;
+    }
+
     auto [node_index, lcp] = stack.top();
     stack.pop();
 
@@ -353,7 +433,8 @@ void compute_suffix_links(std::vector<int64_t> &cause,
     int64_t edge_lcp = get_edge_lcp(node_index, sequence, suffixes,
                                          table, flags);
 
-    iterate_children(node_index, table, sequence, flags,
+    level++;
+    iterate_children(node_index, table, flags,
                      [&](int64_t index) {
                        stack.emplace(index, lcp + edge_lcp);
                      });
@@ -413,7 +494,7 @@ void prepare_implicit_suffix_links(
       missing_suffix_links.resize(0);
     }
 
-    iterate_children(node_index, table, sequence, flags,
+    iterate_children(node_index, table, flags,
                      [&](int64_t child) {
                        stack.emplace(child, node_index, lcp);
                      });
@@ -473,7 +554,7 @@ void compute_implicit_suffix_links(
       suffix_links[node_index / 2] = destination_parent;
     }
 
-    iterate_children(node_index, table, sequence, flags,
+    iterate_children(node_index, table, flags,
                      [&](int64_t index) {
                        queue.push(index);
                      });

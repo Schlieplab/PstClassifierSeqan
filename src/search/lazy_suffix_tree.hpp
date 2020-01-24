@@ -490,7 +490,7 @@ public:
   void iterate_children(int64_t node_index,
                         const std::function<void(int64_t)> &f) {
 
-    lst::details::iterate_children(node_index, this->table, this->sequence, this->flags, f);
+    lst::details::iterate_children(node_index, this->table, this->flags, f);
   }
 
   /**! \brief Get the edge LCP of the node.

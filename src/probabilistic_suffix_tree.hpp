@@ -115,6 +115,7 @@ public:
   void construct_tree() {
     this->support_pruning();
     this->similarity_pruning();
+
   }
 
   /*!\brief Debug printing
@@ -272,15 +273,15 @@ protected:
     using namespace std::chrono;
     auto start = high_resolution_clock::now();
     auto t1 = high_resolution_clock::now();
-    std::cout << "Building Tree..."  << std::endl;
+    seqan3::debug_stream  << "Building Tree..."  << std::endl;
     this->build_tree();
     auto t2 = high_resolution_clock::now();
-    std::cout << "Expanding Implicit nodes and setting status..."  << std::endl;
+    seqan3::debug_stream  << "Expanding Implicit nodes and setting status..."  << std::endl;
     this->expand_implicit_nodes();
     auto t3 = high_resolution_clock::now();
     this->add_implicit_node_status();
     auto t4 = high_resolution_clock::now();
-    std::cout << "Adding Suffix Links..."  << std::endl;
+    seqan3::debug_stream  << "Adding Suffix Links..."  << std::endl;
     this->add_suffix_links();
     auto t5 = high_resolution_clock::now();
     this->counts.resize(this->table.size() / 2, -1);
@@ -319,15 +320,15 @@ protected:
   void similarity_pruning() {
     using namespace std::chrono;
     auto start = high_resolution_clock::now();
-    std::cout << "Adding Reverse Suffix Links..."  << std::endl;
+    seqan3::debug_stream  << "Adding Reverse Suffix Links..."  << std::endl;
 
     this->add_reverse_suffix_links();
     auto t1 = high_resolution_clock::now();
-    std::cout << "Calculating Probabilities..."  << std::endl;
+    seqan3::debug_stream  << "Calculating Probabilities..."  << std::endl;
 
     this->compute_probabilities();
     auto t2 = high_resolution_clock::now();
-    std::cout << "Pruning..."  << std::endl;
+    seqan3::debug_stream  << "Pruning..."  << std::endl;
 
     if (this->pruning_method == "cutoff") {
       this->cutoff_prune();
@@ -365,7 +366,6 @@ protected:
 
           int64_t count = lst::details::node_occurrences(node_index,
                                                      this->table,
-                                                     this->sequence,
                                                      this->flags);
           /*
           if (edge_lcp > 1 && not this->multi_core) {
@@ -519,7 +519,7 @@ protected:
       }
 
       iterate_children(
-              node_index, this->table, this->sequence, this->flags, [&](int64_t child_index) {
+              node_index, this->table, this->flags, [&](int64_t child_index) {
                   stack.emplace(child_index, this->status[node_index / 2]);
               });
     }
@@ -729,7 +729,7 @@ protected:
 
     int64_t c = this->counts[node_index / 2];
     if (c == -1) {
-      c = lst::details::node_occurrences(node_index, this->table, this->sequence, this->flags);
+      c = lst::details::node_occurrences(node_index, this->table, this->flags);
       this->counts[node_index / 2] = c;
     }
     return c;
