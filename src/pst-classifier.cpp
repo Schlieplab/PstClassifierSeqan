@@ -146,7 +146,10 @@ int main(int argc, char *argv[]) {
                            arguments.threshold, arguments.number_of_parameters,
                            arguments.pruning_method, arguments.estimator,
                            arguments.multi_core, arguments.split_depth);
-  std::cout << tree << std::endl;
+  //std::cout << tree << std::endl;
+  auto stop = std::chrono::system_clock::now();
+  auto duration   = duration_cast<seconds>(stop-start);
+  std::cout << "Total runtime with IO: " << duration.count() << " sec" << std::endl;
 
   return EXIT_SUCCESS;
 }

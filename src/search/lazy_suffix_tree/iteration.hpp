@@ -6,14 +6,14 @@
 #include <mutex>
 #include <thread>
 #include <seqan3/alphabet/concept.hpp>
-
+#include <iostream>
 #include "construction.hpp"
 
 std::mutex expand_lock;
 std::mutex child_lock;
 namespace lst::details {
 
-int_fast64_t next_child_index(int_fast64_t node_index,
+int64_t next_child_index(int64_t node_index,
                               std::vector<Flag> &flags) {
 
   if (is_leaf(node_index, flags)) {
@@ -27,16 +27,16 @@ int_fast64_t next_child_index(int_fast64_t node_index,
   return node_index;
 }
 
-void iterate_children(int_fast64_t node_index, std::vector<int_fast64_t> &table,
+void iterate_children(int64_t node_index, std::vector<int64_t> &table,
                       std::vector<Flag> &flags,
-                      const std::function<void(int_fast64_t)> &f) {
+                      const std::function<void(int64_t)> &f) {
   if (is_leaf(node_index, flags) || is_unevaluated(node_index, flags)) {
     return;
   }
 
-  int_fast64_t first_child = table[node_index + 1];
+  int64_t first_child = table[node_index + 1];
 
-  for (int_fast64_t i = first_child; i <= table.size();) {
+  for (int64_t i = first_child; i <= table.size();) {
     f(i);
 
     if (is_rightmostchild(i, flags)) {
@@ -46,21 +46,21 @@ void iterate_children(int_fast64_t node_index, std::vector<int_fast64_t> &table,
   }
 }
 
-int_fast64_t node_occurrences(int_fast64_t node_index,
-                              std::vector<int_fast64_t> &table,
+int64_t node_occurrences(int64_t node_index,
+                              std::vector<int64_t> &table,
                      std::vector<Flag> &flags) {
   if (node_index > table.size()) {
     throw std::invalid_argument(
         "[NODE OCCURRENCES] Given node index is too large.");
   }
 
-  int_fast64_t occurrences = 0;
-  std::queue<int_fast64_t> queue{};
+  int64_t occurrences = 0;
+  std::queue<int64_t> queue{};
 
   queue.push(node_index);
 
   while (!queue.empty()) {
-    int_fast64_t index = queue.front();
+    int64_t index = queue.front();
     queue.pop();
 
     if (is_leaf(index, flags)) {
@@ -69,19 +69,19 @@ int_fast64_t node_occurrences(int_fast64_t node_index,
       occurrences += table[index + 1] - table[index];
     } else {
       iterate_children(index, table, flags,
-        [&](int_fast64_t i) {
+        [&](int64_t i) {
           queue.push(i);
         });
     }
   }
   return occurrences;
 }
-bool label_valid(int_fast64_t label_start, int_fast64_t label_end) {
+bool label_valid(int64_t label_start, int64_t label_end) {
   return true;
 }
-bool include_node(int_fast64_t label_start, int_fast64_t label_end,
-                  int_fast64_t count) {
-  int_fast64_t label_length = label_end - label_start;
+bool include_node(int64_t label_start, int64_t label_end,
+                  int64_t count) {
+  int64_t label_length = label_end - label_start;
 
   return label_length < 15 && count >= 100 &&
          label_valid(label_start, label_end);
@@ -90,22 +90,22 @@ bool include_node(int_fast64_t label_start, int_fast64_t label_end,
 
 template <seqan3::alphabet alphabet_t>
 void BFIp(sequence_t<alphabet_t> &sequence,
-          std::vector<int_fast64_t> &suffixes,
-          std::vector<int_fast64_t> &table,
+          std::vector<int64_t> &suffixes,
+          std::vector<int64_t> &table,
           std::vector<Flag> &flags,
           bool expand_nodes,
-          const std::function<bool(int_fast64_t, int_fast64_t, int_fast64_t)> &f,
-          int_fast64_t start_node, int_fast64_t initial_lcp){
+          const std::function<bool(int64_t, int64_t, int64_t)> &f,
+          int64_t start_node, int64_t initial_lcp){
 
-  std::queue<std::tuple<int_fast64_t, int_fast64_t>> queue{};
+  std::queue<std::tuple<int64_t, int64_t>> queue{};
   iterate_children(start_node, table, flags,
-                [&](int_fast64_t index) { queue.emplace(index, initial_lcp); });
+                [&](int64_t index) { queue.emplace(index, initial_lcp); });
 
   while (!queue.empty()) {
     auto [node_index, lcp] = queue.front();
     queue.pop();
 
-    int_fast64_t edge_lcp;
+    int64_t edge_lcp;
     //expand_lock.lock();
     if (is_unevaluated(node_index, flags) && expand_nodes) {
       edge_lcp = lst::details::expand_node(node_index, sequence, suffixes,
@@ -122,38 +122,38 @@ void BFIp(sequence_t<alphabet_t> &sequence,
       continue;
     }
 
-    int_fast64_t new_lcp = lcp + edge_lcp;
+    int64_t new_lcp = lcp + edge_lcp;
 
     iterate_children(node_index, table, flags,
-                   [&](int_fast64_t index) { queue.emplace(index, new_lcp); });
+                   [&](int64_t index) { queue.emplace(index, new_lcp); });
   }
-
+  std::cout << "Thread started for Node_ID: " << std::setw(4) << start_node << " returning." << std::endl;
 
 }
 
 template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration(sequence_t<alphabet_t> &sequence,
-     std::vector<int_fast64_t> &suffixes,
-     std::vector<int_fast64_t> &table,
+     std::vector<int64_t> &suffixes,
+     std::vector<int64_t> &table,
      std::vector<Flag> &flags, bool expand_nodes,
-     const std::function<bool(int_fast64_t, int_fast64_t, int_fast64_t)> &f) {
+     const std::function<bool(int64_t, int64_t, int64_t)> &f) {
         breadth_first_iteration(0, 0, sequence, suffixes, table, flags,
                                 expand_nodes, f, false, 0);
 }
 
 template <seqan3::alphabet alphabet_t>
-void breadth_first_iteration(int_fast64_t start_index, int_fast64_t start_lcp,
+void breadth_first_iteration(int64_t start_index, int64_t start_lcp,
        sequence_t<alphabet_t> &sequence,
-       std::vector<int_fast64_t> &suffixes,
-       std::vector<int_fast64_t> &table,
+       std::vector<int64_t> &suffixes,
+       std::vector<int64_t> &table,
        std::vector<Flag> &flags, bool expand_nodes,
-       const std::function<bool(int_fast64_t, int_fast64_t, int_fast64_t)> &f,
+       const std::function<bool(int64_t, int64_t, int64_t)> &f,
        bool &multi_core, int paralell_depth) {
 
 
-  std::queue<std::tuple<int_fast64_t, int_fast64_t>> queue{};
+  std::queue<std::tuple<int64_t, int64_t>> queue{};
   iterate_children(start_index, table, flags,
-                   [&](int_fast64_t index) { queue.emplace(index, start_lcp); });
+                   [&](int64_t index) { queue.emplace(index, start_lcp); });
 
    // Calculate lower and upper bound for nodes index counting
   int node_lower_bound  = 2;
@@ -166,8 +166,13 @@ void breadth_first_iteration(int_fast64_t start_index, int_fast64_t start_lcp,
 
   while (!queue.empty()) {
     auto [node_index, lcp] = queue.front();
+
+    if (node_index < node_upper_bound && multi_core){
+      seqan3::debug_stream << "Expanding node: " << std::setw(4) <<  node_index << " serially." << std::endl;
+    }
     // Enter if all serial nodes are expanded.
     if (node_index > node_upper_bound && multi_core){
+      seqan3::debug_stream << "Initiating parallel expansion." << std::endl;
       int number_of_threads = 4;
       int thread_index      = 0;
       // Spawn threads
@@ -183,8 +188,8 @@ void breadth_first_iteration(int_fast64_t start_index, int_fast64_t start_lcp,
       for (int j = node_lower_bound; j < node_upper_bound+1; j+=2) {
         // Filter out all nodes with N as label
         if (sequence[table[j]].to_rank() != 3 && sequence[table[j]].to_rank() != 5) {
-          seqan3::debug_stream << "Node_ID: " << j << " | Table[Node_id]: " << table[j]<< " | Sequence[Table[node_id]]: " << sequence[table[j]] << " " << sequence[table[j]].to_rank() << std::endl;
-          int_fast64_t edge_lcp = get_edge_lcp(j, sequence, suffixes, table, flags);
+          seqan3::debug_stream << "Node_ID: " << std::setw(4) << j << " | Table[Node_id]: " << table[j]<< " | Sequence[Table[node_id]]: " << sequence[table[j]] << " " << sequence[table[j]].to_rank() << std::endl;
+          int64_t edge_lcp = get_edge_lcp(j, sequence, suffixes, table, flags);
           threads[thread_index] = std::thread(BFIp<seqan3::dna5>,
                                               std::ref(sequence),
                                               std::ref(suffixes),
@@ -197,14 +202,13 @@ void breadth_first_iteration(int_fast64_t start_index, int_fast64_t start_lcp,
       }
       multi_core = false;
       for (int i = 0; i < number_of_threads; ++i) {
-        seqan3::debug_stream << i << std::endl;
         threads[i].join();
       }
-      return;
+      seqan3::debug_stream << "All threads returned." << std::endl;
     }
     queue.pop();
 
-    int_fast64_t edge_lcp;
+    int64_t edge_lcp;
 
     if (is_unevaluated(node_index, flags) && expand_nodes) {
       edge_lcp = lst::details::expand_node(node_index, sequence, suffixes,
@@ -223,17 +227,18 @@ void breadth_first_iteration(int_fast64_t start_index, int_fast64_t start_lcp,
       continue;
     }
 
-    int_fast64_t new_lcp = lcp + edge_lcp;
+    int64_t new_lcp = lcp + edge_lcp;
     iterate_children(node_index, table, flags,
-                     [&](int_fast64_t index) { queue.emplace(index, new_lcp); });
+                     [&](int64_t index) { queue.emplace(index, new_lcp); });
   }
+
 }
 
 template <seqan3::alphabet alphabet_t>
-int_fast64_t get_edge_lcp(int_fast64_t node_index,
+int64_t get_edge_lcp(int64_t node_index,
                           sequence_t<alphabet_t> &sequence,
-                           std::vector<int_fast64_t> &suffixes,
-                           std::vector<int_fast64_t> &table,
+                           std::vector<int64_t> &suffixes,
+                           std::vector<int64_t> &table,
                            std::vector<Flag> &flags) {
   if (is_leaf(node_index, flags)) {
     return suffixes.size() - table[node_index];
@@ -244,10 +249,10 @@ int_fast64_t get_edge_lcp(int_fast64_t node_index,
         table[node_index], table[node_index + 1], sequence, suffixes);
   }
 
-  int_fast64_t smallest_child_index = suffixes.size();
+  int64_t smallest_child_index = suffixes.size();
 
-  iterate_children(node_index, table, flags, [&](int_fast64_t index) {
-    int_fast64_t table_index = table[index];
+  iterate_children(node_index, table, flags, [&](int64_t index) {
+    int64_t table_index = table[index];
 
     if (is_unevaluated(index, flags)) {
       table_index = suffixes[table[index]];

@@ -52,7 +52,7 @@ public:
                          multi_core(multi_core_),
                          split_depth(split_depth_) {
 
-    suffixes = std::vector<int_fast64_t>(this->sequence.size() + 1);
+    suffixes = std::vector<int64_t>(this->sequence.size() + 1);
     std::iota(this->suffixes.begin(), this->suffixes.end(), 0);
 
     lst::details::expand_root(this->sequence, this->suffixes, this->table,
@@ -63,7 +63,7 @@ public:
    *
    */
   void expand_all() {
-    for (int_fast64_t i = 0; i < this->table.size(); i++) {
+    for (int64_t i = 0; i < this->table.size(); i++) {
       if (this->is_unevaluated(i)) {
         lst::details::expand_node(i, this->sequence, this->suffixes,
                                   this->table, this->flags);
@@ -75,16 +75,16 @@ public:
    *
    * \return Vector of tuple of the label and count for each node in the tree.
    */
-  std::vector<std::tuple<lst::details::sequence_t<alphabet_t>, int_fast64_t>>
+  std::vector<std::tuple<lst::details::sequence_t<alphabet_t>, int64_t>>
   get_all_labels() {
-    std::vector<std::tuple<lst::details::sequence_t<alphabet_t>, int_fast64_t>> labels{};
+    std::vector<std::tuple<lst::details::sequence_t<alphabet_t>, int64_t>> labels{};
 
     this->breadth_first_iteration(
-        0, 0, true, [&](int_fast64_t node_index, int_fast64_t lcp,
-                        int_fast64_t edge_lcp) -> bool {
+        0, 0, true, [&](int64_t node_index, int64_t lcp,
+                        int64_t edge_lcp) -> bool {
 
           auto label = node_label(node_index, lcp, edge_lcp);
-          int_fast64_t occurrences =
+          int64_t occurrences =
               lst::details::node_occurrences(node_index, table, flags);
 
           if (is_leaf(node_index)) {
@@ -102,11 +102,11 @@ public:
    * \param[in] pattern the sequence to search for.
    * \return Vector of indices into the sequence where the pattern is.
    */
-  std::vector<int_fast64_t> search(std::vector<alphabet_t> pattern) {
+  std::vector<int64_t> search(std::vector<alphabet_t> pattern) {
     if (pattern.size() == 0) {
-      std::vector<int_fast64_t> all_suffixes{};
+      std::vector<int64_t> all_suffixes{};
 
-      this->iterate_children(0, [&](int_fast64_t index) {
+      this->iterate_children(0, [&](int64_t index) {
         auto suffixes = this->suffix_indices(index, 0);
 
         all_suffixes.insert(all_suffixes.end(), suffixes.begin(),
@@ -118,7 +118,7 @@ public:
     auto [node_index, lcp] = this->find(pattern);
 
     if (node_index == -1) {
-      return std::vector<int_fast64_t>{};
+      return std::vector<int64_t>{};
     } else {
       return this->suffix_indices(node_index, lcp);
     }
@@ -137,18 +137,18 @@ public:
    */
   void
   breadth_first_traversal(bool expand_nodes,
-                          const std::function<bool(int_fast64_t, int_fast64_t, int_fast64_t, int_fast64_t)> &f) {
+                          const std::function<bool(int64_t, int64_t, int64_t, int64_t)> &f) {
     this->breadth_first_iteration(
-        0, 0, true, [&](int_fast64_t node_index, int_fast64_t lcp, int_fast64_t edge_lcp) -> bool {
-          int_fast64_t sequence_index = get_sequence_index(node_index);
+        0, 0, true, [&](int64_t node_index, int64_t lcp, int64_t edge_lcp) -> bool {
+          int64_t sequence_index = get_sequence_index(node_index);
 
-          int_fast64_t node_start = sequence_index - lcp;
-          int_fast64_t node_end = sequence_index + edge_lcp;
+          int64_t node_start = sequence_index - lcp;
+          int64_t node_end = sequence_index + edge_lcp;
 
           if (is_leaf(node_index)) {
             node_end = suffixes.size() - 1;
           }
-          int_fast64_t occurrences =
+          int64_t occurrences =
               lst::details::node_occurrences(node_index, table, flags);
 
           return f(node_start, node_end, edge_lcp, occurrences);
@@ -162,11 +162,11 @@ public:
    * for the lazy suffix tree.
    */
   void expand_implicit_nodes() {
-    std::queue<int_fast64_t> queue{};
+    std::queue<int64_t> queue{};
     queue.push(0);
 
     while (!queue.empty()) {
-      int_fast64_t node_index = queue.front();
+      int64_t node_index = queue.front();
       queue.pop();
 
       if (this->skip_node(node_index)) {
@@ -175,10 +175,10 @@ public:
 
       if (!is_leaf(node_index)) {
         this->iterate_children(node_index,
-                               [&](int_fast64_t index) { queue.push(index); });
+                               [&](int64_t index) { queue.push(index); });
       }
 
-      int_fast64_t edge_lcp = this->get_edge_lcp(node_index);
+      int64_t edge_lcp = this->get_edge_lcp(node_index);
       if (edge_lcp > 1) {
         this->add_implicit_nodes(node_index, edge_lcp);
       }
@@ -190,7 +190,7 @@ public:
    * \param node_index The index of the node to expand implicit nodes of.
    * \param edge_lcp The length of the edge (== number of implicit nodes).
    */
-  void add_implicit_nodes(int_fast64_t node_index, int_fast64_t edge_lcp) {
+  void add_implicit_nodes(int64_t node_index, int64_t edge_lcp) {
     if (edge_lcp > 1) {
       lst::details::add_implicit_nodes(node_index, edge_lcp, this->table,
                                        this->flags);
@@ -206,9 +206,10 @@ public:
   void add_suffix_links() {
     suffix_links.resize(table.size() / 2, -1);
     std::fill(suffix_links.begin(), suffix_links.end(), -1);
-
+    seqan3::debug_stream << "Adding Explicit Suffix links" << std::endl;
     lst::details::add_explicit_suffix_links(sequence, suffixes, table, flags,
                                             suffix_links);
+    seqan3::debug_stream << "Adding Implicit Suffix links" << std::endl;
     lst::details::add_implicit_suffix_links(sequence, suffixes, table, flags,
                                             suffix_links);
     suffix_links[0] = -1;
@@ -231,15 +232,15 @@ public:
     }
 
     this->breadth_first_iteration(
-        0, 0, false, [&](int_fast64_t node_index, int_fast64_t lcp,
-                         int_fast64_t edge_lcp) -> bool {
+        0, 0, false, [&](int64_t node_index, int64_t lcp,
+                         int64_t edge_lcp) -> bool {
           if (this->skip_node(node_index)) {
             return true;
           }
 
-          int_fast64_t sequence_index = get_sequence_index(node_index);
-          int_fast64_t node_start     = sequence_index - lcp;
-          int_fast64_t suffix_parent  = suffix_links[node_index / 2];
+          int64_t sequence_index = get_sequence_index(node_index);
+          int64_t node_start     = sequence_index - lcp;
+          int64_t suffix_parent  = suffix_links[node_index / 2];
 
           if (suffix_parent == -1) {
             return true;
@@ -264,16 +265,16 @@ public:
     seqan3::debug_stream << std::endl;
 
     this->breadth_first_iteration(
-        0, 0, false, [&](int_fast64_t node_index, int_fast64_t lcp,
-                         int_fast64_t edge_lcp) -> bool {
+        0, 0, false, [&](int64_t node_index, int64_t lcp,
+                         int64_t edge_lcp) -> bool {
           this->debug_print_node(node_index, lcp, edge_lcp);
           seqan3::debug_stream << std::endl;
           return true;
         });
   }
 
-  virtual void debug_print_node(int_fast64_t node_index, int_fast64_t lcp,
-                                int_fast64_t edge_lcp) {
+  virtual void debug_print_node(int64_t node_index, int64_t lcp,
+                                int64_t edge_lcp) {
     auto label = node_label(node_index, lcp, edge_lcp);
 
     if (is_leaf(node_index)) {
@@ -295,26 +296,26 @@ public:
   }
 
   lst::details::sequence_t<alphabet_t> sequence;
-  std::vector<int_fast64_t> suffixes{};
-  std::vector<int_fast64_t> table{0, 2};
+  std::vector<int64_t> suffixes{};
+  std::vector<int64_t> table{0, 2};
   std::vector<lst::details::Flag> flags{lst::details::Flag::RIGHT_MOST_CHILD,
                                         lst::details::Flag::NONE};
-  std::vector<int_fast64_t> suffix_links{};
+  std::vector<int64_t> suffix_links{};
   std::vector<lst::details::alphabet_array<alphabet_t>> reverse_suffix_links{};
 
   bool multi_core;
   int split_depth;
 
-  std::vector<int_fast64_t> suffix_indices(int_fast64_t node_index,
-                                           int_fast64_t og_lcp) {
+  std::vector<int64_t> suffix_indices(int64_t node_index,
+                                           int64_t og_lcp) {
 
     if (node_index >= table.size()) {
       throw std::invalid_argument(
           "[SUFFIX INDICES] Given node index is too large.");
     }
 
-    std::vector<int_fast64_t> start_indicies{};
-    std::queue<std::tuple<int_fast64_t, int_fast64_t>> queue{};
+    std::vector<int64_t> start_indicies{};
+    std::queue<std::tuple<int64_t, int64_t>> queue{};
 
     queue.emplace(node_index, og_lcp);
 
@@ -332,25 +333,25 @@ public:
         auto edge_lcp = this->get_edge_lcp(index);
         auto new_lcp = lcp + edge_lcp;
         this->iterate_children(index,
-                               [&](int_fast64_t i) { queue.emplace(i, new_lcp); });
+                               [&](int64_t i) { queue.emplace(i, new_lcp); });
       }
     }
 
     return start_indicies;
   }
 
-  std::tuple<int_fast64_t, int_fast64_t> find(std::vector<alphabet_t> pattern) {
-    std::queue<std::tuple<int_fast64_t, int_fast64_t>> queue{};
+  std::tuple<int64_t, int64_t> find(std::vector<alphabet_t> pattern) {
+    std::queue<std::tuple<int64_t, int64_t>> queue{};
 
     queue.emplace(0, 0);
 
-    int_fast64_t pattern_lcp = 0;
+    int64_t pattern_lcp = 0;
 
     while (!queue.empty()) {
       auto [node_index, lcp] = queue.front();
       queue.pop();
 
-      int_fast64_t edge_lcp;
+      int64_t edge_lcp;
       if (is_unevaluated(node_index)) {
         edge_lcp =
             lst::details::expand_node(node_index, this->sequence,
@@ -375,9 +376,9 @@ public:
       empty_queue(queue);
 
       if (!is_leaf(node_index)) {
-        int_fast64_t new_lcp = lcp + edge_lcp;
+        int64_t new_lcp = lcp + edge_lcp;
         this->iterate_children(
-            node_index, [&](int_fast64_t index) { queue.emplace(index, new_lcp); });
+            node_index, [&](int64_t index) { queue.emplace(index, new_lcp); });
       }
     }
 
@@ -390,11 +391,11 @@ public:
     }
   }
 
-  bool edge_matches(int_fast64_t node_index, int_fast64_t pattern_lcp,
+  bool edge_matches(int64_t node_index, int64_t pattern_lcp,
                     std::vector<alphabet_t> &pattern,
                     lst::details::sequence_t<alphabet_t> &edge) {
-    for (int_fast64_t i = 0; pattern_lcp + i < pattern.size() && i < edge.size(); i++) {
-      int_fast64_t sequence_index = table[node_index] + i;
+    for (int64_t i = 0; pattern_lcp + i < pattern.size() && i < edge.size(); i++) {
+      int64_t sequence_index = table[node_index] + i;
       auto character = this->get_character(sequence_index);
 
       if (character != pattern[pattern_lcp + i]) {
@@ -405,10 +406,10 @@ public:
     return true;
   }
 
-  lst::details::sequence_t<alphabet_t> edge_label(int_fast64_t node_index,
-                                                  int_fast64_t edge_lcp) {
-    int_fast64_t edge_start = this->get_sequence_index(node_index);
-    int_fast64_t edge_end   = edge_start + edge_lcp;
+  lst::details::sequence_t<alphabet_t> edge_label(int64_t node_index,
+                                                  int64_t edge_lcp) {
+    int64_t edge_start = this->get_sequence_index(node_index);
+    int64_t edge_end   = edge_start + edge_lcp;
 
     if (edge_end > this->sequence.size()) {
       edge_end -= 1;
@@ -420,11 +421,11 @@ public:
     return edge;
   }
 
-  lst::details::sequence_t<alphabet_t> node_label(int_fast64_t node_index,
-                                        int_fast64_t lcp, int_fast64_t edge_lcp) {
-    int_fast64_t sequence_index = this->get_sequence_index(node_index);
-    int_fast64_t node_start     = sequence_index - lcp;
-    int_fast64_t node_end       = sequence_index + edge_lcp;
+  lst::details::sequence_t<alphabet_t> node_label(int64_t node_index,
+                                        int64_t lcp, int64_t edge_lcp) {
+    int64_t sequence_index = this->get_sequence_index(node_index);
+    int64_t node_start     = sequence_index - lcp;
+    int64_t node_end       = sequence_index + edge_lcp;
 
     if (node_end > this->sequence.size()) {
       node_end -= 1;
@@ -436,16 +437,16 @@ public:
     return label;
   }
 
-  lst::details::sequence_t<alphabet_t> leaf_label(int_fast64_t node_index,
-                                                  int_fast64_t lcp) {
-    int_fast64_t node_start = table[node_index] - lcp;
+  lst::details::sequence_t<alphabet_t> leaf_label(int64_t node_index,
+                                                  int64_t lcp) {
+    int64_t node_start = table[node_index] - lcp;
     lst::details::sequence_t<alphabet_t> label(
         this->sequence.begin() + node_start, this->sequence.end());
 
     return label;
   }
 
-  int_fast64_t get_sequence_index(int_fast64_t node_index) {
+  int64_t get_sequence_index(int64_t node_index) {
     if (is_unevaluated(node_index)) {
       return suffixes[table[node_index]];
     } else {
@@ -453,19 +454,19 @@ public:
     }
   }
 
-  seqan3::gapped<alphabet_t> get_character(int_fast64_t index) {
+  seqan3::gapped<alphabet_t> get_character(int64_t index) {
     return lst::details::get_character(this->sequence, index);
   }
 
-  bool is_leaf(int_fast64_t node_index) {
+  bool is_leaf(int64_t node_index) {
     return lst::details::is_leaf(node_index, flags);
   }
 
-  bool is_unevaluated(int_fast64_t node_index) {
+  bool is_unevaluated(int64_t node_index) {
     return lst::details::is_unevaluated(node_index, flags);
   }
 
-  bool is_rightmostchild(int_fast64_t node_index) {
+  bool is_rightmostchild(int64_t node_index) {
     return lst::details::is_rightmostchild(node_index, flags);
   }
 
@@ -476,7 +477,7 @@ public:
    * \param node_index Node to evaluate if it should be skipped.
    * \return Boolean, true if this node should be skipped.
    */
-  virtual bool skip_node(int_fast64_t node_index) {
+  virtual bool skip_node(int64_t node_index) {
     return this->is_unevaluated(node_index);
   }
 
@@ -486,8 +487,8 @@ public:
    * \param[in] node_index index of node to iterate children of.
    * \param f function to call on every child.
    */
-  void iterate_children(int_fast64_t node_index,
-                        const std::function<void(int_fast64_t)> &f) {
+  void iterate_children(int64_t node_index,
+                        const std::function<void(int64_t)> &f) {
 
     lst::details::iterate_children(node_index, this->table, this->flags, f);
   }
@@ -497,14 +498,14 @@ public:
    * \param node_index Index of the node.
    * \return The edge longest common prefix (length of the edge).
    */
-  int_fast64_t get_edge_lcp(int_fast64_t node_index) {
+  int64_t get_edge_lcp(int64_t node_index) {
     return lst::details::get_edge_lcp(node_index, this->sequence,
                                       this->suffixes, this->table, this->flags);
   }
 
-  void breadth_first_iteration(int_fast64_t node_index,
-    int_fast64_t start_lcp, bool expand_nodes,
-    const std::function<bool(int_fast64_t, int_fast64_t, int_fast64_t)> &f) {
+  void breadth_first_iteration(int64_t node_index,
+    int64_t start_lcp, bool expand_nodes,
+    const std::function<bool(int64_t, int64_t, int64_t)> &f) {
       lst::details::breadth_first_iteration(node_index, start_lcp, this->sequence,
                                             this->suffixes, this->table,
                                             this->flags, expand_nodes, f,
