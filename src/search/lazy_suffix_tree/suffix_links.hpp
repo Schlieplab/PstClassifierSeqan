@@ -77,15 +77,14 @@ int64_t tree_height(std::vector<int64_t> &depths,
     auto [node_index, parent_depth, level] = queue.front();
     if (paralell_depth == level && multi_core){
       std::thread threads[queue.size()];
+      seqan3::debug_stream << "Starting upto " << queue.size() << "threads." << std::endl;
       int thread_index = 0;
       while (!queue.empty()) {
         auto [node_index, parent_depth, level] = queue.front();
         queue.pop();
+        depths[node_index / 2] = parent_depth +
+                                 get_edge_lcp(node_index, sequence, suffixes, table, flags);
         if (sequence[table[node_index]].to_rank() != 3 && sequence[table[node_index]].to_rank() != 5) {
-          depths[node_index / 2] = parent_depth +
-                  get_edge_lcp(node_index, sequence, suffixes, table, flags);
-
-          seqan3::debug_stream << "Node_ID: " << std::setw(4) << node_index << " | Table[Node_id]: " << table[node_index]<< " | Sequence[Table[node_id]]: " << sequence[table[node_index]] << " " << sequence[table[node_index]].to_rank() << std::endl;
           threads[thread_index] =
                   std::thread(tree_height_paralell<seqan3::dna5>,
                               std::ref(depths),
@@ -107,7 +106,7 @@ int64_t tree_height(std::vector<int64_t> &depths,
     queue.pop();
 
     int64_t node_depth = parent_depth +
-            get_edge_lcp(node_index, sequence, suffixes, table, flags);
+                            get_edge_lcp(node_index, sequence, suffixes, table, flags);
     depths[node_index / 2] = node_depth;
 
     level++;

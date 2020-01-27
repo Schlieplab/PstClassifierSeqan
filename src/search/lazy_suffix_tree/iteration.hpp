@@ -179,11 +179,11 @@ void breadth_first_iteration(int_fast64_t start_index, int_fast64_t start_lcp,
           }
         }
       }
+      seqan3::debug_stream << "Started " << number_of_threads << "threads." << std::endl;
       std::thread threads[number_of_threads];
       for (int j = node_lower_bound; j < node_upper_bound+1; j+=2) {
         // Filter out all nodes with N as label
         if (sequence[table[j]].to_rank() != 3 && sequence[table[j]].to_rank() != 5) {
-          seqan3::debug_stream << "Node_ID: " << j << " | Table[Node_id]: " << table[j]<< " | Sequence[Table[node_id]]: " << sequence[table[j]] << " " << sequence[table[j]].to_rank() << std::endl;
           int_fast64_t edge_lcp = get_edge_lcp(j, sequence, suffixes, table, flags);
           threads[thread_index] = std::thread(BFIp<seqan3::dna5>,
                                               std::ref(sequence),
@@ -195,11 +195,13 @@ void breadth_first_iteration(int_fast64_t start_index, int_fast64_t start_lcp,
           thread_index++;
         }
       }
+
       multi_core = false;
       for (int i = 0; i < number_of_threads; ++i) {
         seqan3::debug_stream << i << std::endl;
         threads[i].join();
       }
+      seqan3::debug_stream << "All threads returned." << std::endl;
       multi_core = true;
       return;
     }
