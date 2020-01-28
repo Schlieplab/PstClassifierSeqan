@@ -325,7 +325,7 @@ protected:
     this->add_reverse_suffix_links();
     auto t1 = high_resolution_clock::now();
     seqan3::debug_stream  << "Calculating Probabilities..."  << std::endl;
-
+    //multi_core = false;
     this->compute_probabilities();
     auto t2 = high_resolution_clock::now();
     seqan3::debug_stream  << "Pruning..."  << std::endl;

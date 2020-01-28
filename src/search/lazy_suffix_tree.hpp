@@ -211,11 +211,12 @@ public:
                                             suffix_links, multi_core, paralell_depth);
     seqan3::debug_stream << "Adding leaf Suffix links" << std::endl;
 
-    lst::details::add_leaf_suffix_links(sequence, suffixes, table, flags, suffix_links);
+    lst::details::add_leaf_suffix_links(sequence, suffixes, table, flags,
+                                        suffix_links, multi_core, paralell_depth);
     seqan3::debug_stream << "Adding Implicit Suffix links" << std::endl;
 
     lst::details::add_implicit_suffix_links(sequence, suffixes, table, flags,
-                                            suffix_links);
+                                            suffix_links, multi_core, paralell_depth);
     suffix_links[0] = -1;
   }
 

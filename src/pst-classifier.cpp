@@ -118,6 +118,7 @@ std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                                                paralell_depth};
     pst.construct_tree();
     return pst.to_tree();
+    //return "WIN";
   } else if (estimator == "PS") {
     pst::PeresShieldsTree<seqan3::dna5> pst{id,
                                             sequence,
@@ -129,6 +130,8 @@ std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                                             paralell_depth};
     pst.construct_tree();
     return pst.to_tree();
+    //return "WIN";
+
   } else {
     return "";
   }
