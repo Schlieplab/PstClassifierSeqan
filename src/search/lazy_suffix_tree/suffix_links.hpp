@@ -234,9 +234,6 @@ int64_t prepare_suffix_links(int64_t node_index, int64_t lcp,
                             std::vector<int64_t> &table,
                             std::vector<Flag> &flags) {
 
-  int64_t edge_lcp =
-            get_edge_lcp(node_index, sequence, suffixes, table, flags);
-
   if (is_leaf(node_index, flags)) {
     return get_leaf_index(node_index, lcp, suffixes, table, flags);
   } else if (is_unevaluated(node_index, flags)) {
@@ -254,6 +251,9 @@ int64_t prepare_suffix_links(int64_t node_index, int64_t lcp,
 
     return get_leaf_index(node_index, lcp, suffixes, table, flags);
   } else {
+
+    int64_t edge_lcp =
+            get_edge_lcp(node_index, sequence, suffixes, table, flags);
 
     int64_t smallest_child        = suffixes.size();
     int64_t second_smallest_child = suffixes.size();
