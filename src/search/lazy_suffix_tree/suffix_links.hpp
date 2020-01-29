@@ -26,14 +26,14 @@ int get_number_of_children(int node_index, std::vector<int> &table,
   return n_children;
 }
 
-/**! \brief Calculates the height/depth of the tree and of every node.
+/**! \brief Calculates the internal height/depth of the tree and of every node.
  *
  * @tparam alphabet_t Type of alphabet used (from seqan3)
  * \param[in] sequence Sequence of the tree.
  * \param[in] suffixes Suffixes of the tree.
  * \param[in] table Table of the tree.
  * \param[in] flags Flags of the tree.
- * \return the height of the tree (longest node contained).
+ * \return the height of the tree (longest node contained, not leaf).
  */
 template <seqan3::alphabet alphabet_t>
 int tree_height(sequence_t<alphabet_t> &sequence, std::vector<int> &suffixes,
@@ -426,9 +426,8 @@ int find_suffix_match(int node_index, int edge_lcp, int parent_suffix_link,
                       std::vector<int> &suffixes, std::vector<int> &table,
                       std::vector<Flag> &flags) {
   std::queue<std::tuple<int, int>> suffix_link_queue{};
-  auto parent_link_edge_lcp =
-      get_edge_lcp(parent_suffix_link, sequence, suffixes, table, flags);
-  suffix_link_queue.emplace(parent_suffix_link, parent_link_edge_lcp);
+  iterate_children(parent_suffix_link, table, flags,
+                   [&](int index) { suffix_link_queue.emplace(index, 0); });
 
   while (!suffix_link_queue.empty()) {
     auto &[suffix_link_child, suffix_link_parent_lcp] =
@@ -484,7 +483,8 @@ void add_implicit_suffix_links(sequence_t<alphabet_t> &sequence,
 
     auto edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
 
-    if (suffix_links[node_index / 2] == -1 && parent_index == 0) {
+    if (suffix_links[node_index / 2] == -1 && parent_index == 0 &&
+        edge_lcp == 1) {
       suffix_links[node_index / 2] = 0;
     } else if (suffix_links[node_index / 2] == -1 &&
                suffix_links[parent_index / 2] != -1) {

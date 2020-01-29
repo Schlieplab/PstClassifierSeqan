@@ -61,7 +61,7 @@ protected:
 TEST_F(SuffixLinksTests, TreeHeight) {
   int height = tree_height<seqan3::dna5>(sequence, suffixes, table, flags);
 
-  EXPECT_EQ(6, height);
+  EXPECT_EQ(3, height);
 }
 
 TEST_F(SuffixLinksTests, LeafIndex) {

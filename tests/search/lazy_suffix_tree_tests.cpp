@@ -191,15 +191,42 @@ TEST_F(LazySuffixTreeTest, SuffixLinks) {
   tree.expand_all();
 
   tree.add_suffix_links();
-  std::vector<int> expected_links{-1, 4, 0, 0, 18, 14, 2, 6, 8, 10};
+  std::vector<int> expected_links{
+      -1, // root
+      4,  // AC
+      0,  // C
+      0,  // -
+      18, // ACAC
+      14, // AC
+      2,  // CAC
+      6,  // C
+      8,  // CACAC
+      10  // CAC
+  };
 
   EXPECT_EQ(tree.suffix_links, expected_links);
 
   tree.expand_implicit_nodes();
   tree.add_suffix_links();
 
-  std::vector<int> implicit_expected_links{-1, 0,  0, 0,  12, 14, 2,  6,
-                                           8,  10, 4, 26, 18, 20, 22, 24};
+  std::vector<int> implicit_expected_links{
+      -1, // 0: root
+      0,  // 2: A
+      0,  // 4: C
+      0,  // 6: -
+      12, // 8: ACA
+      14, // 10: AC-
+      2,  // 12: CA
+      6,  // 14: C-
+      8,  // 16: CACA
+      10, // 18: CAC-
+      4,  // 20: AC
+      26, // 22: ACAC
+      18, // 24: ACAC-
+      20, // 26: CAC
+      22, // 28: CACAC
+      24  // 30: CACAC-
+  };
 
   EXPECT_EQ(tree.suffix_links, implicit_expected_links);
 
@@ -213,13 +240,6 @@ TEST_F(LazySuffixTreeTest, SuffixLinks) {
       54, 56, 18, 58, 16, 30, 96, 98, 60, 62, 64, 66, 68, 70, 72, 74};
 
   EXPECT_EQ(dna_tree.suffix_links, implicit_expected_dna_links);
-}
-
-TEST_F(LazySuffixTreeTest, UnevaluatedSuffixLinks) {
-  tree4.search("AC"_dna4);
-  tree4.add_suffix_links();
-  std::vector<int> expected_tree4_links{-1, 4, 6, 8, 0, 0, -1, -1};
-  EXPECT_EQ(tree4.suffix_links, expected_tree4_links);
 }
 
 TEST_F(LazySuffixTreeTest, ReverseSuffixLinks) {
