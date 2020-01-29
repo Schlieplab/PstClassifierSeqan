@@ -133,7 +133,7 @@ public:
                           const std::function<bool(int, int, int, int)> &f) {
     this->breadth_first_iteration(
         0, 0, true, [&](int node_index, int lcp, int edge_lcp) -> bool {
-          int sequence_index = get_sequence_index(node_index);
+          int sequence_index = this->get_sequence_index(node_index);
 
           int node_start = sequence_index - lcp;
           int node_end = sequence_index + edge_lcp;
@@ -202,6 +202,8 @@ public:
 
     lst::details::add_explicit_suffix_links(sequence, suffixes, table, flags,
                                             suffix_links);
+    lst::details::add_leaf_suffix_links(sequence, suffixes, table, flags,
+                                        suffix_links);
     lst::details::add_implicit_suffix_links(sequence, suffixes, table, flags,
                                             suffix_links);
     suffix_links[0] = -1;
@@ -229,7 +231,7 @@ public:
             return true;
           }
 
-          int sequence_index = get_sequence_index(node_index);
+          int sequence_index = this->get_sequence_index(node_index);
           int node_start = sequence_index - lcp;
 
           int suffix_parent = suffix_links[node_index / 2];
@@ -432,11 +434,7 @@ protected:
   }
 
   int get_sequence_index(int node_index) {
-    if (is_unevaluated(node_index)) {
-      return suffixes[table[node_index]];
-    } else {
-      return table[node_index];
-    }
+    return lst::details::get_sequence_index(node_index, this->suffixes, this->table, this->flags);
   }
 
   seqan3::gapped<alphabet_t> get_character(size_t index) {

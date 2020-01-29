@@ -363,124 +363,100 @@ void compute_leaf_suffix_links(std::vector<int> &leaf_indices,
   }
 }
 
-/**! \brief Computes the parents and the closest parent with a suffix link.
+/** \brief Checks if the sequences corresponding to node_index and
+ * suffix_link_child_index matches.
  *
- * \tparam alphabet_t seqan3 alphabet type.
- * \param[out] closest_suffix_link_destination Saves the closest parent with a
- * suffix link (and the distance in characters to that parent).
- * \param[out] parent_links Contains the parent for each node for a bottom-up
- * traversal.
- * \param[in] sequence Sequence of the tree
- * \param[in] suffixes Suffixes of the tree.
- * \param[in] table Table of the tree.
- * \param[in] flags Flags of the tree.
- * \param[in] suffix_links The suffix link for each node.
+ * We only have to check the last edge_lcp characters of the nodes because of
+ * the suffix link between the parent of node_index and a parent of the
+ * suffix_link_child_index.
+ *
+ * \tparam alphabet_t seqan3 alphabet for the tree.
+ * \param node_index The index of the node to find the suffix link for.
+ * \param edge_lcp The edge length of node_index.
+ * \param suffix_link_child_index The potential suffix link of node_index.
+ * \param suffix_link_edge_lcp edge lcp of suffix_link_child_index
+ * \param sequence Sequence of the tree
+ * \param suffixes Suffixes of the tree.
+ * \param table Table of the tree.
+ * \param flags Flags of the tree.
+ * \return True if the two sequences matches.
  */
 template <seqan3::alphabet alphabet_t>
-void prepare_implicit_suffix_links(
-    std::vector<std::tuple<int, int>> &closest_suffix_link_destination,
-    std::vector<int> &parent_links, sequence_t<alphabet_t> &sequence,
-    std::vector<int> &suffixes, std::vector<int> &table,
-    std::vector<Flag> &flags, std::vector<int> &suffix_links) {
+bool sequences_match(int node_index, int edge_lcp, int suffix_link_child_index,
+                     int suffix_link_edge_lcp, sequence_t<alphabet_t> &sequence,
+                     std::vector<int> &suffixes, std::vector<int> &table,
+                     std::vector<Flag> &flags) {
+  int node_start = get_sequence_index(node_index, suffixes, table, flags);
+  int suffix_link_child_end = std::min(
+      int(sequence.size()),
+      get_sequence_index(suffix_link_child_index, suffixes, table, flags) +
+          suffix_link_edge_lcp);
 
-  std::stack<std::tuple<int, int, int>> stack{};
-  stack.emplace(0, 0, 0);
+  int suffix_link_child_start = suffix_link_child_end - edge_lcp;
 
-  std::vector<std::tuple<int, int>> missing_suffix_links{};
-  while (!stack.empty()) {
-    auto [node_index, parent, parent_lcp] = stack.top();
-    stack.pop();
-
-    int edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
-    int lcp = parent_lcp + edge_lcp;
-
-    parent_links[node_index / 2] = parent;
-
-    if (!is_leaf(node_index, flags) && suffix_links[node_index / 2] == -1) {
-      missing_suffix_links.emplace_back(node_index, lcp);
-
-    } else if (missing_suffix_links.size() > 0) {
-      int suffix_link_destination = suffix_links[node_index / 2];
-
-      for (int i = 0; i < missing_suffix_links.size(); i++) {
-        auto &[missing, missing_lcp] = missing_suffix_links[i];
-
-        closest_suffix_link_destination[missing] =
-            std::make_tuple(suffix_link_destination, lcp - missing_lcp);
-      }
-
-      missing_suffix_links.resize(0);
+  for (int i = 0; i < edge_lcp; i++) {
+    if (sequence[node_start + i] != sequence[suffix_link_child_start + i]) {
+      return false;
     }
-
-    iterate_children(node_index, table, flags,
-                     [&](int child) { stack.emplace(child, node_index, lcp); });
   }
+
+  return true;
 }
 
-/**! \brief Sets suffix links for implicit (expanded) nodes with the help
- * of the distance to the closest parent with a suffix link and the parent
- * links.
+/** \brief Returns the correct suffix link for node_index if possible.
  *
- * \tparam alphabet_t seqan3 alphabet type.
- * \param[in] closest_suffix_link_destination Saves the closest parent with a
- * suffix link (and the distance in characters to that parent).
- * \param[in] parent_links Contains the parent for each node for a bottom-up
- * traversal.
- * \param[in] sequence Sequence of the tree
- * \param[in] suffixes Suffixes of the tree.
- * \param[in] table Table of the tree.
- * \param[in] flags Flags of the tree.
- * \param[out] suffix_links The suffix link for each node.
+ * Iterates through all of the children of parent_suffix_link up to a maximum
+ * depth of edge_lcp.  For each child with we check if it is long enough and
+ * if it matches the sequence of node_index.  If so, return as the suffix link
+ * destination of node_index.  Otherwise, return -1.
+ *
+ * \tparam alphabet_t seqan3 alphabet for the tree.
+ * \param node_index The index of the node to find the suffix link for.
+ * \param edge_lcp The edge length of node_index.
+ * \param parent_suffix_link The suffix link of the parent of node_index.
+ * \param sequence Sequence of the tree
+ * \param suffixes Suffixes of the tree.
+ * \param table Table of the tree.
+ * \param flags Flags of the tree.
+ * \return suffix link destination of node_index, or -1 if none found.
  */
 template <seqan3::alphabet alphabet_t>
-void compute_implicit_suffix_links(
-    std::vector<std::tuple<int, int>> &closest_suffix_link_destination,
-    std::vector<int> &parent_links, sequence_t<alphabet_t> &sequence,
-    std::vector<int> &suffixes, std::vector<int> &table,
-    std::vector<Flag> &flags, std::vector<int> &suffix_links) {
-  std::queue<int> queue{};
-  queue.push(0);
+int find_suffix_match(int node_index, int edge_lcp, int parent_suffix_link,
+                      sequence_t<alphabet_t> &sequence,
+                      std::vector<int> &suffixes, std::vector<int> &table,
+                      std::vector<Flag> &flags) {
+  std::queue<std::tuple<int, int>> suffix_link_queue{};
+  suffix_link_queue.emplace(parent_suffix_link, 0);
 
-  while (!queue.empty()) {
-    int node_index = queue.front();
-    queue.pop();
+  while (!suffix_link_queue.empty()) {
+    auto &[suffix_link_child, suffix_link_lcp] = suffix_link_queue.front();
+    suffix_link_queue.pop();
+    auto suffix_link_edge_lcp =
+        get_edge_lcp(suffix_link_child, sequence, suffixes, table, flags);
 
-    auto [suffix_link_destination, distance] =
-        closest_suffix_link_destination[node_index];
-
-    if (suffix_link_destination == -1) {
-      suffix_links[node_index / 2] = -1;
-    } else if (suffix_link_destination != 0) {
-      int destination_parent = suffix_link_destination;
-
-      int edge_lcp =
-          get_edge_lcp(destination_parent, sequence, suffixes, table, flags);
-      distance -= edge_lcp;
-
-      while (distance > 0) {
-        destination_parent = parent_links[destination_parent / 2];
-        edge_lcp =
-            get_edge_lcp(destination_parent, sequence, suffixes, table, flags);
-        distance -= edge_lcp;
+    if (suffix_link_lcp == edge_lcp) {
+      bool match = sequences_match(node_index, edge_lcp, suffix_link_child,
+                                   suffix_link_edge_lcp, sequence, suffixes,
+                                   table, flags);
+      if (match) {
+        return suffix_link_child;
       }
-      destination_parent = parent_links[destination_parent / 2];
-      suffix_links[node_index / 2] = destination_parent;
-    }
+    } else if (suffix_link_lcp < edge_lcp) {
 
-    iterate_children(node_index, table, flags,
-                     [&](int index) { queue.push(index); });
+      iterate_children(suffix_link_child, table, flags, [&](int index) {
+        suffix_link_queue.emplace(index,
+                                  suffix_link_lcp + suffix_link_edge_lcp);
+      });
+    }
   }
+  return -1;
 }
 
 /**! \brief Adds suffix links for all (extended) implicit nodes in the tree.
  *
- * Prepare the two vectors by storing the distance to the closest
- * child which has a suffix link, as well as all parents links.
- *
- * When these vectors are filled, it allows us to assign the correct
- * suffix links of the implicit nodes by determining
- * which other node is at an equal distance to a child with a suffix link.
- * That node must therefore have a suffix link to the current node.
+ * Finds nodes which have not been assigned suffix links.  If the parent
+ * has a suffix link, we can iterate from the parent's suffix link to find
+ * the suffix link of the child, if it exists.
  *
  * \tparam alphabet_t seqan3 alphabet for the tree.
  * \param sequence Sequence of the tree
@@ -495,14 +471,29 @@ void add_implicit_suffix_links(sequence_t<alphabet_t> &sequence,
                                std::vector<int> &table,
                                std::vector<Flag> &flags,
                                std::vector<int> &suffix_links) {
-  std::vector<std::tuple<int, int>> closest_suffix_link_destination(
-      table.size());
 
-  std::vector<int> parent_links(table.size() / 2, -1);
+  std::queue<std::tuple<int, int>> queue{};
+  queue.emplace(0, 0);
 
-  prepare_implicit_suffix_links(closest_suffix_link_destination, parent_links,
-                                sequence, suffixes, table, flags, suffix_links);
-  compute_implicit_suffix_links(closest_suffix_link_destination, parent_links,
-                                sequence, suffixes, table, flags, suffix_links);
+  while (!queue.empty()) {
+    auto [node_index, parent_index] = queue.front();
+    queue.pop();
+
+    auto edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
+
+    if (suffix_links[node_index / 2] == -1 &&
+        suffix_links[parent_index / 2] != -1) {
+      auto parent_suffix_link = suffix_links[parent_index / 2];
+      int suffix_link_destination =
+          find_suffix_match(node_index, edge_lcp, parent_suffix_link, sequence,
+                            suffixes, table, flags);
+
+      suffix_links[node_index / 2] = suffix_link_destination;
+    }
+
+    iterate_children(node_index, table, flags,
+                     [&](int index) { queue.emplace(index, node_index); });
+  }
 }
+
 } // namespace lst::details
