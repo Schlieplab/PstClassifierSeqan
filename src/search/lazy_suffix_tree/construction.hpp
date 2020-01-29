@@ -119,7 +119,7 @@ void add_children(alphabet_array<alphabet_t> &counts, int lower_bound,
   int right_most_child_index = flags.size() - 2;
 
   if (last_added_leaf) {
-    // Should be 1, but I've addded a value to leaves to allow for
+    // Should be 1, but I've added a value to leaves to allow for
     // explicit nodes.
     right_most_child_index = flags.size() - 2;
   }

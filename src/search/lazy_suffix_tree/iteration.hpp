@@ -14,13 +14,10 @@ int next_child_index(int node_index, std::vector<Flag> &flags) {
   if (is_leaf(node_index, flags)) {
     // Should be 1, but I've addded a value to leaves to allow for
     // explicit nodes.
-    node_index += 2;
-
+    return node_index + 2;
   } else {
-    node_index += 2;
+    return node_index + 2;
   }
-
-  return node_index;
 }
 
 void iterate_children(int node_index, std::vector<int> &table,

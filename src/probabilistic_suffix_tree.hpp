@@ -133,10 +133,6 @@ public:
     lst::LazySuffixTree<alphabet_t>::debug_print_node(node_index, lcp,
                                                       edge_lcp);
 
-    if (this->reverse_suffix_links.size() > node_index / 2) {
-      seqan3::debug_stream << "\tLeaf: " << this->is_leaf(node_index);
-    }
-
     if (this->suffix_links.size() > node_index / 2 &&
         this->suffix_links[node_index / 2] != -1) {
       seqan3::debug_stream << "\tDelta: " << this->calculate_delta(node_index);
@@ -440,12 +436,11 @@ protected:
   void parameters_prune() {
     auto pst_leaves = this->get_pst_leaves();
 
-    auto cmp = [](std::tuple<int, float> left, std::tuple<int, float> right) {
+    using q_t = std::tuple<int, float>;
+    auto cmp = [](q_t left, q_t right) -> bool {
       return std::get<1>(left) < std::get<1>(right);
     };
-    std::priority_queue<std::tuple<int, float>,
-                        std::vector<std::tuple<int, float>>, decltype(cmp)>
-        queue{cmp};
+    std::priority_queue<q_t, std::vector<q_t>, decltype(cmp)> queue{cmp};
 
     for (auto v : pst_leaves) {
       queue.emplace(v, -this->calculate_delta(v));
@@ -453,9 +448,9 @@ protected:
 
     auto n_terminal_nodes = this->count_terminal_nodes();
 
+    int alphabet_size = this->valid_characters.size() - 1;
     while (!queue.empty() &&
-           n_terminal_nodes * (this->valid_characters.size() - 1) >
-               this->number_of_parameters) {
+           n_terminal_nodes * alphabet_size > this->number_of_parameters) {
       auto [node_index, delta] = queue.top();
       queue.pop();
 

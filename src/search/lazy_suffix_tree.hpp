@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <functional>
 #include <numeric>
@@ -276,6 +277,12 @@ public:
     seqan3::debug_stream << label << "\t" << node_index << "\t"
                          << table[node_index] << "\t" << table[node_index + 1];
 
+    seqan3::debug_stream << "\tLeaf: " << this->is_leaf(node_index);
+    seqan3::debug_stream << "\tUnevaluated: "
+                         << this->is_unevaluated(node_index);
+    seqan3::debug_stream << "\tRightmost child: "
+                         << this->is_rightmostchild(node_index);
+
     if (this->suffix_links.size() > node_index / 2) {
       seqan3::debug_stream << "\tSuffix link: "
                            << this->suffix_links[node_index / 2];
@@ -302,7 +309,7 @@ protected:
           "[SUFFIX INDICES] Given node index is too large.");
     }
 
-    std::vector<int> start_indicies{};
+    std::vector<int> start_indices{};
     std::queue<std::tuple<int, int>> queue{};
 
     queue.emplace(node_index, og_lcp);
@@ -312,10 +319,10 @@ protected:
       queue.pop();
 
       if (is_leaf(index)) {
-        start_indicies.push_back(table[index] - lcp);
+        start_indices.push_back(table[index] - lcp);
       } else if (is_unevaluated(index)) {
         for (int i = table[index]; i < table[index + 1]; i++) {
-          start_indicies.push_back(suffixes[i] - lcp);
+          start_indices.push_back(suffixes[i] - lcp);
         }
       } else {
         int edge_lcp = this->get_edge_lcp(index);
@@ -325,7 +332,7 @@ protected:
       }
     }
 
-    return start_indicies;
+    return start_indices;
   }
 
   std::tuple<int, int> find(std::vector<alphabet_t> pattern) {
@@ -397,11 +404,7 @@ protected:
   lst::details::sequence_t<alphabet_t> edge_label(int node_index,
                                                   int edge_lcp) {
     int edge_start = this->get_sequence_index(node_index);
-    int edge_end = edge_start + edge_lcp;
-
-    if (edge_end > this->sequence.size()) {
-      edge_end -= 1;
-    }
+    int edge_end = std::min(edge_start + edge_lcp, int(this->sequence.size()));
 
     lst::details::sequence_t<alphabet_t> edge(
         this->sequence.begin() + edge_start, this->sequence.begin() + edge_end);
@@ -414,10 +417,8 @@ protected:
     int sequence_index = this->get_sequence_index(node_index);
 
     int node_start = sequence_index - lcp;
-    int node_end = sequence_index + edge_lcp;
-    if (node_end > this->sequence.size()) {
-      node_end -= 1;
-    }
+    int node_end =
+        std::min(sequence_index + edge_lcp, int(this->sequence.size()));
 
     lst::details::sequence_t<alphabet_t> label(
         this->sequence.begin() + node_start, this->sequence.begin() + node_end);

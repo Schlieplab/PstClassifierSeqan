@@ -59,15 +59,9 @@ protected:
 };
 
 TEST_F(SuffixLinksTests, TreeHeight) {
-  std::vector<int> depths(table.size() / 2, -1);
-  int height =
-      tree_height<seqan3::dna5>(depths, sequence, suffixes, table, flags);
+  int height = tree_height<seqan3::dna5>(sequence, suffixes, table, flags);
 
   EXPECT_EQ(6, height);
-
-  std::vector<int> expected_depths{0, 2, 1, 1, 5, 3, 3, 2, 6, 4};
-
-  EXPECT_EQ(depths, expected_depths);
 }
 
 TEST_F(SuffixLinksTests, LeafIndex) {
