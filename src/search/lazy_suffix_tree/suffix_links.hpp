@@ -11,20 +11,33 @@
 
 namespace lst::details {
 
+/**! \brief Get number of children for node.
+ *
+ * \param[in] node_index  Index to get number of children for.
+ * \param[in] table Table of the tree.
+ * \param[in] flags Flags of the tree.
+ * \return
+ */
+int get_number_of_children(int node_index, std::vector<int> &table,
+                           std::vector<Flag> &flags) {
+  int n_children = 0;
+  iterate_children(node_index, table, flags, [&](int index) { n_children++; });
+
+  return n_children;
+}
+
 /**! \brief Calculates the height/depth of the tree and of every node.
  *
  * @tparam alphabet_t Type of alphabet used (from seqan3)
- * \param[out] depths Depths of each node in the tree.
  * \param[in] sequence Sequence of the tree.
  * \param[in] suffixes Suffixes of the tree.
  * \param[in] table Table of the tree.
  * \param[in] flags Flags of the tree.
- * \return the heigh of the tree (longest node contained).
+ * \return the height of the tree (longest node contained).
  */
 template <seqan3::alphabet alphabet_t>
-int tree_height(std::vector<int> &depths, sequence_t<alphabet_t> &sequence,
-                std::vector<int> &suffixes, std::vector<int> &table,
-                std::vector<Flag> &flags) {
+int tree_height(sequence_t<alphabet_t> &sequence, std::vector<int> &suffixes,
+                std::vector<int> &table, std::vector<Flag> &flags) {
   std::queue<std::tuple<int, int>> queue{};
   queue.emplace(0, 0);
 
@@ -34,17 +47,17 @@ int tree_height(std::vector<int> &depths, sequence_t<alphabet_t> &sequence,
     auto [node_index, parent_depth] = queue.front();
     queue.pop();
 
-    int node_depth = parent_depth +
-                     get_edge_lcp(node_index, sequence, suffixes, table, flags);
+    if (is_leaf(node_index, flags)) {
+      continue;
+    }
 
-    depths[node_index / 2] = node_depth;
+    int edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
+    int node_depth = parent_depth + edge_lcp;
 
     iterate_children(node_index, table, flags,
                      [&](int index) { queue.emplace(index, node_depth); });
 
-    if (node_depth > tree_height) {
-      tree_height = node_depth;
-    }
+    tree_height = std::max(tree_height, node_depth);
   }
 
   return tree_height;
@@ -92,21 +105,16 @@ void add_explicit_suffix_links(sequence_t<alphabet_t> &sequence,
                                std::vector<int> &table,
                                std::vector<Flag> &flags,
                                std::vector<int> &suffix_links) {
-  std::vector<int> cause(suffixes.size() + 2, -1);
+  std::vector<std::tuple<int, int>> cause(suffixes.size());
 
-  std::vector<int> leaf_indices(suffixes.size() + 1, -1);
-  leaf_indices[suffixes.size()] = 0;
+  prepare_suffix_links(0, 0, cause, sequence, suffixes, table, flags);
 
-  prepare_suffix_links(0, 0, cause, leaf_indices, sequence, suffixes, table,
-                       flags);
-
-  std::vector<int> depths(table.size() / 2, -1);
-  int height = tree_height(depths, sequence, suffixes, table, flags);
+  int height = tree_height(sequence, suffixes, table, flags);
 
   std::vector<int> branch(height + 1, -1);
 
-  compute_suffix_links(cause, branch, depths, leaf_indices, sequence, suffixes,
-                       table, flags, suffix_links);
+  compute_suffix_links(cause, branch, sequence, suffixes, table, flags,
+                       suffix_links);
 }
 
 /**! \brief For each node in the tree, computes which node caused that node.
@@ -118,7 +126,6 @@ void add_explicit_suffix_links(sequence_t<alphabet_t> &sequence,
  * \param lcp Longest common prefix of the node.
  * \param[out] cause At each index the node that was caused by that index is
  * saved.
- * \param[out] leaf_indices At each index the previous leaf is stored.
  * \param sequence Sequence of the tree
  * \param suffixes Suffixes of the tree.
  * \param table Table of the tree.
@@ -126,26 +133,12 @@ void add_explicit_suffix_links(sequence_t<alphabet_t> &sequence,
  * \return The smallest index of the node.
  */
 template <seqan3::alphabet alphabet_t>
-int prepare_suffix_links(int node_index, int lcp, std::vector<int> &cause,
-                         std::vector<int> &leaf_indices,
+int prepare_suffix_links(int node_index, int lcp,
+                         std::vector<std::tuple<int, int>> &cause,
                          sequence_t<alphabet_t> &sequence,
                          std::vector<int> &suffixes, std::vector<int> &table,
                          std::vector<Flag> &flags) {
-  if (is_leaf(node_index, flags)) {
-    int leaf_index = get_leaf_index(node_index, lcp, suffixes, table, flags);
-
-    leaf_indices[leaf_index] = node_index;
-
-    return leaf_index;
-  } else if (is_unevaluated(node_index, flags)) {
-    // This isn't technically correct.  The following gives the second smallest
-    // suffix _overall_ and the algorithm calls for the second smallest suffix
-    // from the immediate children.  Not entirely sure that it is important
-    // since the values will still be unique.
-
-    int second_smallest_child = suffixes[table[node_index] + 1] - lcp;
-    cause[second_smallest_child + 1] = node_index;
-
+  if (is_leaf(node_index, flags) || is_unevaluated(node_index, flags)) {
     return get_leaf_index(node_index, lcp, suffixes, table, flags);
   } else {
     int edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
@@ -154,9 +147,8 @@ int prepare_suffix_links(int node_index, int lcp, std::vector<int> &cause,
     int second_smallest_child = suffixes.size();
 
     iterate_children(node_index, table, flags, [&](int index) {
-      int child =
-          prepare_suffix_links(index, lcp + edge_lcp, cause, leaf_indices,
-                               sequence, suffixes, table, flags);
+      int child = prepare_suffix_links(index, lcp + edge_lcp, cause, sequence,
+                                       suffixes, table, flags);
 
       if (child < smallest_child) {
         second_smallest_child = smallest_child;
@@ -166,18 +158,163 @@ int prepare_suffix_links(int node_index, int lcp, std::vector<int> &cause,
       }
     });
 
-    cause[second_smallest_child + 1] = node_index;
+    int n_children = get_number_of_children(node_index, table, flags);
+    // If the node only has one child it is an implicit node
+    // and we don't want to add it as a causing node.
+    if (n_children == 1) {
+      return smallest_child;
+    }
+
+    if (second_smallest_child < suffixes.size()) {
+      cause[second_smallest_child + 1] =
+          std::make_tuple(node_index, lcp + edge_lcp);
+    }
 
     return smallest_child;
   }
 }
 
-void assign_link(int leaf_index, std::vector<int> &cause,
-                 std::vector<int> &branch, std::vector<int> &depths,
-                 std::vector<int> &suffix_links) {
-  int caused = cause[leaf_index];
-  if (caused != -1 && depths[caused / 2] != 0) {
-    suffix_links[caused / 2] = branch[depths[caused / 2] - 1];
+/**! \brief Assign suffix link corresponding to the leaf index.
+ *
+ * \param leaf_index Leaf index to set suffix link for.
+ * \param[in] cause At each index the node that was caused by that index is
+ * saved.
+ * \param[in] branch Contains the branching node at each depth.
+ * \param[in] table Table of the tree.
+ * \param[in] flags Flags of the tree.
+ * \param[out] suffix_links The suffix link for each node.
+ */
+void assign_link(int leaf_index, std::vector<std::tuple<int, int>> &cause,
+                 std::vector<int> &branch, std::vector<int> &table,
+                 std::vector<Flag> &flags, std::vector<int> &suffix_links) {
+  auto &[caused, depth] = cause[leaf_index];
+
+  if (caused != -1 && depth != -1) {
+    suffix_links[caused / 2] = branch[depth - 1];
+  }
+}
+
+/**! \brief Adds suffix links to all explicit nodes.
+ *
+ * \tparam alphabet_t seqan3 alphabet type.
+ * \param[in] cause At each index the node that was caused by that index is
+ * saved.
+ * \param[in] branch Contains the branching node at each depth.
+ * \param sequence Sequence of the tree
+ * \param suffixes Suffixes of the tree.
+ * \param table Table of the tree.
+ * \param flags Flags of the tree.
+ * \param[out] suffix_links The suffix link for each node.
+ */
+template <seqan3::alphabet alphabet_t>
+void compute_suffix_links(std::vector<std::tuple<int, int>> &cause,
+                          std::vector<int> &branch,
+                          sequence_t<alphabet_t> &sequence,
+                          std::vector<int> &suffixes, std::vector<int> &table,
+                          std::vector<Flag> &flags,
+                          std::vector<int> &suffix_links) {
+  std::stack<std::tuple<int, int>> stack{};
+  stack.emplace(0, 0);
+
+  while (!stack.empty()) {
+    auto [node_index, lcp] = stack.top();
+    stack.pop();
+
+    if (is_leaf(node_index, flags)) {
+      int leaf_index = get_leaf_index(node_index, lcp, suffixes, table, flags);
+
+      assign_link(leaf_index, cause, branch, table, flags, suffix_links);
+    } else if (is_unevaluated(node_index, flags)) {
+      int edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
+
+      int height = lcp + edge_lcp;
+      branch[height] = node_index;
+      std::fill(branch.begin() + height + 1, branch.end(), -1);
+
+      for (auto i = table[node_index]; i < table[node_index + 1]; i++) {
+        auto leaf_index = suffixes[i] - lcp;
+        assign_link(leaf_index, cause, branch, table, flags, suffix_links);
+      }
+    } else {
+      int edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
+      int height = lcp + edge_lcp;
+
+      int n_children = get_number_of_children(node_index, table, flags);
+      // If the node only has one child it is an implicit node
+      // and we don't want to add it as a branching point.
+      if (n_children != 1) {
+        branch[height] = node_index;
+      }
+
+      iterate_children(node_index, table, flags,
+                       [&](int index) { stack.emplace(index, height); });
+    }
+  }
+}
+
+/**! \brief Adds suffix links to all leaves nodes in the tree.
+ *
+ * These are easy to compute as they follow directly from the next index
+ * of the leaf in the sequence.
+ *  Takes O(sequence) memory and time.
+ *
+ * \tparam alphabet_t seqan3 alphabet for the tree.
+ * \param sequence Sequence of the tree
+ * \param suffixes Suffixes of the tree.
+ * \param table Table of the tree.
+ * \param flags Flags of the tree.
+ * \param[out] suffix_links Suffix links of each explicit node in the tree.
+ */
+template <seqan3::alphabet alphabet_t>
+void add_leaf_suffix_links(sequence_t<alphabet_t> &sequence,
+                           std::vector<int> &suffixes, std::vector<int> &table,
+                           std::vector<Flag> &flags,
+                           std::vector<int> &suffix_links) {
+
+  std::vector<int> leaf_indices(suffixes.size() + 1, -1);
+  leaf_indices[suffixes.size()] = 0;
+
+  prepare_leaf_suffix_links(leaf_indices, sequence, suffixes, table, flags);
+
+  compute_leaf_suffix_links(leaf_indices, sequence, suffixes, table, flags,
+                            suffix_links);
+}
+
+/**! \brief For each node in the tree, computes which node caused that node.
+ *
+ * This is the prepare step of the algorithm by Maaß.
+ *
+ * \tparam alphabet_t seqan3 alphabet type.
+ * \param node_index Index of the node.
+ * \param lcp Longest common prefix of the node.
+ * \param[out] leaf_indices At each index the previous leaf is stored.
+ * \param sequence Sequence of the tree
+ * \param suffixes Suffixes of the tree.
+ * \param table Table of the tree.
+ * \param flags Flags of the tree.
+ * \return The smallest index of the node.
+ */
+template <seqan3::alphabet alphabet_t>
+void prepare_leaf_suffix_links(std::vector<int> &leaf_indices,
+                               sequence_t<alphabet_t> &sequence,
+                               std::vector<int> &suffixes,
+                               std::vector<int> &table,
+                               std::vector<Flag> &flags) {
+  std::stack<std::tuple<int, int>> stack{};
+  stack.emplace(0, 0);
+
+  while (!stack.empty()) {
+    auto [node_index, lcp] = stack.top();
+    stack.pop();
+
+    if (is_leaf(node_index, flags)) {
+      int leaf_index = get_leaf_index(node_index, lcp, suffixes, table, flags);
+
+      leaf_indices[leaf_index] = node_index;
+    }
+    int edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
+    iterate_children(node_index, table, flags,
+                     [&](int index) { stack.emplace(index, lcp + edge_lcp); });
   }
 }
 
@@ -192,10 +329,6 @@ void assign_leaf_link(int node_index, int leaf_index,
 /**! \brief Adds suffix links to all explicit nodes.
  *
  * \tparam alphabet_t seqan3 alphabet type.
- * \param[in] cause At each index the node that was caused by that index is
- * saved.
- * \param[in] branch Contains the branching node at each depth.
- * \param[in] depths Depths of each node in the tree
  * \param[in] leaf_indices At each index the previous leaf is stored.
  * \param sequence Sequence of the tree
  * \param suffixes Suffixes of the tree.
@@ -204,13 +337,12 @@ void assign_leaf_link(int node_index, int leaf_index,
  * \param[out] suffix_links The suffix link for each node.
  */
 template <seqan3::alphabet alphabet_t>
-void compute_suffix_links(std::vector<int> &cause, std::vector<int> &branch,
-                          std::vector<int> &depths,
-                          std::vector<int> &leaf_indices,
-                          sequence_t<alphabet_t> &sequence,
-                          std::vector<int> &suffixes, std::vector<int> &table,
-                          std::vector<Flag> &flags,
-                          std::vector<int> &suffix_links) {
+void compute_leaf_suffix_links(std::vector<int> &leaf_indices,
+                               sequence_t<alphabet_t> &sequence,
+                               std::vector<int> &suffixes,
+                               std::vector<int> &table,
+                               std::vector<Flag> &flags,
+                               std::vector<int> &suffix_links) {
   std::stack<std::tuple<int, int>> stack{};
   stack.emplace(0, 0);
 
@@ -218,23 +350,10 @@ void compute_suffix_links(std::vector<int> &cause, std::vector<int> &branch,
     auto [node_index, lcp] = stack.top();
     stack.pop();
 
-    if (!is_leaf(node_index, flags)) {
-      branch[depths[node_index / 2]] = node_index;
-    }
-
     if (is_leaf(node_index, flags)) {
       int leaf_index = get_leaf_index(node_index, lcp, suffixes, table, flags);
 
-      assign_link(leaf_index, cause, branch, depths, suffix_links);
       assign_leaf_link(node_index, leaf_index, suffix_links, leaf_indices);
-    }
-
-    if (is_unevaluated(node_index, flags)) {
-      // Maybe possible to stop this iteration early.
-      for (int i = table[node_index]; i < table[node_index + 1]; i++) {
-        int leaf_index = suffixes[i] - lcp;
-        assign_link(leaf_index, cause, branch, depths, suffix_links);
-      }
     }
 
     int edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
@@ -298,7 +417,7 @@ void prepare_implicit_suffix_links(
   }
 }
 
-/**! \brief Sets suffix links for implcit (expanded) nodes with the help
+/**! \brief Sets suffix links for implicit (expanded) nodes with the help
  * of the distance to the closest parent with a suffix link and the parent
  * links.
  *
@@ -333,9 +452,11 @@ void compute_implicit_suffix_links(
       suffix_links[node_index / 2] = -1;
     } else if (suffix_link_destination != 0) {
       int destination_parent = suffix_link_destination;
+
       int edge_lcp =
           get_edge_lcp(destination_parent, sequence, suffixes, table, flags);
       distance -= edge_lcp;
+
       while (distance > 0) {
         destination_parent = parent_links[destination_parent / 2];
         edge_lcp =
