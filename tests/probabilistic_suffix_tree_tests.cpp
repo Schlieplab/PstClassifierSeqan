@@ -190,7 +190,7 @@ TEST_F(ProbabilisticSuffixTreeTest, PrunedParameters) {
       pst::Status::INCLUDED, // root
       pst::Status::INCLUDED, // A
       pst::Status::EXCLUDED, // G
-      pst::Status::INCLUDED, // T
+      pst::Status::EXCLUDED, // T
       pst::Status::EXCLUDED, // -
       pst::Status::EXCLUDED, // AT
       pst::Status::EXCLUDED, // A-

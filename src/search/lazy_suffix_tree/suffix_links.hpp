@@ -426,13 +426,17 @@ int find_suffix_match(int node_index, int edge_lcp, int parent_suffix_link,
                       std::vector<int> &suffixes, std::vector<int> &table,
                       std::vector<Flag> &flags) {
   std::queue<std::tuple<int, int>> suffix_link_queue{};
-  suffix_link_queue.emplace(parent_suffix_link, 0);
+  auto parent_link_edge_lcp =
+      get_edge_lcp(parent_suffix_link, sequence, suffixes, table, flags);
+  suffix_link_queue.emplace(parent_suffix_link, parent_link_edge_lcp);
 
   while (!suffix_link_queue.empty()) {
-    auto &[suffix_link_child, suffix_link_lcp] = suffix_link_queue.front();
+    auto &[suffix_link_child, suffix_link_parent_lcp] =
+        suffix_link_queue.front();
     suffix_link_queue.pop();
     auto suffix_link_edge_lcp =
         get_edge_lcp(suffix_link_child, sequence, suffixes, table, flags);
+    auto suffix_link_lcp = suffix_link_parent_lcp + suffix_link_edge_lcp;
 
     if (suffix_link_lcp == edge_lcp) {
       bool match = sequences_match(node_index, edge_lcp, suffix_link_child,
@@ -444,8 +448,7 @@ int find_suffix_match(int node_index, int edge_lcp, int parent_suffix_link,
     } else if (suffix_link_lcp < edge_lcp) {
 
       iterate_children(suffix_link_child, table, flags, [&](int index) {
-        suffix_link_queue.emplace(index,
-                                  suffix_link_lcp + suffix_link_edge_lcp);
+        suffix_link_queue.emplace(index, suffix_link_lcp);
       });
     }
   }
@@ -481,8 +484,10 @@ void add_implicit_suffix_links(sequence_t<alphabet_t> &sequence,
 
     auto edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
 
-    if (suffix_links[node_index / 2] == -1 &&
-        suffix_links[parent_index / 2] != -1) {
+    if (suffix_links[node_index / 2] == -1 && parent_index == 0) {
+      suffix_links[node_index / 2] = 0;
+    } else if (suffix_links[node_index / 2] == -1 &&
+               suffix_links[parent_index / 2] != -1) {
       auto parent_suffix_link = suffix_links[parent_index / 2];
       int suffix_link_destination =
           find_suffix_match(node_index, edge_lcp, parent_suffix_link, sequence,
