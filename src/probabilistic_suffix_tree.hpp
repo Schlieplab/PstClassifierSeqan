@@ -25,6 +25,14 @@
 
 namespace pst {
 
+template <seqan3::alphabet alphabet_t> std::string get_alphabet_name() {
+  return typeid(alphabet_t).name();
+}
+
+template <> std::string get_alphabet_name<seqan3::dna5>() { return "DNA5"; }
+
+template <> std::string get_alphabet_name<seqan3::dna4>() { return "DNA4"; }
+
 enum Status : unsigned char {
   NONE = 1 << 0,
   INCLUDED = 1 << 1,
@@ -172,21 +180,40 @@ public:
     tree_string << "Name: " << this->id << std::endl;
     tree_string << "Date: " << std::ctime(&time);
     tree_string << "Tree: PST" << std::endl;
-    tree_string << "Alphabet: " << typeid(alphabet_t).name() << std::endl;
+    tree_string << "Alphabet: " << get_alphabet_name<alphabet_t>() << std::endl;
     tree_string << "Number(nodes): " << nodes_in_tree() << std::endl;
 
     auto n_parameters =
         this->count_terminal_nodes() * (valid_characters.size() - 1);
     tree_string << "Number(parameters): " << n_parameters << std::endl;
 
-    this->append_node_string(0, 0, 0, tree_string);
-
+    std::map<int, int> lcps{};
+    std::map<int, int> edge_lcps{};
+    lcps[0] = 0;
+    edge_lcps[0] = 0;
     this->breadth_first_iteration(
         0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (this->is_included(node_index)) {
-            this->append_node_string(node_index, lcp, edge_lcp, tree_string);
+            lcps[node_index] = lcp;
+            edge_lcps[node_index] = edge_lcp;
           }
+          return true;
+        });
 
+    std::map<int, int> iteration_order_indices{};
+    int i = 0;
+    this->pst_breadth_first_iteration(0, 0,
+                                      [&](int node_index, int level) -> bool {
+                                        iteration_order_indices[node_index] = i;
+                                        i++;
+                                        return true;
+                                      });
+
+    this->pst_breadth_first_iteration(
+        0, 0, [&](int node_index, int level) -> bool {
+          this->append_node_string(node_index, lcps[node_index],
+                                   edge_lcps[node_index],
+                                   iteration_order_indices, tree_string);
           return true;
         });
 
@@ -641,6 +668,7 @@ protected:
    * \param tree_string The output stream to write to.
    */
   void append_node_string(int node_index, int lcp, int edge_lcp,
+                          std::map<int, int> iteration_order_indices,
                           std::ostringstream &tree_string) {
     auto label_ = this->node_label(node_index, lcp, edge_lcp);
 
@@ -653,7 +681,8 @@ protected:
       label = "#";
     }
 
-    tree_string << "Node: " << node_index / 2 << " " << label << " ";
+    tree_string << "Node: " << iteration_order_indices[node_index] << " "
+                << label << " ";
 
     append_reverse_child_counts(node_index, tree_string);
 
@@ -663,7 +692,7 @@ protected:
 
     tree_string << " ";
 
-    append_reverse_children(node_index, tree_string);
+    append_reverse_children(node_index, iteration_order_indices, tree_string);
 
     tree_string << std::endl;
   }
@@ -737,6 +766,7 @@ protected:
    * \param tree_string The output stream to write to.
    */
   void append_reverse_children(int node_index,
+                               std::map<int, int> iteration_order_indices,
                                std::ostringstream &tree_string) {
 
     std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -2);
@@ -749,7 +779,7 @@ protected:
           this->is_excluded(reverse_child)) {
         output[char_rank] = -1;
       } else {
-        output[char_rank] = reverse_child / 2;
+        output[char_rank] = iteration_order_indices[reverse_child];
       }
     };
 
