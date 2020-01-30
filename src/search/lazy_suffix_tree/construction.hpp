@@ -322,4 +322,13 @@ void add_implicit_nodes(int64_t node_index, int64_t edge_lcp,
   }
 }
 
+int64_t get_sequence_index(int64_t node_index, std::vector<int64_t> &suffixes,
+                           std::vector<int64_t> &table, std::vector<Flag> &flags) {
+  if (is_unevaluated(node_index, flags)) {
+    return suffixes[table[node_index]];
+  } else {
+    return table[node_index];
+  }
+}
+
 } // namespace lst::details
