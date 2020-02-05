@@ -67,8 +67,8 @@ const char *train_kl_parameters(const char *id_, const char *sequence_,
       seq | seqan3::views::char_to<seqan3::dna5> |
       seqan3::views::to<seqan3::bitcompressed_vector<seqan3::dna5>>;
 
-  pst::KullbackLieblerTree<seqan3::dna5> pst{
-      id, sequence, max_depth, min_count, 0.0, n_parameters, "parameters"};
+  pst::KullbackLieblerTree<seqan3::dna5> pst{id, sequence, max_depth, min_count,
+                                             n_parameters};
 
   pst.construct_tree();
   return strdup(pst.to_tree().c_str());

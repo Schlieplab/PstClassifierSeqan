@@ -1,5 +1,6 @@
 #pragma once
 
+#include <limits>
 #include <queue>
 #include <string>
 
@@ -40,9 +41,9 @@ public:
                       seqan3::bitcompressed_vector<alphabet_t> &sequence,
                       size_t max_depth, size_t freq,
                       size_t number_of_parameters)
-      : ProbabilisticSuffixTree<alphabet_t>(id, sequence, max_depth, freq, 1.2,
-                                            number_of_parameters,
-                                            "parameters") {}
+      : ProbabilisticSuffixTree<alphabet_t>(
+            id, sequence, max_depth, freq, number_of_parameters, "parameters") {
+  }
 
   /*!\brief Constructor for threshold pruning.
    * \param[in] id_ The id of the model.
@@ -128,6 +129,10 @@ protected:
    * \return Delta value.
    */
   float calculate_delta(int node_index) {
+    if (node_index == 0) {
+      return std::numeric_limits<float>::max();
+    }
+
     int parent_index = this->suffix_links[node_index / 2];
     if (parent_index == -1) {
       throw std::invalid_argument(

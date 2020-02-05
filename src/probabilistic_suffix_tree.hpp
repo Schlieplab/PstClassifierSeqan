@@ -489,7 +489,7 @@ protected:
 
       this->status[node_index / 2] = Status::EXCLUDED;
 
-      if (this->is_pst_leaf(parent_index)) {
+      if (this->is_pst_leaf(parent_index) && parent_index != 0) {
         queue.emplace(parent_index, -this->calculate_delta(parent_index));
       }
 
