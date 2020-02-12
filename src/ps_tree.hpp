@@ -77,8 +77,8 @@ protected:
    */
   void cutoff_prune() {
     this->pst_breadth_first_iteration(
-        0, 0, [&](int_fast64_t node_index, int64_t level) -> bool {
-          int_fast64_t parent_index = this->suffix_links[node_index / 2];
+        0, 0, [&](int64_t node_index, int64_t level) -> bool {
+          int64_t parent_index = this->suffix_links[node_index / 2];
 
           if (node_index == 0) {
             return true;
@@ -93,7 +93,7 @@ protected:
         });
   }
 
-  bool should_prune_subtree(int_fast64_t node_index, int64_t level) {
+  bool should_prune_subtree(int64_t node_index, int64_t level) {
     float delta = this->calculate_delta(node_index);
 
 
@@ -114,7 +114,7 @@ protected:
     return max_transition == transitions[0];
   }
 
-  std::vector<float> get_subtree_level_deltas(const int_fast64_t node_index,
+  std::vector<float> get_subtree_level_deltas(const int64_t node_index,
                                               const int64_t level) {
     std::vector<float> deltas{};
     float level_max_delta{this->calculate_delta(node_index)};
@@ -122,7 +122,7 @@ protected:
 
     this->pst_breadth_first_iteration(
         node_index, level,
-        [&](const int_fast64_t child_index, const int64_t child_level) -> bool {
+        [&](const int64_t child_index, const int64_t child_level) -> bool {
           if (child_level > current_level) {
             deltas.push_back(level_max_delta);
 
@@ -138,12 +138,12 @@ protected:
     return deltas;
   }
 
-  float get_subtree_max_delta(const int_fast64_t node_index, const int64_t level) {
+  float get_subtree_max_delta(const int64_t node_index, const int64_t level) {
     float max_delta{0.0};
 
     this->pst_breadth_first_iteration(
         node_index, level,
-        [&](const int_fast64_t child_index, const int64_t child_level) -> bool {
+        [&](const int64_t child_index, const int64_t child_level) -> bool {
           if (node_index == child_index) {
             return true;
           }
@@ -179,9 +179,9 @@ protected:
    *
    * \param node_index Index of the root of the subtree.
    */
-  void exclude_subtree(const int_fast64_t node_index) {
+  void exclude_subtree(const int64_t node_index) {
     this->pst_breadth_first_iteration(node_index, 0,
-        [&](const int_fast64_t child_index, const int64_t child_level) {
+        [&](const int64_t child_index, const int64_t child_level) {
           if (node_index != child_index)
             this->status[child_index / 2] = Status::EXCLUDED;
           return true;
@@ -196,8 +196,8 @@ protected:
    * \param node_index Index to get delta for.
    * \return Delta value.
    */
-  float calculate_delta(const int_fast64_t node_index) {
-    int_fast64_t parent_index = this->suffix_links[node_index / 2];
+  float calculate_delta(const int64_t node_index) {
+    int64_t parent_index = this->suffix_links[node_index / 2];
     if (parent_index == -1) {
       throw std::invalid_argument(
           "[ps_delta] Given node does not have a parent.");
@@ -215,15 +215,15 @@ protected:
    * \param parent_index Index for the parent to compare node to.
    * \return Delta value.
    */
-  float calculate_delta_from(const int_fast64_t node_index, const int_fast64_t parent_index) {
+  float calculate_delta_from(const int64_t node_index, const int64_t parent_index) {
     float delta{0.0};
     float node_count{float(this->get_counts(node_index))};
     float parent_count{float(this->get_counts(parent_index))};
 
-    std::array<int_fast64_t, seqan3::alphabet_size<alphabet_t>> node_child_counts =
+    std::array<int64_t, seqan3::alphabet_size<alphabet_t>> node_child_counts =
         this->get_child_counts(node_index, true);
 
-    std::array<int_fast64_t, seqan3::alphabet_size<alphabet_t>> parent_child_counts =
+    std::array<int64_t, seqan3::alphabet_size<alphabet_t>> parent_child_counts =
         this->get_child_counts(parent_index, true);
 
     for (auto char_rank : this->valid_characters) {
