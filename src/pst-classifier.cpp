@@ -80,7 +80,7 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
     seqan3::debug_stream << "[PARSER ERROR] " << ext.what() << '\n';
     return arguments;
   }
-  seqan3::debug_stream << "Running version 0.41\nThe text was: " << filename << "\n";
+  seqan3::debug_stream << "Running version 0.5\nThe text was: " << filename << "\n";
   using namespace std::chrono;
   using namespace seqan3;
   auto start = std::chrono::system_clock::now();
@@ -104,7 +104,7 @@ std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                   std::string id, size_t max_depth, size_t min_count,
                   float threshold, size_t number_of_parameters,
                   std::string pruning_method, std::string estimator,
-                  bool multi_core, int parale ll_depth) {
+                  bool multi_core, int paralell_depth) {
 
   if (estimator == "KL") {
     pst::KullbackLieblerTree<seqan3::dna5> pst{id,
@@ -117,8 +117,8 @@ std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                                                multi_core,
                                                paralell_depth};
     pst.construct_tree();
-    return pst.to_tree();
-    //return "WIN";
+    //return pst.to_tree();
+    return "WIN";
   } else if (estimator == "PS") {
     pst::PeresShieldsTree<seqan3::dna5> pst{id,
                                             sequence,
@@ -129,8 +129,8 @@ std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                                             multi_core,
                                             paralell_depth};
     pst.construct_tree();
-    return pst.to_tree();
-    //return "WIN";
+    //return pst.to_tree();
+    return "WIN";
 
   } else {
     return "";
