@@ -12,7 +12,7 @@ from datetime import datetime
 
 global path
 
-lib = ctypes.cdll.LoadLibrary("./build-debug/libvlmc.so")
+lib = ctypes.cdll.LoadLibrary("./build/libvlmc.so")
 
 
 ## Importing VLMC library training fucntion calls.
@@ -43,6 +43,19 @@ def setPath(identifier):
         os.mkdir(resultPath)
     path = f"{resultPath}/{str(file)}.tree"
     return path
+
+
+def train_call(arg, identifiers, sequence):
+    train(identifiers,
+            sequence,
+            arg.max_depth,
+            arg.min_count,
+            arg.threshold,
+            arg.number_of_parameters,
+            arg.pruning_method.encode(),
+            arg.estimator.encode(),
+            arg.multi_core,
+            arg.split_depth)
 
 def PSTConstruction(arg):
     sequence         = ''
@@ -85,27 +98,23 @@ def PSTConstruction(arg):
     else:
         print('Tree output quieted.')
 
-    PST = train(identifiers[0].encode("utf-8"),
-                sequence.encode("utf-8"),
-                arg.max_depth,
-                arg.min_count,
-                arg.threshold,
-                arg.number_of_parameters,
-                arg.pruning_method.encode(),
-                arg.estimator.encode(),
-                arg.multi_core,
-                arg.split_depth)
+    args = (arg, identifiers[0].encode("utf-8"), sequence.encode("utf-8"))
+    process = mlp.Process(target=train_call, args=args)              # Start a worker processes.
+    process.start()
 
+    sequence = ''
+    args     = ''
+    process.join()
+    return
+    #if arg.outputfile:
+    #    setPath(identifier)
+    #    with open(path, 'w') as f:
+    #        f.write("%s\n" % arg)
+    #        for line in PST.decode().split('\n'):
+    #            f.write("%s\n" % line)
 
-    if arg.outputfile:
-        setPath(identifier)
-        with open(path, 'w') as f:
-            f.write("%s\n" % arg)
-            for line in PST.decode().split('\n'):
-                f.write("%s\n" % line)
-
-    if not arg.quiet:
-        print(PST.decode())
+    #if not arg.quiet:
+    #    print(PST.decode())
 
 
 if __name__ == '__main__':
