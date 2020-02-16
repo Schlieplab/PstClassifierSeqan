@@ -63,7 +63,6 @@ enum Status : unsigned char {
 template <seqan3::alphabet alphabet_t>
 class ProbabilisticSuffixTree : public lst::LazySuffixTree<alphabet_t> {
 public:
-  friend class ProbabilisticSuffixTreeTest;
 
   ProbabilisticSuffixTree() = default;
   ProbabilisticSuffixTree(ProbabilisticSuffixTree const &) = default;
@@ -239,6 +238,24 @@ public:
     return n_terminal_nodes;
   }
 
+  /**! \brief Iterates over the nodes in the PST.
+   *
+   * \param start_index Index of the node to start iteration at.
+   *
+   */
+  void pst_breadth_first_iteration(const std::function<bool(int, int)> &f) {
+    pst_breadth_first_iteration(0, 0, f);
+  }
+
+  /**! \brief Iterates over the nodes in the PST.
+   *
+   * \param start_index Index of the node to start iteration at.
+   * \param start_level Starting level for the iteration (0 for root, 1 for
+   * ACGT) \param f Callback for each child of start_index in a breadth first
+   * fashion.  Is given node_index and depth of the node and should return
+   * wether to iterate over the node's children.
+   *
+   */
   void pst_breadth_first_iteration(const int start_index, const int start_level,
                                    const std::function<bool(int, int)> &f) {
     std::queue<std::tuple<int, int>> queue{};
@@ -259,6 +276,30 @@ public:
     }
   }
 
+  /**! \brief Returns the index of the children of in the PST.
+   *
+   * \param node_index Node to retrieve children of.
+   * \return A vector of the children.
+   */
+  std::vector<int> get_pst_children(const int node_index) {
+    std::vector<int> children{};
+    for (auto child : this->reverse_suffix_links[node_index / 2]) {
+      if (child != -1 && !this->skip_node(child)) {
+        children.push_back(child);
+      }
+    }
+    return children;
+  }
+
+  /**! \brief Return the parent of node in the PST.
+   *
+   * \param node_index Node to get parent of.
+   * \return Parent index, or -1 if no parent.
+   */
+  int get_pst_parent(const int node_index) {
+    return this->suffix_links[node_index / 2];
+  }
+
   std::string id;
 
   std::unordered_set<int> valid_characters{};
@@ -274,6 +315,7 @@ public:
       probabilities{};
 
 protected:
+  friend class ProbabilisticSuffixTreeTest;
   /**! \brief Support pruning phase of the algorithm.
    * \details
    * Extends a lazy suffix tree as long as the counts of each node is above

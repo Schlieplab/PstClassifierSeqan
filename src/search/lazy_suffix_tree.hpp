@@ -71,9 +71,8 @@ public:
    *
    * \return Vector of tuple of the label and count for each node in the tree.
    */
-  std::vector<std::tuple<lst::details::sequence_t<alphabet_t>, int>>
-  get_all_labels() {
-    std::vector<std::tuple<lst::details::sequence_t<alphabet_t>, int>> labels{};
+  std::vector<std::tuple<std::string, int>> get_all_labels() {
+    std::vector<std::tuple<std::string, int>> labels{};
 
     this->breadth_first_iteration(
         0, 0, true, [&](int node_index, int lcp, int edge_lcp) -> bool {
@@ -120,32 +119,21 @@ public:
 
   /**! \brief Breadth first traversal of the tree.
    * \details
-   * Breadth first traversal for convenience for further implementations.
-   * Accepts a callback function which for each node gives the start and end
-   * index into the sequence, the length of the edge, and the occurrence count.
+   * Accepts a callback function which for each node gives node index, lcp and
+   * edge lcp.
    *
-   * \param[in] expand_nodes flag determining if the tree will be expanded or
-   * not.
    * \param f callback function which gives the start, end sequence index,
-   * edge length and occurrences of each node.
+   * edge length and occurrences of each node.  Should return if further
+   * iteration of the node is needed.
    */
-  void
-  breadth_first_traversal(bool expand_nodes,
-                          const std::function<bool(int, int, int, int)> &f) {
+  void breadth_first_iteration(const std::function<bool(int, int, int)> &f) {
     this->breadth_first_iteration(
-        0, 0, true, [&](int node_index, int lcp, int edge_lcp) -> bool {
-          int sequence_index = this->get_sequence_index(node_index);
-
-          int node_start = sequence_index - lcp;
-          int node_end = sequence_index + edge_lcp;
-
-          if (is_leaf(node_index)) {
-            node_end = suffixes.size() - 1;
+        0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
+          if (this->skip_node(node_index)) {
+            return true;
+          } else {
+            return f(node_index, lcp, edge_lcp);
           }
-          int occurrences =
-              lst::details::node_occurrences(node_index, table, flags);
-
-          return f(node_start, node_end, edge_lcp, occurrences);
         });
   }
 
@@ -270,8 +258,8 @@ public:
   virtual void debug_print_node(int node_index, int lcp, int edge_lcp) {
     auto label = node_label(node_index, lcp, edge_lcp);
 
-    if (is_leaf(node_index)) {
-      label = leaf_label(node_index, lcp);
+    if (this->is_leaf(node_index)) {
+      label = this->leaf_label(node_index, lcp);
     }
 
     seqan3::debug_stream << label << "\t" << node_index << "\t"
@@ -292,6 +280,22 @@ public:
       seqan3::debug_stream << "\tReverse suffix links: "
                            << this->reverse_suffix_links[node_index / 2];
     }
+  }
+
+  std::string node_label(int node_index, int lcp, int edge_lcp) {
+    int sequence_index = this->get_sequence_index(node_index);
+
+    int node_start = sequence_index - lcp;
+    int node_end =
+        std::min(sequence_index + edge_lcp, int(this->sequence.size()));
+
+    lst::details::sequence_t<alphabet_t> label(
+        this->sequence.begin() + node_start, this->sequence.begin() + node_end);
+
+    std::string label_str =
+        label | seqan3::views::to_char | seqan3::views::to<std::string>;
+
+    return label_str;
   }
 
   lst::details::sequence_t<alphabet_t> sequence;
@@ -412,30 +416,19 @@ protected:
     return edge;
   }
 
-  lst::details::sequence_t<alphabet_t> node_label(int node_index, int lcp,
-                                                  int edge_lcp) {
-    int sequence_index = this->get_sequence_index(node_index);
-
-    int node_start = sequence_index - lcp;
-    int node_end =
-        std::min(sequence_index + edge_lcp, int(this->sequence.size()));
-
-    lst::details::sequence_t<alphabet_t> label(
-        this->sequence.begin() + node_start, this->sequence.begin() + node_end);
-
-    return label;
-  }
-
-  lst::details::sequence_t<alphabet_t> leaf_label(int node_index, int lcp) {
+  std::string leaf_label(int node_index, int lcp) {
     int node_start = table[node_index] - lcp;
     lst::details::sequence_t<alphabet_t> label(
         this->sequence.begin() + node_start, this->sequence.end());
 
-    return label;
+    std::string label_str =
+        label | seqan3::views::to_char | seqan3::views::to<std::string>;
+    return label_str;
   }
 
   int get_sequence_index(int node_index) {
-    return lst::details::get_sequence_index(node_index, this->suffixes, this->table, this->flags);
+    return lst::details::get_sequence_index(node_index, this->suffixes,
+                                            this->table, this->flags);
   }
 
   seqan3::gapped<alphabet_t> get_character(size_t index) {
