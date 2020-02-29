@@ -19,8 +19,11 @@ From: buildpack-deps:19.04
 %environment
 	export PATH="/PstClassifierSeqan/build/src/:$PATH"
 
-%runscript
+%test
 	cd /PstClassifierSeqan/build/tests
 	echo "Running tests"
 	./probabilistic_suffix_tree_tests
+
+%runscript
+	/PstClassifierSeqan/build/src/pst-classifier $*
 
