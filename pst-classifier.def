@@ -1,0 +1,26 @@
+Bootstrap: docker
+From: buildpack-deps:19.04
+
+%files
+	src /PstClassifierSeqan/src
+        tests /PstClassifierSeqan/tests
+	seqan3 /PstClassifierSeqan/seqan3
+	CMakeLists.txt /PstClassifierSeqan/CMakeLists.txt
+
+%post
+	apt-get update -y && apt-get install -y cmake
+
+	mkdir /PstClassifierSeqan/build
+	cd /PstClassifierSeqan/build
+
+	cmake -DCMAKE_BUILD_TYPE=Release ..
+	make
+
+%environment
+	export PATH="/PstClassifierSeqan/build/src/:$PATH"
+
+%runscript
+	cd /PstClassifierSeqan/build/tests
+	echo "Running tests"
+	./probabilistic_suffix_tree_tests
+
