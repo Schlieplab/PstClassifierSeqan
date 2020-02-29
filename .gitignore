@@ -1,6 +1,7 @@
 *.tree
 *.fa
 *.fasta
+*.sif
 
 /build/
 /tests_build/
