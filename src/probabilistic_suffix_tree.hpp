@@ -732,7 +732,7 @@ protected:
 
     append_child_counts(node_index, tree_string);
 
-    tree_string << " ";
+    //    tree_string << " ";
 
     append_reverse_children(node_index, iteration_order_indices, tree_string);
 
