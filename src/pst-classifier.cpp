@@ -2,11 +2,12 @@
 #include <string>
 #include <vector>
 
-#include <seqan3/alphabet/nucleotide/dna5.hpp>
+#include <seqan3/alphabet/all.hpp>
 #include <seqan3/argument_parser/all.hpp>
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/range/container/bitcompressed_vector.hpp>
+#include <seqan3/std/filesystem> // use std::filesystem::path
 
 #include "kl_tree.hpp"
 #include "probabilistic_suffix_tree.hpp"
@@ -26,11 +27,11 @@ struct input_arguments {
 struct my_traits : seqan3::sequence_file_input_default_traits_dna {
   template <typename alph>
   using sequence_container =
-      seqan3::bitcompressed_vector<alph>; // must be defined as a template!
+      std::vector<alph>; // must be defined as a template!
 };
 
 input_arguments parse_cli_arguments(int argc, char *argv[]) {
-  std::string filename{};
+  std::filesystem::path filename{};
 
   input_arguments arguments{};
 
@@ -67,7 +68,7 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
 
   try {
     parser.parse();
-  } catch (seqan3::parser_invalid_argument const &ext) {
+  } catch (seqan3::argument_parser_error const &ext) {
     seqan3::debug_stream << "[PARSER ERROR] " << ext.what() << '\n';
     return arguments;
   }
@@ -76,8 +77,9 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
   seqan3::sequence_file_input<my_traits> file_in{filename};
 
   for (auto &[seq, id, qual] : file_in) {
-    arguments.sequences.push_back(seq);
-    arguments.ids.push_back(id);
+    arguments.sequences.emplace_back(
+        seqan3::bitcompressed_vector<seqan3::dna5>{std::move(seq)});
+    arguments.ids.emplace_back(std::move(id));
   }
 
   return arguments;

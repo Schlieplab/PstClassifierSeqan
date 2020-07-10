@@ -69,7 +69,8 @@ seqan3::gapped<alphabet_t> get_character(sequence_t<alphabet_t> &sequence,
   if (index >= sequence.size()) {
     return seqan3::gapped<alphabet_t>(seqan3::gap{});
   } else {
-    return seqan3::gapped<alphabet_t>(sequence[index]);
+    alphabet_t character = sequence[index];
+    return seqan3::gapped<alphabet_t>(character);
   }
 }
 
