@@ -1,0 +1,6 @@
+libvlmc.egg-info/
+build/
+dist/
+*skbuild/
+__pycache__
+*.pyc
