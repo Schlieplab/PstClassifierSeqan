@@ -66,4 +66,7 @@ This should yield two files in the `build` directory: `pst-classifier` which pro
 
 ## Python
 
-See [minimal_python_driver.py](minimal_python_driver.py) for a minimal python interface. Requires the shared library to be built as specified in Build/Install.
+We include a wrapper for the vlmc training in a package called libvlmc.  It can be built from the python-package directory.
+
+For an alternative, see [minimal_python_driver.py](minimal_python_driver.py) for a minimal python interface.
+It requires the shared library to be built as specified in Build/Install.
