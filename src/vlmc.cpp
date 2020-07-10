@@ -11,8 +11,9 @@
 #include "ps_tree.hpp"
 
 extern "C" {
-const char *train_kl(const char *id_, const char *sequence_, size_t max_depth,
-                     size_t min_count, float threshold) {
+static const char *train_kl(const char *id_, const char *sequence_,
+                            size_t max_depth, size_t min_count,
+                            float threshold) {
 
   std::string id = std::string(id_);
   std::string seq = std::string(sequence_);
@@ -26,8 +27,8 @@ const char *train_kl(const char *id_, const char *sequence_, size_t max_depth,
   return strdup(pst.to_tree().c_str());
 }
 
-const char *train_ps(const char *id_, const char *sequence_, size_t max_depth,
-                     size_t min_count) {
+static const char *train_ps(const char *id_, const char *sequence_,
+                            size_t max_depth, size_t min_count) {
 
   std::string id = std::string(id_);
   std::string seq = std::string(sequence_);
@@ -40,9 +41,9 @@ const char *train_ps(const char *id_, const char *sequence_, size_t max_depth,
   return strdup(pst.to_tree().c_str());
 }
 
-const char *train_ps_parameters(const char *id_, const char *sequence_,
-                                size_t max_depth, size_t min_count,
-                                size_t n_parameters) {
+static const char *train_ps_parameters(const char *id_, const char *sequence_,
+                                       size_t max_depth, size_t min_count,
+                                       size_t n_parameters) {
 
   std::string id = std::string(id_);
   std::string seq = std::string(sequence_);
@@ -57,9 +58,9 @@ const char *train_ps_parameters(const char *id_, const char *sequence_,
   return strdup(pst.to_tree().c_str());
 }
 
-const char *train_kl_parameters(const char *id_, const char *sequence_,
-                                size_t max_depth, size_t min_count,
-                                size_t n_parameters) {
+static const char *train_kl_parameters(const char *id_, const char *sequence_,
+                                       size_t max_depth, size_t min_count,
+                                       size_t n_parameters) {
 
   std::string id = std::string(id_);
   std::string seq = std::string(sequence_);
