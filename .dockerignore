@@ -1,5 +1,8 @@
 **/*.fasta
 **/*.tree
+**/*.sif
+trees
+fasta
 build/
 build_tests/
 **/cmake-build-*
