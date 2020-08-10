@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 
+#include <chrono>
 #include <seqan3/alphabet/all.hpp>
 #include <seqan3/argument_parser/all.hpp>
 #include <seqan3/core/debug_stream.hpp>
@@ -22,6 +23,8 @@ struct input_arguments {
   std::string estimator{"KL"};
   std::vector<seqan3::bitcompressed_vector<seqan3::dna5>> sequences{};
   std::vector<std::string> ids{};
+  bool multi_core{false};
+  int parallel_depth{1};
 };
 
 struct my_traits : seqan3::sequence_file_input_default_traits_dna {
@@ -66,13 +69,22 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
                     "the threshold is reached, or 'parameters' to prune until "
                     "a certain number of parameters have been reached.");
 
+  // Multiprocessing
+  parser.add_flag(arguments.multi_core, 'm', "multi-core",
+                  "Enable Multi-core utilisation.");
+
+  parser.add_option(
+      arguments.parallel_depth, 's', "split-depth",
+      "Depth where to start the split into threads "
+      "Higher value increase the number of threads spawned. Default 1");
   try {
     parser.parse();
   } catch (seqan3::argument_parser_error const &ext) {
     seqan3::debug_stream << "[PARSER ERROR] " << ext.what() << '\n';
     return arguments;
   }
-  seqan3::debug_stream << "The text was: " << filename << "\n";
+
+  auto start = std::chrono::system_clock::now();
 
   seqan3::sequence_file_input<my_traits> file_in{filename};
 
@@ -82,13 +94,18 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
     arguments.ids.emplace_back(std::move(id));
   }
 
+  auto stop = std::chrono::system_clock::now();
+  auto duration = duration_cast<seconds>(stop - start);
+  std::cout << "IO reading fasta file: " << duration.count() << " sec"
+            << std::endl;
   return arguments;
 }
 
 std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                   std::string id, size_t max_depth, size_t min_count,
                   float threshold, size_t number_of_parameters,
-                  std::string pruning_method, std::string estimator) {
+                  std::string pruning_method, std::string estimator,
+                  bool multi_core, int parallel_depth) {
 
   if (estimator == "KL") {
     pst::KullbackLieblerTree<seqan3::dna5> pst{id,
@@ -97,7 +114,9 @@ std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                                                min_count,
                                                threshold,
                                                number_of_parameters,
-                                               pruning_method};
+                                               pruning_method,
+                                               multi_core,
+                                               parallel_depth};
     pst.construct_tree();
     return pst.to_tree();
   } else if (estimator == "PS") {
@@ -106,7 +125,9 @@ std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
                                             max_depth,
                                             min_count,
                                             number_of_parameters,
-                                            pruning_method};
+                                            pruning_method,
+                                            multi_core,
+                                            parallel_depth};
     pst.construct_tree();
     return pst.to_tree();
   } else {
@@ -115,15 +136,22 @@ std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
 }
 
 int main(int argc, char *argv[]) {
+  auto start = std::chrono::system_clock::now();
   input_arguments arguments = parse_cli_arguments(argc, argv);
 
-  seqan3::debug_stream << "Building index" << std::endl;
+  seqan3::debug_stream << "Building index for " << arguments.ids[0]
+                       << std::endl;
 
   std::string tree = train(arguments.sequences[0], arguments.ids[0],
                            arguments.max_depth, arguments.min_count,
                            arguments.threshold, arguments.number_of_parameters,
-                           arguments.pruning_method, arguments.estimator);
-  std::cout << tree << std::endl;
+                           arguments.pruning_method, arguments.estimator,
+                           arguments.multi_core, arguments.parallel_depth);
+  // std::cout << tree << std::endl;
+  auto stop = std::chrono::system_clock::now();
+  auto duration = duration_cast<seconds>(stop - start);
+  std::cout << "Total runtime with IO: " << duration.count() << " sec"
+            << std::endl;
 
   return EXIT_SUCCESS;
 }

@@ -24,7 +24,7 @@ protected:
     using seqan3::operator""_dna5;
     sequence = seqan3::bitcompressed_vector<seqan3::dna4>{"GATTATA"_dna4};
     probabilisticSuffixTree = pst::ProbabilisticSuffixTree<seqan3::dna4>{
-        "TEST", sequence, 3, 1, 192, "parameters"};
+        "TEST", sequence, 3, 1, 192, "parameters", false, 2};
     probabilisticSuffixTree.construct_tree();
 
     long_sequence = seqan3::bitcompressed_vector<seqan3::dna5>{
@@ -141,7 +141,7 @@ TEST_F(ProbabilisticSuffixTreeTest, ConstructorProbabilities) {
 
 TEST_F(ProbabilisticSuffixTreeTest, PrunedKL) {
   auto kl_tree = pst::KullbackLieblerTree<seqan3::dna4>{
-      "TEST", sequence, 3, 2, 0.3, 192, "cutoff"};
+      "TEST", sequence, 3, 2, 0.3, 192, "cutoff", false, 2};
   kl_tree.construct_tree();
 
   std::vector<pst::Status> expected_status{
@@ -193,7 +193,7 @@ TEST_F(ProbabilisticSuffixTreeTest, PrunedPS) {
 
 TEST_F(ProbabilisticSuffixTreeTest, PrunedParameters) {
   auto kl_tree = pst::KullbackLieblerTree<seqan3::dna4>{
-      "TEST", sequence, 3, 2, 0.0, 6, "parameters"};
+      "TEST", sequence, 3, 2, 0.0, 6, "parameters", false, 2};
   kl_tree.construct_tree();
   std::vector<pst::Status> expected_status{
       pst::Status::INCLUDED, // root
@@ -228,7 +228,7 @@ TEST_F(ProbabilisticSuffixTreeTest, Print) {
   seqan3::debug_stream << std::endl;
 
   auto pst_pruned = pst::KullbackLieblerTree<seqan3::dna4>{
-      "TEST", sequence, 3, 2, 1.2, 0, "threshold"};
+      "TEST", sequence, 3, 2, 1.2, 0, "threshold", false, 2};
   pst_pruned.construct_tree();
   pst_pruned.print();
   seqan3::debug_stream << std::endl;
@@ -296,25 +296,25 @@ TEST_F(ProbabilisticSuffixTreeTest, PSTBreadthFirstIterationSubtree) {
 TEST_F(ProbabilisticSuffixTreeTest, SuffixLinksCorrect) {
   size_t sought_n_parameters{30300};
 
-  pst::ProbabilisticSuffixTree<seqan3::dna5> pst{
+  pst::ProbabilisticSuffixTree<seqan3::dna5> tree{
       "TEST", long_sequence, 15, 4, sought_n_parameters, "parameters"};
-  pst.construct_tree();
+  tree.construct_tree();
 
   std::map<int, std::string> labels{};
 
-  pst.breadth_first_iteration(
+  tree.breadth_first_iteration(
       [&](int node_index, int lcp, int edge_lcp) -> bool {
-        labels[node_index] = pst.node_label(node_index, lcp, edge_lcp);
+        labels[node_index] = tree.node_label(node_index, lcp, edge_lcp);
         return true;
       });
 
-  pst.pst_breadth_first_iteration([&](int node_index, int level) -> bool {
+  tree.pst_breadth_first_iteration([&](int node_index, int level) -> bool {
     if (node_index == 0) {
       return true;
     }
     auto label = labels[node_index];
 
-    auto parent = pst.get_pst_parent(node_index);
+    auto parent = tree.get_pst_parent(node_index);
 
     EXPECT_NE(parent, -1);
 

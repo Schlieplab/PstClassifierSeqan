@@ -27,7 +27,7 @@ public:
    */
   KullbackLieblerTree(std::string id,
                       seqan3::bitcompressed_vector<alphabet_t> &sequence)
-      : KullbackLieblerTree(id, sequence, 15, 100, 1.2, 192, "cutoff") {}
+      : ProbabilisticSuffixTree<alphabet_t>(id, sequence), cutoff_value(1.2)  {}
 
   /*!\brief Constructor for parameters pruning.
    * \param[in] id_ The id of the model.
@@ -36,14 +36,16 @@ public:
    * \param[in] freq_ Min frequency of each context/node in the tree.
    * \param[in] number_of_parameters_ Number of parameters to keep in the model,
    * for "parameters" pruning.
+   * \param[in] multi_core True for parallel execution.
+   * \param[in] parallel_depth The maximum depth to spawn new processes, will control task size as `alphabet_size ** depth`.
    */
   KullbackLieblerTree(std::string id,
                       seqan3::bitcompressed_vector<alphabet_t> &sequence,
                       size_t max_depth, size_t freq,
-                      size_t number_of_parameters)
-      : ProbabilisticSuffixTree<alphabet_t>(
-            id, sequence, max_depth, freq, number_of_parameters, "parameters") {
-  }
+                      size_t number_of_parameters, bool multi_core=true, int parallel_depth=2)
+      : ProbabilisticSuffixTree<alphabet_t>(id, sequence, max_depth, freq,
+                                            number_of_parameters, "parameters",
+                                            multi_core, parallel_depth) {}
 
   /*!\brief Constructor for threshold pruning.
    * \param[in] id_ The id of the model.
@@ -51,12 +53,14 @@ public:
    * \param[in] max_depth_ Max length of a branch/context in the tree.
    * \param[in] freq_ Min frequency of each context/node in the tree.
    * \param[in] cutoff_value Cutoff value for the similarity-pruning.
+   * \param[in] multi_core True for parallel execution.
+   * \param[in] parallel_depth The maximum depth to spawn new processes, will control task size as `alphabet_size ** depth`.
    */
   KullbackLieblerTree(std::string id,
                       seqan3::bitcompressed_vector<alphabet_t> &sequence,
-                      size_t max_depth, size_t freq, float cutoff_value_)
+                      size_t max_depth, size_t freq, float cutoff_value_, bool multi_core=true, int parallel_depth=2)
       : ProbabilisticSuffixTree<alphabet_t>(id, sequence, max_depth, freq, 192,
-                                            "cutoff"),
+                                            "cutoff", multi_core, parallel_depth),
         cutoff_value(cutoff_value_) {}
 
   /*!\brief Constructor for threshold pruning.
@@ -69,14 +73,17 @@ public:
    * \param[in] cutoff_value Cutoff value for the similarity-pruning.
    * \param[in] pruning_method_ Pruning method, either "cutoff" or "parameters"
    * (which depend on the `number_of_parameters_`)
+   * \param[in] multi_core True for parallel execution.
+   * \param[in] parallel_depth The maximum depth to spawn new processes, will control task size as 4 ** depth.
    */
   KullbackLieblerTree(std::string id,
                       seqan3::bitcompressed_vector<alphabet_t> &sequence,
                       size_t max_depth, size_t freq, float cutoff_value_,
-                      size_t number_of_parameters, std::string pruning_method)
-      : ProbabilisticSuffixTree<alphabet_t>(id, sequence, max_depth, freq,
-                                            number_of_parameters,
-                                            pruning_method),
+                      size_t number_of_parameters, std::string pruning_method,
+                      bool multi_core, int parallel_depth)
+      : ProbabilisticSuffixTree<alphabet_t>(
+            id, sequence, max_depth, freq, number_of_parameters, pruning_method,
+            multi_core, parallel_depth),
         cutoff_value(cutoff_value_) {}
 
 protected:

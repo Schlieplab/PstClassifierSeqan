@@ -6,4 +6,3 @@ fasta
 build/
 build_tests/
 **/cmake-build-*
-

@@ -38,6 +38,7 @@ template <seqan3::alphabet alphabet_t> class LazySuffixTree {
 
 public:
   friend class LazySuffixTreeTest;
+  friend class ProbabilisticSuffixTreeTest;
 
   LazySuffixTree() = default;
   LazySuffixTree(LazySuffixTree const &) = default;
@@ -45,9 +46,14 @@ public:
 
   /**! \brief Constructor.
    * @param sequence_ The sequence to build the tree for.
+   * \param[in] multi_core True for parallel execution.
+   * \param[in] parallel_depth The maximum depth to spawn new processes, will control task size as `alphabet_size ** depth`.
    */
-  LazySuffixTree(seqan3::bitcompressed_vector<alphabet_t> &sequence_)
-      : sequence(sequence_) {
+  LazySuffixTree(seqan3::bitcompressed_vector<alphabet_t> &sequence_,
+                 bool multi_core_=true, int split_depth_=2)
+      : sequence(sequence_), multi_core(multi_core_),
+        parallel_depth(split_depth_) {
+
     suffixes = std::vector<int>(this->sequence.size() + 1);
     std::iota(this->suffixes.begin(), this->suffixes.end(), 0);
 
@@ -100,10 +106,10 @@ public:
       std::vector<int> all_suffixes{};
 
       this->iterate_children(0, [&](int index) {
-        auto suffixes = this->suffix_indices(index, 0);
+        auto suffixes_ = this->suffix_indices(index, 0);
 
-        all_suffixes.insert(all_suffixes.end(), suffixes.begin(),
-                            suffixes.end());
+        all_suffixes.insert(all_suffixes.end(), suffixes_.begin(),
+                            suffixes_.end());
       });
       return all_suffixes;
     }
@@ -188,13 +194,23 @@ public:
   void add_suffix_links() {
     suffix_links.resize(table.size() / 2, -1);
     std::fill(suffix_links.begin(), suffix_links.end(), -1);
+    seqan3::debug_stream << "Adding Explicit Suffix links" << std::endl;
 
     lst::details::add_explicit_suffix_links(sequence, suffixes, table, flags,
-                                            suffix_links);
+                                            suffix_links, multi_core,
+                                            parallel_depth);
+
+    seqan3::debug_stream << "Adding leaf Suffix links" << std::endl;
+
     lst::details::add_leaf_suffix_links(sequence, suffixes, table, flags,
-                                        suffix_links);
+                                        suffix_links, multi_core,
+                                        parallel_depth);
+
+    seqan3::debug_stream << "Adding Implicit Suffix links" << std::endl;
+
     lst::details::add_implicit_suffix_links(sequence, suffixes, table, flags,
-                                            suffix_links);
+                                            suffix_links, multi_core,
+                                            parallel_depth);
     suffix_links[0] = -1;
   }
 
@@ -307,6 +323,9 @@ public:
   std::vector<lst::details::alphabet_array<alphabet_t>> reverse_suffix_links{};
 
 protected:
+  bool multi_core;
+  int parallel_depth;
+
   std::vector<int> suffix_indices(int node_index, int og_lcp) {
     if (node_index >= table.size()) {
       throw std::invalid_argument(
@@ -329,8 +348,8 @@ protected:
           start_indices.push_back(suffixes[i] - lcp);
         }
       } else {
-        int edge_lcp = this->get_edge_lcp(index);
-        int new_lcp = lcp + edge_lcp;
+        auto edge_lcp = this->get_edge_lcp(index);
+        auto new_lcp = lcp + edge_lcp;
         this->iterate_children(index,
                                [&](int i) { queue.emplace(i, new_lcp); });
       }
@@ -431,7 +450,7 @@ protected:
                                             this->table, this->flags);
   }
 
-  seqan3::gapped<alphabet_t> get_character(size_t index) {
+  seqan3::gapped<alphabet_t> get_character(int index) {
     return lst::details::get_character(this->sequence, index);
   }
 
@@ -480,9 +499,9 @@ protected:
 
   void breadth_first_iteration(int node_index, int start_lcp, bool expand_nodes,
                                const std::function<bool(int, int, int)> &f) {
-    lst::details::breadth_first_iteration(node_index, start_lcp, this->sequence,
-                                          this->suffixes, this->table,
-                                          this->flags, expand_nodes, f);
+    lst::details::breadth_first_iteration(
+        node_index, start_lcp, this->sequence, this->suffixes, this->table,
+        this->flags, expand_nodes, f, this->multi_core, this->parallel_depth);
   }
 };
 } // namespace lst

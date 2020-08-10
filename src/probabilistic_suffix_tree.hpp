@@ -39,6 +39,9 @@ enum Status : unsigned char {
   EXCLUDED = 1 << 2,
 };
 
+// Used for printing time measurements to the terminal.
+bool time_measurement = true;
+
 /*!\brief The probabilistic suffix tree implementation.
  * \tparam alphabet_t   Alphabet type from Seqan3.
  *
@@ -73,7 +76,9 @@ public:
    */
   ProbabilisticSuffixTree(std::string id,
                           seqan3::bitcompressed_vector<alphabet_t> &sequence)
-      : ProbabilisticSuffixTree(id, sequence, 15, 100, 1.2, 0, "cutoff") {}
+
+      : ProbabilisticSuffixTree(id, sequence, 15, 100, 1.2, 0, "cutoff", true,
+                                2) {} // TODO get number of cores
 
   /*!\brief Constructor.
    * \param[in] id_ The id of the model.
@@ -84,18 +89,22 @@ public:
    * for "parameters" pruning.
    * \param[in] pruning_method_ Pruning method, either "cutoff" or "parameters"
    * (which depend on the `number_of_parameters_`)
+   * \param[in] multi_core_ True for parallel execution.
+   * \param[in] parallel_depth The maximum depth to spawn new processes, will control task size as `alphabet_size ** depth`.
    */
   ProbabilisticSuffixTree(std::string id_,
                           seqan3::bitcompressed_vector<alphabet_t> &sequence_,
                           size_t max_depth_, size_t freq_,
                           size_t number_of_parameters_,
-                          std::string pruning_method_)
-      : lst::LazySuffixTree<alphabet_t>(sequence_), id(id_), freq(freq_),
-        max_depth(max_depth_), number_of_parameters(number_of_parameters_),
+                          std::string pruning_method_, bool multi_core_=true,
+                          int split_depth_=2)
+      : lst::LazySuffixTree<alphabet_t>(sequence_, multi_core_, split_depth_),
+        id(id_), freq(freq_), max_depth(max_depth_),
+        number_of_parameters(number_of_parameters_),
         pruning_method(pruning_method_) {
-
     using seqan3::operator""_dna4;
     seqan3::dna4_vector dna4{"ACGT"_dna4};
+
     std::vector<seqan3::gapped<alphabet_t>> characters{
         dna4 | seqan3::views::convert<seqan3::gapped<alphabet_t>> |
         seqan3::views::to<std::vector<seqan3::gapped<alphabet_t>>>};
@@ -324,10 +333,66 @@ protected:
    *
    */
   void support_pruning() {
+    using namespace std::chrono;
+    auto start = std::chrono::high_resolution_clock::now();
+    auto t1 = std::chrono::high_resolution_clock::now();
+
+    seqan3::debug_stream << "Building Tree..." << std::endl;
     this->build_tree();
+
+    auto t2 = std::chrono::high_resolution_clock::now();
+    seqan3::debug_stream << "Expanding Implicit nodes and setting status..."
+                         << std::endl;
+
+    this->expand_implicit_nodes();
+
+    auto t3 = std::chrono::high_resolution_clock::now();
+
+    this->add_implicit_node_status();
+
+    auto t4 = std::chrono::high_resolution_clock::now();
+
+    seqan3::debug_stream << "Adding Suffix Links..." << std::endl;
     this->add_suffix_links();
+
+    auto t5 = std::chrono::high_resolution_clock::now();
+
     this->counts.resize(this->table.size() / 2, -1);
+    this->status.resize(this->table.size() / 2, Status::NONE);
+
+    auto t6 = std::chrono::high_resolution_clock::now();
+
     status[0] = Status::INCLUDED;
+
+    if (time_measurement) {
+      auto stop = std::chrono::high_resolution_clock::now();
+      auto duration = std::chrono::duration_cast<seconds>(stop - start);
+      auto buildTree = std::chrono::duration_cast<seconds>(t2 - t1);
+      auto expandImplicitNodes = std::chrono::duration_cast<seconds>(t3 - t2);
+      auto addImplicitNodesStatus =
+          std::chrono::duration_cast<seconds>(t4 - t3);
+      auto addSuffixLinks = std::chrono::duration_cast<seconds>(t5 - t4);
+      auto countsRelize = std::chrono::duration_cast<seconds>(t6 - t5);
+      auto statusResize = std::chrono::duration_cast<seconds>(stop - t6);
+
+      seqan3::debug_stream << "\nSupport Pruning" << std::endl;
+      seqan3::debug_stream << "    Total Duration:" << duration.count()
+                           << " sec" << std::endl;
+      seqan3::debug_stream << "        Build Tree: " << buildTree.count()
+                           << " sec" << std::endl;
+      seqan3::debug_stream << "        Expand Implicit Nodes: "
+                           << expandImplicitNodes.count() << " sec"
+                           << std::endl;
+      seqan3::debug_stream << "        Add Implicit Nodes Status: "
+                           << addImplicitNodesStatus.count() << " sec"
+                           << std::endl;
+      seqan3::debug_stream << "        Add Suffix Links: "
+                           << addSuffixLinks.count() << " sec" << std::endl;
+      seqan3::debug_stream << "        Resize counts: " << countsRelize.count()
+                           << " sec" << std::endl;
+      seqan3::debug_stream << "        Resize status: " << statusResize.count()
+                           << " sec" << std::endl;
+    }
   }
 
   /**! \brief Similarity pruning phase of the algorithm
@@ -338,12 +403,37 @@ protected:
    * are reached, or until a specified threshold value.
    */
   void similarity_pruning() {
+    auto start = std::chrono::high_resolution_clock::now();
+    seqan3::debug_stream << "Adding Reverse Suffix Links..." << std::endl;
+
     this->add_reverse_suffix_links();
+    auto t1 = std::chrono::high_resolution_clock::now();
+    seqan3::debug_stream << "Calculating Probabilities..." << std::endl;
+    // multi_core = false;
     this->compute_probabilities();
+    auto t2 = std::chrono::high_resolution_clock::now();
+    seqan3::debug_stream << "Pruning..." << std::endl;
+
     if (this->pruning_method == "cutoff") {
       this->cutoff_prune();
     } else if (this->pruning_method == "parameters") {
       this->parameters_prune();
+    }
+    if (time_measurement) {
+      auto stop = std::chrono::high_resolution_clock::now();
+      auto duration = std::chrono::duration_cast<seconds>(stop - start);
+      auto reverseSuffix = std::chrono::duration_cast<seconds>(t1 - start);
+      auto probabilities = std::chrono::duration_cast<seconds>(t2 - t1);
+      auto pruning = std::chrono::duration_cast<seconds>(stop - t2);
+
+      seqan3::debug_stream << "\nSimilarity Pruning" << std::endl;
+      seqan3::debug_stream << "    Total Duration: " << duration.count() << " sec"
+                << std::endl;
+      seqan3::debug_stream << "        Reverse Suffix Links: " << reverseSuffix.count()
+                << " sec" << std::endl;
+      seqan3::debug_stream << "        Calculating Probabilities: "
+                << probabilities.count() << " sec" << std::endl;
+      seqan3::debug_stream << "        Pruning: " << pruning.count() << "sec" << std::endl;
     }
   }
 
@@ -360,20 +450,22 @@ protected:
         0, 0, true, [&](int node_index, int lcp, int edge_lcp) -> bool {
           int count = lst::details::node_occurrences(node_index, this->table,
                                                      this->flags);
-          if (edge_lcp > 1) {
+
+          /* // TODO This doesn't work with parallelization? Should be included
+          if (edge_lcp > 1 && not this->multi_core) {
+
             int max_extension = edge_lcp;
             if (lcp + edge_lcp > this->max_depth) {
+
               max_extension = this->max_depth - lcp;
             }
+
             this->add_implicit_nodes(node_index, max_extension);
             edge_lcp = 1;
           }
-
+           */
           this->counts.resize(this->table.size() / 2, -1);
-          this->counts[node_index / 2] = count;
-
           this->status.resize(this->table.size() / 2, Status::NONE);
-
           return this->check_node(node_index, lcp, edge_lcp, count);
         });
   }
@@ -386,6 +478,8 @@ protected:
    * \return if the node was included.
    */
   bool check_node(int node_index, int lcp, int edge_lcp, int count) {
+    this->counts[node_index / 2] = count;
+
     int label_start = this->table[node_index] - lcp;
     int label_end = this->table[node_index] + edge_lcp;
 
@@ -398,12 +492,18 @@ protected:
 
       // If this node is part of an expanded implicit node, we want to exclude
       // the rest of the implicit nodes as well.
-      this->breadth_first_iteration(
-          node_index, lcp, false,
-          [&](int index, int lcp, int edge_lcp) -> bool {
-            this->status[index / 2] = Status::EXCLUDED;
-            return true;
-          });
+
+      // TODO Jan: DOES THIS HAVE IMPACT??
+      // TODO: Joel: Check that this works, should be included.
+      /*if (not this->multi_core) {
+        this->breadth_first_iteration(
+                node_index, lcp, false,
+                [&](int index, int lcp,
+                        int edge_lcp) -> bool {
+                    this->status[index / 2] = Status::EXCLUDED;
+                    return true;
+                });
+      }*/
       return false;
     }
   }
@@ -443,7 +543,7 @@ protected:
     auto child_counts = this->get_child_counts(node_index, true);
 
     float child_sum = 0;
-    for (int c : child_counts) {
+    for (auto c : child_counts) {
       child_sum += c;
     }
 
@@ -559,7 +659,6 @@ protected:
       }
 
       int character_rank = seqan3::to_rank(character);
-
       child_counts[character_rank] = get_counts(child_index);
     });
 
@@ -712,7 +811,6 @@ protected:
                           std::map<int, int> iteration_order_indices,
                           std::ostringstream &tree_string) {
     auto label_ = this->node_label(node_index, lcp, edge_lcp);
-
     if (this->is_leaf(node_index)) {
       label_ = this->leaf_label(node_index, lcp);
     }
