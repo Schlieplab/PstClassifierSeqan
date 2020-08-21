@@ -64,6 +64,13 @@ TEST_F(SuffixLinksTests, TreeHeight) {
   EXPECT_EQ(3, height);
 }
 
+TEST_F(SuffixLinksTests, TreeHeightParallel) {
+  int height =
+      tree_height_parallel<seqan3::dna5>(sequence, suffixes, table, flags, 2);
+
+  EXPECT_EQ(3, height);
+}
+
 TEST_F(SuffixLinksTests, LeafIndex) {
   int leaf_index = get_leaf_index(6, 0, suffixes, table, flags);
   EXPECT_EQ(leaf_index, 5);

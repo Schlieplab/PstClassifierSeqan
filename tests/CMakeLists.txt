@@ -2,8 +2,12 @@ cmake_minimum_required (VERSION 3.4...3.12)
 
 project (pst_classifier_tests CXX)
 
+
+include(CTest)
+find_package(Threads REQUIRED)
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
 if (NOT SEQAN3_INCLUDED)
   set(SeqAn3_DIR "${CMAKE_SOURCE_DIR}/../seqan3/build_system")
@@ -55,6 +59,7 @@ macro(test_case unit_test)
   add_executable(${target} ${unit_test})
   target_link_libraries(${target} gtest_main)
   target_link_libraries(${target} seqan3::seqan3)
+  target_link_libraries(${target} Threads::Threads)
 
   add_test(NAME ${target} COMMAND ${target})
 
@@ -67,6 +72,7 @@ test_case(probabilistic_suffix_tree_tests.cpp)
 add_subdirectory(search)
 add_subdirectory(search/lazy_suffix_tree)
 
-#add_executable(benchmarks benchmarks.cpp)
-#target_link_libraries(benchmarks benchmark)
-#target_link_libraries(benchmarks seqan3::seqan3)
+add_executable(benchmarks benchmarks.cpp)
+target_link_libraries(benchmarks benchmark)
+target_link_libraries(benchmarks seqan3::seqan3)
+target_link_libraries(benchmarks Threads::Threads)

@@ -83,3 +83,18 @@ TEST_F(IterationTests, BreadthFirstIteration) {
 
   EXPECT_EQ(visited, expected_visited);
 }
+
+TEST_F(IterationTests, BreadthFirstIterationParallel) {
+  std::set<int> expected_visited{2, 4, 6, 8, 10, 12, 14, 16, 18};
+  for (int i = 0; i < 6; i++) {
+    std::set<int> visited{};
+    breadth_first_iteration_parallel(
+        sequence, suffixes, table, flags, true,
+        [&](int index, int lcp, int edge_lcp) -> bool {
+          visited.insert(index);
+          return true;
+        },
+        0);
+    EXPECT_EQ(visited, expected_visited);
+  }
+}

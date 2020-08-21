@@ -22,6 +22,7 @@
 #include "lazy_suffix_tree/suffix_links.hpp"
 
 namespace lst {
+bool lst_time_measurement = false;
 
 /**! \brief Lazy Suffix Tree implementation using the WOTD algorithm.
  *
@@ -47,12 +48,13 @@ public:
   /**! \brief Constructor.
    * @param sequence_ The sequence to build the tree for.
    * \param[in] multi_core True for parallel execution.
-   * \param[in] parallel_depth The maximum depth to spawn new processes, will control task size as `alphabet_size ** depth`.
+   * \param[in] parallel_depth The maximum depth to spawn new processes, will
+   * control task size as `alphabet_size ** depth`.
    */
   LazySuffixTree(seqan3::bitcompressed_vector<alphabet_t> &sequence_,
-                 bool multi_core_=true, int split_depth_=2)
+                 bool multi_core_ = true, int parallel_depth = 2)
       : sequence(sequence_), multi_core(multi_core_),
-        parallel_depth(split_depth_) {
+        parallel_depth(parallel_depth) {
 
     suffixes = std::vector<int>(this->sequence.size() + 1);
     std::iota(this->suffixes.begin(), this->suffixes.end(), 0);
@@ -79,16 +81,17 @@ public:
    */
   std::vector<std::tuple<std::string, int>> get_all_labels() {
     std::vector<std::tuple<std::string, int>> labels{};
+    static std::mutex labels_mutex{};
 
     this->breadth_first_iteration(
         0, 0, true, [&](int node_index, int lcp, int edge_lcp) -> bool {
           auto label = node_label(node_index, lcp, edge_lcp);
-          int occurrences =
-              lst::details::node_occurrences(node_index, table, flags);
+          int occurrences = this->node_occurrences(node_index);
 
           if (is_leaf(node_index)) {
             label = leaf_label(node_index, lcp);
           }
+          std::lock_guard labels_lock{labels_mutex};
           labels.emplace_back(label, occurrences);
           return true;
         });
@@ -134,6 +137,27 @@ public:
    */
   void breadth_first_iteration(const std::function<bool(int, int, int)> &f) {
     this->breadth_first_iteration(
+        0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
+          if (this->skip_node(node_index)) {
+            return true;
+          } else {
+            return f(node_index, lcp, edge_lcp);
+          }
+        });
+  }
+
+  /**! \brief Breadth first traversal of the tree, sequentially
+   * \details
+   * Accepts a callback function which for each node gives node index, lcp and
+   * edge lcp.
+   *
+   * \param f callback function which gives the start, end sequence index,
+   * edge length and occurrences of each node.  Should return if further
+   * iteration of the node is needed.
+   */
+  void breadth_first_iteration_sequential(
+      const std::function<bool(int, int, int)> &f) {
+    this->breadth_first_iteration_sequential(
         0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (this->skip_node(node_index)) {
             return true;
@@ -194,23 +218,41 @@ public:
   void add_suffix_links() {
     suffix_links.resize(table.size() / 2, -1);
     std::fill(suffix_links.begin(), suffix_links.end(), -1);
-    seqan3::debug_stream << "Adding Explicit Suffix links" << std::endl;
+
+    auto start_add_explicit = std::chrono::high_resolution_clock::now();
 
     lst::details::add_explicit_suffix_links(sequence, suffixes, table, flags,
-                                            suffix_links, multi_core,
-                                            parallel_depth);
+                                            suffix_links);
 
-    seqan3::debug_stream << "Adding leaf Suffix links" << std::endl;
+    auto start_add_leaf = std::chrono::high_resolution_clock::now();
 
     lst::details::add_leaf_suffix_links(sequence, suffixes, table, flags,
-                                        suffix_links, multi_core,
-                                        parallel_depth);
+                                        suffix_links);
 
-    seqan3::debug_stream << "Adding Implicit Suffix links" << std::endl;
+    auto start_add_implicit = std::chrono::high_resolution_clock::now();
 
     lst::details::add_implicit_suffix_links(sequence, suffixes, table, flags,
-                                            suffix_links, multi_core,
-                                            parallel_depth);
+                                            suffix_links);
+
+    auto stop = std::chrono::high_resolution_clock::now();
+
+    if (lst_time_measurement) {
+      auto add_explicit_duration =
+          std::chrono::duration_cast<std::chrono::seconds>(start_add_leaf -
+                                                           start_add_explicit);
+      auto add_leaf_duration = std::chrono::duration_cast<std::chrono::seconds>(
+          start_add_implicit - start_add_leaf);
+      auto add_implicit_duration =
+          std::chrono::duration_cast<std::chrono::seconds>(stop -
+                                                           start_add_implicit);
+      seqan3::debug_stream << "\tAdd explicit: "
+                           << add_explicit_duration.count() << std::endl;
+      seqan3::debug_stream << "\tAdd leaf: " << add_leaf_duration.count()
+                           << std::endl;
+      seqan3::debug_stream << "\tAdd implicit: "
+                           << add_implicit_duration.count() << std::endl;
+    }
+
     suffix_links[0] = -1;
   }
 
@@ -230,7 +272,7 @@ public:
       reverses.fill(-1);
     }
 
-    this->breadth_first_iteration(
+    this->breadth_first_iteration_sequential(
         0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
           if (this->skip_node(node_index)) {
             return true;
@@ -263,7 +305,7 @@ public:
     this->debug_print_node(0, 0, 0);
     seqan3::debug_stream << std::endl;
 
-    this->breadth_first_iteration(
+    this->breadth_first_iteration_sequential(
         0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
           this->debug_print_node(node_index, lcp, edge_lcp);
           seqan3::debug_stream << std::endl;
@@ -312,6 +354,10 @@ public:
         label | seqan3::views::to_char | seqan3::views::to<std::string>;
 
     return label_str;
+  }
+
+  int node_occurrences(int node_index) {
+    return lst::details::node_occurrences(node_index, this->table, this->flags);
   }
 
   lst::details::sequence_t<alphabet_t> sequence;
@@ -498,10 +544,24 @@ protected:
   }
 
   void breadth_first_iteration(int node_index, int start_lcp, bool expand_nodes,
-                               const std::function<bool(int, int, int)> &f) {
-    lst::details::breadth_first_iteration(
-        node_index, start_lcp, this->sequence, this->suffixes, this->table,
-        this->flags, expand_nodes, f, this->multi_core, this->parallel_depth);
+                               const std::function<bool(int, int, int &)> &f) {
+    if (this->multi_core) {
+      lst::details::breadth_first_iteration_parallel(
+          node_index, start_lcp, this->sequence, this->suffixes, this->table,
+          this->flags, expand_nodes, f, this->parallel_depth);
+    } else {
+      lst::details::breadth_first_iteration(
+          node_index, start_lcp, this->sequence, this->suffixes, this->table,
+          this->flags, expand_nodes, f);
+    }
+  }
+
+  void breadth_first_iteration_sequential(
+      int node_index, int start_lcp, bool expand_nodes,
+      const std::function<bool(int, int, int)> &f) {
+    lst::details::breadth_first_iteration(node_index, start_lcp, this->sequence,
+                                          this->suffixes, this->table,
+                                          this->flags, expand_nodes, f);
   }
 };
 } // namespace lst

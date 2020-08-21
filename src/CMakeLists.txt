@@ -12,8 +12,12 @@ if (NOT SEQAN3_INCLUDED)
     find_package (SeqAn3 REQUIRED)
 endif()
 
+find_package(Threads REQUIRED)
+
 add_executable (pst-classifier pst-classifier.cpp)
 target_link_libraries (pst-classifier seqan3::seqan3)
+target_link_libraries(pst-classifier Threads::Threads)
 
 add_library (vlmc SHARED vlmc.cpp)
 target_link_libraries (vlmc seqan3::seqan3)
+target_link_libraries(vlmc Threads::Threads)

@@ -41,9 +41,11 @@ public:
    */
   PeresShieldsTree(std::string id,
                    seqan3::bitcompressed_vector<alphabet_t> &sequence,
-                   size_t max_depth, size_t freq, bool multi_core=true, int parallel_depth=2)
+                   size_t max_depth, size_t freq, bool multi_core = true,
+                   int parallel_depth = 2)
       : ProbabilisticSuffixTree<alphabet_t>(id, sequence, max_depth, freq, 192,
-                                            "cutoff", multi_core, parallel_depth) {}
+                                            "cutoff", multi_core,
+                                            parallel_depth) {}
 
   /*!\brief Constructor.
    * \param[in] id_ The id of the model.
@@ -58,11 +60,11 @@ public:
   PeresShieldsTree(std::string id,
                    seqan3::bitcompressed_vector<alphabet_t> &sequence,
                    size_t max_depth, size_t freq, size_t number_of_parameters,
-                   std::string pruning_method, bool multi_core, int parallel_depth)
-      : ProbabilisticSuffixTree<alphabet_t>(id, sequence, max_depth, freq,
-                                            number_of_parameters,
-                                            pruning_method, multi_core,
-                                            parallel_depth) {}
+                   std::string pruning_method, bool multi_core,
+                   int parallel_depth)
+      : ProbabilisticSuffixTree<alphabet_t>(
+            id, sequence, max_depth, freq, number_of_parameters, pruning_method,
+            multi_core, parallel_depth) {}
 
 protected:
   /**! \brief Removes all nodes from the tree with a delta value below
@@ -95,12 +97,10 @@ protected:
   bool should_prune_subtree(int node_index, int level) {
     float delta = this->calculate_delta(node_index);
 
-
     auto deltas = this->get_subtree_level_deltas(node_index, level);
     if (deltas.empty()) {
       return true;
     }
-
 
     auto transitions = this->get_transitions(deltas);
     if (transitions.empty()) {
@@ -124,7 +124,6 @@ protected:
         [&](const int child_index, const int child_level) -> bool {
           if (child_level > current_level) {
             deltas.push_back(level_max_delta);
-
 
             current_level += 1;
             level_max_delta = 0.0;
@@ -161,15 +160,14 @@ protected:
     std::vector<float> transitions{};
     float prev_delta{deltas[0]};
     std::transform(deltas.begin() + 1, deltas.end(),
-                   std::back_inserter(transitions),
-                   [&](float delta) -> float {
-                      float transition{0.0};
-                      if (delta != 0) {
-                        transition = prev_delta / delta;
-                      }
-                      prev_delta = delta;
-                      return transition;
-                    });
+                   std::back_inserter(transitions), [&](float delta) -> float {
+                     float transition{0.0};
+                     if (delta != 0) {
+                       transition = prev_delta / delta;
+                     }
+                     prev_delta = delta;
+                     return transition;
+                   });
     return transitions;
   }
 
@@ -179,8 +177,8 @@ protected:
    * \param node_index Index of the root of the subtree.
    */
   void exclude_subtree(const int node_index) {
-    this->pst_breadth_first_iteration(node_index, 0,
-        [&](const int child_index, const int child_level) {
+    this->pst_breadth_first_iteration(
+        node_index, 0, [&](const int child_index, const int child_level) {
           if (node_index != child_index)
             this->status[child_index / 2] = Status::EXCLUDED;
           return true;

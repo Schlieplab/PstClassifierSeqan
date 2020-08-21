@@ -26,10 +26,8 @@ TEST_F(ConstructionTests, CountSuffixes) {
   std::array<int, 6> expected_counts{2, 3, 0, 0, 0, 1};
   EXPECT_EQ(count_suffixes(0, 6, sequence, suffixes), expected_counts);
 
-  EXPECT_THROW(count_suffixes(0, 16, sequence, suffixes),
-               std::invalid_argument);
-  EXPECT_THROW(count_suffixes(-1, 5, sequence, suffixes),
-               std::invalid_argument);
+  EXPECT_DEBUG_DEATH(count_suffixes(0, 16, sequence, suffixes), "");
+  EXPECT_DEBUG_DEATH(count_suffixes(-1, 5, sequence, suffixes), "");
 }
 
 TEST_F(ConstructionTests, LongestCommonPrefix) {
