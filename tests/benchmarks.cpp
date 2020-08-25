@@ -20,12 +20,11 @@ void test_benchmark(benchmark::State &state, std::string filename,
                     bool parallel, int parallel_depth) {
   pst::time_measurement = false;
   seqan3::sequence_file_input<my_traits> file_in{filename};
-  std::vector<seqan3::bitcompressed_vector<seqan3::dna5>> sequences{};
+  std::vector<lst::details::sequence_t<seqan3::dna5>> sequences{};
   std::vector<std::string> ids{};
 
   for (auto &[seq, id, qual] : file_in) {
-    sequences.push_back(
-        seqan3::bitcompressed_vector<seqan3::dna5>{std::move(seq)});
+    sequences.emplace_back(std::move(seq));
     ids.push_back(id);
   }
 

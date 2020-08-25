@@ -51,7 +51,7 @@ public:
    * \param[in] parallel_depth The maximum depth to spawn new processes, will
    * control task size as `alphabet_size ** depth`.
    */
-  LazySuffixTree(seqan3::bitcompressed_vector<alphabet_t> &sequence_,
+  LazySuffixTree(lst::details::sequence_t<alphabet_t> &sequence_,
                  bool multi_core_ = true, int parallel_depth = 2)
       : sequence(sequence_), multi_core(multi_core_),
         parallel_depth(parallel_depth) {

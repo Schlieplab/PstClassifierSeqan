@@ -21,7 +21,7 @@ struct input_arguments {
   size_t number_of_parameters{192};
   std::string pruning_method{"cutoff"};
   std::string estimator{"KL"};
-  std::vector<seqan3::bitcompressed_vector<seqan3::dna5>> sequences{};
+  std::vector<lst::details::sequence_t<seqan3::dna5>> sequences{};
   std::vector<std::string> ids{};
   bool multi_core{false};
   int parallel_depth{1};
@@ -89,8 +89,7 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
   seqan3::sequence_file_input<my_traits> file_in{filename};
 
   for (auto &[seq, id, qual] : file_in) {
-    arguments.sequences.emplace_back(
-        seqan3::bitcompressed_vector<seqan3::dna5>{std::move(seq)});
+    arguments.sequences.emplace_back(std::move(seq));
     arguments.ids.emplace_back(std::move(id));
   }
 
@@ -102,7 +101,7 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
   return arguments;
 }
 
-std::string train(seqan3::bitcompressed_vector<seqan3::dna5> sequence,
+std::string train(lst::details::sequence_t<seqan3::dna5> sequence,
                   std::string id, size_t max_depth, size_t min_count,
                   float threshold, size_t number_of_parameters,
                   std::string pruning_method, std::string estimator,

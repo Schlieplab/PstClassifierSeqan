@@ -80,7 +80,7 @@ public:
    * \param[in] sequence The text to construct from.
    */
   ProbabilisticSuffixTree(std::string id,
-                          seqan3::bitcompressed_vector<alphabet_t> &sequence)
+                          lst::details::sequence_t<alphabet_t> &sequence)
 
       : ProbabilisticSuffixTree(id, sequence, 15, 100, 1.2, 0, "cutoff", true,
                                 2) {} // TODO get number of cores
@@ -99,7 +99,7 @@ public:
    * control task size as `alphabet_size ** depth`.
    */
   ProbabilisticSuffixTree(std::string id_,
-                          seqan3::bitcompressed_vector<alphabet_t> &sequence_,
+                          lst::details::sequence_t<alphabet_t> &sequence_,
                           size_t max_depth_, size_t freq_,
                           size_t number_of_parameters_,
                           std::string pruning_method_, bool multi_core_ = true,

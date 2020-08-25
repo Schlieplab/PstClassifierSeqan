@@ -26,7 +26,7 @@ public:
    * \param[in] sequence The text to construct from.
    */
   PeresShieldsTree(std::string id,
-                   seqan3::bitcompressed_vector<alphabet_t> &sequence)
+                   lst::details::sequence_t<alphabet_t> &sequence)
       : ProbabilisticSuffixTree<alphabet_t>(id, sequence) {}
 
   /*!\brief Constructor.
@@ -40,7 +40,7 @@ public:
    * (which depend on the `number_of_parameters_`)
    */
   PeresShieldsTree(std::string id,
-                   seqan3::bitcompressed_vector<alphabet_t> &sequence,
+                   lst::details::sequence_t<alphabet_t> &sequence,
                    size_t max_depth, size_t freq, bool multi_core = true,
                    int parallel_depth = 2)
       : ProbabilisticSuffixTree<alphabet_t>(id, sequence, max_depth, freq, 192,
@@ -58,7 +58,7 @@ public:
    * (which depend on the `number_of_parameters_`)
    */
   PeresShieldsTree(std::string id,
-                   seqan3::bitcompressed_vector<alphabet_t> &sequence,
+                   lst::details::sequence_t<alphabet_t> &sequence,
                    size_t max_depth, size_t freq, size_t number_of_parameters,
                    std::string pruning_method, bool multi_core,
                    int parallel_depth)

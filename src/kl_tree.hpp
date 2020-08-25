@@ -26,7 +26,7 @@ public:
    * \param[in] sequence The text to construct from.
    */
   KullbackLieblerTree(std::string id,
-                      seqan3::bitcompressed_vector<alphabet_t> &sequence)
+                      lst::details::sequence_t<alphabet_t> &sequence)
       : ProbabilisticSuffixTree<alphabet_t>(id, sequence), cutoff_value(1.2) {}
 
   /*!\brief Constructor for parameters pruning.
@@ -41,7 +41,7 @@ public:
    * control task size as `alphabet_size ** depth`.
    */
   KullbackLieblerTree(std::string id,
-                      seqan3::bitcompressed_vector<alphabet_t> &sequence,
+                      lst::details::sequence_t<alphabet_t> &sequence,
                       size_t max_depth, size_t freq,
                       size_t number_of_parameters, bool multi_core = true,
                       int parallel_depth = 2)
@@ -60,7 +60,7 @@ public:
    * control task size as `alphabet_size ** depth`.
    */
   KullbackLieblerTree(std::string id,
-                      seqan3::bitcompressed_vector<alphabet_t> &sequence,
+                      lst::details::sequence_t<alphabet_t> &sequence,
                       size_t max_depth, size_t freq, float cutoff_value_,
                       bool multi_core = true, int parallel_depth = 2)
       : ProbabilisticSuffixTree<alphabet_t>(id, sequence, max_depth, freq, 192,
@@ -83,7 +83,7 @@ public:
    * control task size as 4 ** depth.
    */
   KullbackLieblerTree(std::string id,
-                      seqan3::bitcompressed_vector<alphabet_t> &sequence,
+                      lst::details::sequence_t<alphabet_t> &sequence,
                       size_t max_depth, size_t freq, float cutoff_value_,
                       size_t number_of_parameters, std::string pruning_method,
                       bool multi_core, int parallel_depth)

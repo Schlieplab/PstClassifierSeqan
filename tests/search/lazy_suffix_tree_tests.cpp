@@ -160,7 +160,7 @@ TEST_F(LazySuffixTreeTest, Search) {
     EXPECT_EQ(t.search("ACGT"_dna4), (std::vector<int>{20, 16, 12, 8, 0, 4}));
   }
 
-  seqan3::bitcompressed_vector<seqan3::dna5> long_sequence{
+  sequence_t<seqan3::dna5> long_sequence{
       "ACTAGCTAGCTACGCGCTATCATCATTTACGACTAGCAGCCTACTACATTATATAGCGCTAGCATCAGTCAGCACTACTACAGCAGCAGCATCACGACTAGCTACGATCAGCATCGATCGATCATTATCGACTAG"_dna5};
   ;
   std::vector<lst::LazySuffixTree<seqan3::dna5>> dna5_trees{
