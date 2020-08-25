@@ -226,8 +226,7 @@ visit_top_node(int node_index, int lcp, const sequence_t<alphabet_t> &sequence,
                std::vector<Flag> &flags, bool expand_nodes,
                const std::function<bool(int, int, int &)> &f) {
   if (node_index == 0) {
-    return std::tuple{
-        get_edge_lcp(node_index, sequence, suffixes, table, flags), true};
+    return {get_edge_lcp(node_index, sequence, suffixes, table, flags), true};
   }
 
   int edge_lcp;
@@ -239,7 +238,7 @@ visit_top_node(int node_index, int lcp, const sequence_t<alphabet_t> &sequence,
 
   bool consider_children = f(node_index, lcp, edge_lcp);
   if (!consider_children) {
-    return std::tuple{-1, false};
+    return {-1, false};
   }
 
   // It is possible that the call to f expands implicit nodes, may need to
@@ -248,7 +247,7 @@ visit_top_node(int node_index, int lcp, const sequence_t<alphabet_t> &sequence,
   edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
 
   int new_lcp = lcp + edge_lcp;
-  return std::tuple{new_lcp, true};
+  return {new_lcp, true};
 }
 
 template <seqan3::alphabet alphabet_t>
