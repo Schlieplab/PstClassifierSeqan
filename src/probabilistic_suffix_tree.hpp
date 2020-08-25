@@ -18,7 +18,6 @@
 
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
-#include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/range/all.hpp>
 #include <seqan3/range/container/bitcompressed_vector.hpp>
@@ -31,12 +30,6 @@ std::mutex counts_mutex;
 std::mutex consider_mutex;
 
 namespace pst {
-
-template <typename alph> std::string get_alphabet_name() {
-  return typeid(alph).name();
-}
-template <> std::string get_alphabet_name<seqan3::dna5>() { return "DNA5"; }
-template <> std::string get_alphabet_name<seqan3::dna4>() { return "DNA4"; }
 
 enum Status : unsigned char {
   NONE = 1 << 0,
@@ -193,7 +186,8 @@ public:
     tree_string << "Name: " << this->id << std::endl;
     tree_string << "Date: " << std::ctime(&time);
     tree_string << "Tree: PST" << std::endl;
-    tree_string << "Alphabet: " << get_alphabet_name<alphabet_t>() << std::endl;
+    tree_string << "Alphabet: " << lst::get_alphabet_name<alphabet_t>()
+                << std::endl;
     tree_string << "Number(nodes): " << nodes_in_tree() << std::endl;
 
     auto n_parameters =

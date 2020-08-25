@@ -11,6 +11,8 @@
 
 #include <seqan3/alphabet/composite/alphabet_variant.hpp>
 #include <seqan3/alphabet/concept.hpp>
+#include <seqan3/alphabet/nucleotide/dna4.hpp>
+#include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/core/concept/tuple.hpp>
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/range/container/bitcompressed_vector.hpp>
@@ -22,6 +24,13 @@
 #include "lazy_suffix_tree/suffix_links.hpp"
 
 namespace lst {
+
+template <typename alph> std::string get_alphabet_name() {
+  return typeid(alph).name();
+}
+template <> std::string get_alphabet_name<seqan3::dna5>() { return "DNA5"; }
+template <> std::string get_alphabet_name<seqan3::dna4>() { return "DNA4"; }
+
 bool lst_time_measurement = false;
 
 /**! \brief Lazy Suffix Tree implementation using the WOTD algorithm.
