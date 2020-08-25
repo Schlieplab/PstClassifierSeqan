@@ -12,10 +12,9 @@
 namespace lst::details {
 
 std::mutex expand_table_mutex;
-std::mutex lcp_mutex;
 
 template <seqan3::alphabet alphabet_t>
-using sequence_t = seqan3::bitcompressed_vector<alphabet_t>;
+using sequence_t = std::vector<alphabet_t>;
 
 template <seqan3::alphabet alphabet_t = seqan3::dna5>
 using alphabet_array =
@@ -170,37 +169,6 @@ void sort_suffixes(alphabet_array<alphabet_t> counts, int lower_bound,
 }
 
 template <seqan3::alphabet alphabet_t>
-void sort_suffixes_(alphabet_array<alphabet_t> counts, int lower_bound,
-                    int upper_bound, const sequence_t<alphabet_t> &sequence,
-                    std::vector<int> &suffixes) {
-  // TODO At first glance, this doesn't seem necessary, as two threads
-  // TODO should never be accessing the same subset of the suffix array at the
-  // TODO same time.  Check this later.
-
-  std::vector<int> temp_suffixes(suffixes.begin() + lower_bound,
-                                 suffixes.begin() + upper_bound);
-  std::vector<int> temp_storage{};
-  auto pointers = suffix_pointers<alphabet_t>(counts);
-
-  for (int i = lower_bound; i < upper_bound; i++) {
-    auto character = get_character(sequence, temp_suffixes[i - lower_bound]);
-    int character_rank = seqan3::to_rank(character);
-
-    int suffix_index = pointers[character_rank] + lower_bound;
-
-    temp_storage.push_back(suffix_index);
-    temp_storage.push_back(temp_suffixes[i - lower_bound]);
-    pointers[character_rank] += 1;
-  }
-
-  static std::mutex change_suffixes_mutex;
-  std::lock_guard<std::mutex> lock(change_suffixes_mutex);
-  for (auto j = 0; j < temp_storage.size(); j += 2) {
-    suffixes[temp_storage[j]] = temp_storage[j + 1];
-  }
-}
-
-template <seqan3::alphabet alphabet_t>
 alphabet_array<alphabet_t>
 count_suffixes(int lower_bound, int upper_bound,
                const sequence_t<alphabet_t> &sequence,
@@ -238,17 +206,14 @@ template <seqan3::alphabet alphabet_t>
 int expand_node(int node_index, const sequence_t<alphabet_t> &sequence,
                 std::vector<int> &suffixes, std::vector<int> &table,
                 std::vector<Flag> &flags) {
-  {
-    std::lock_guard<std::mutex> unevaluated_lock{expand_table_mutex};
-    assert(is_unevaluated(node_index, flags));
-    flags[node_index] = Flag(flags[node_index] & ~Flag::UNEVALUATED);
-  }
+  assert(is_unevaluated(node_index, flags));
 
   int lower_bound = table[node_index];
   int upper_bound = table[node_index + 1];
   int suffix_lower_bound = suffixes[lower_bound];
 
   int lcp = longest_common_prefix(lower_bound, upper_bound, sequence, suffixes);
+  assert(lcp > 0);
   add_lcp_to_suffixes(lower_bound, upper_bound, lcp, suffixes);
 
   alphabet_array<alphabet_t> counts =
@@ -256,12 +221,12 @@ int expand_node(int node_index, const sequence_t<alphabet_t> &sequence,
 
   sort_suffixes(counts, lower_bound, upper_bound, sequence, suffixes);
 
-  std::lock_guard<std::mutex> expand_table_lock{expand_table_mutex};
+  std::lock_guard<std::mutex> unevaluated_lock{expand_table_mutex};
   table[node_index] = suffix_lower_bound;
   table[node_index + 1] = table.size();
 
   add_children<alphabet_t>(counts, lower_bound, suffixes, table, flags);
-
+  flags[node_index] = Flag(flags[node_index] & ~Flag::UNEVALUATED);
   return lcp;
 }
 

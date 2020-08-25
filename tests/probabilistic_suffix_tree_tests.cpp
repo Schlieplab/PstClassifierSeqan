@@ -338,11 +338,9 @@ void test_suffix_links(pst::ProbabilisticSuffixTree<seqan3::dna5> tree) {
 TEST_F(ProbabilisticSuffixTreeTest, SuffixLinksCorrect) {
   size_t sought_n_parameters{30300};
 
-  for (int i = 0; i < 1000; i++) {
-    pst::ProbabilisticSuffixTree<seqan3::dna5> tree{
-        "TEST", long_sequence, 15, 4, sought_n_parameters, "parameters", false};
-    test_suffix_links(tree);
-  }
+  pst::ProbabilisticSuffixTree<seqan3::dna5> tree{
+      "TEST", long_sequence, 15, 4, sought_n_parameters, "parameters", false};
+  test_suffix_links(tree);
 }
 
 TEST_F(ProbabilisticSuffixTreeTest, SuffixLinksCorrectParallel) {

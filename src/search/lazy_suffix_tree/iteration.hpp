@@ -285,10 +285,6 @@ int get_edge_lcp(int node_index, const sequence_t<alphabet_t> &sequence,
   }
 
   if (is_unevaluated(node_index, flags)) {
-    std::lock_guard<std::mutex> expand_table_lock{expand_table_mutex};
-    if (!is_unevaluated(node_index, flags)) {
-      return get_edge_lcp(node_index, sequence, suffixes, table, flags);
-    }
     return lst::details::longest_common_prefix(
         table[node_index], table[node_index + 1], sequence, suffixes);
   }

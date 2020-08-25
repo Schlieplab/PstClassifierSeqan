@@ -19,14 +19,12 @@
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/range/all.hpp>
-#include <seqan3/range/container/bitcompressed_vector.hpp>
 #include <seqan3/range/views/to.hpp>
 
 #include "search/lazy_suffix_tree.hpp"
 #include "search/lazy_suffix_tree/iteration.hpp"
 
 std::mutex counts_mutex;
-std::mutex consider_mutex;
 
 namespace pst {
 
@@ -433,11 +431,14 @@ protected:
           }
 
           {
-            std::lock_guard consider_lock{consider_mutex};
             std::lock_guard counts_lock{counts_mutex};
-            this->counts.resize(this->table.size() / 2, -1);
+            if (this->counts.size() < this->table.size() / 2) {
+              this->counts.resize(this->table.size() / 2, -1);
+            }
             this->counts[node_index / 2] = count;
-            this->status.resize(this->table.size() / 2, Status::NONE);
+            if (this->status.size() < this->table.size() / 2) {
+              this->status.resize(this->table.size() / 2, Status::NONE);
+            }
           }
 
           return this->check_node(node_index, lcp, edge_lcp, count);
@@ -465,7 +466,6 @@ protected:
 
       // If this node is part of an expanded implicit node, we want to exclude
       // the rest of the implicit nodes as well.
-      std::lock_guard consider_lock{consider_mutex};
       this->breadth_first_iteration_sequential(
           node_index, lcp, false,
           [&](int index, int lcp, int edge_lcp) -> bool {
