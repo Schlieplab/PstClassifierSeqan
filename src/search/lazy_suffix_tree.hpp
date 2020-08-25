@@ -14,7 +14,6 @@
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/core/concept/tuple.hpp>
-#include <seqan3/core/debug_stream.hpp>
 #include <seqan3/range/container/bitcompressed_vector.hpp>
 #include <seqan3/range/views/convert.hpp>
 #include <seqan3/range/views/to.hpp>
@@ -254,12 +253,11 @@ public:
       auto add_implicit_duration =
           std::chrono::duration_cast<std::chrono::seconds>(stop -
                                                            start_add_implicit);
-      seqan3::debug_stream << "\tAdd explicit: "
-                           << add_explicit_duration.count() << std::endl;
-      seqan3::debug_stream << "\tAdd leaf: " << add_leaf_duration.count()
-                           << std::endl;
-      seqan3::debug_stream << "\tAdd implicit: "
-                           << add_implicit_duration.count() << std::endl;
+      std::cout << "\tAdd explicit: " << add_explicit_duration.count()
+                << std::endl;
+      std::cout << "\tAdd leaf: " << add_leaf_duration.count() << std::endl;
+      std::cout << "\tAdd implicit: " << add_implicit_duration.count()
+                << std::endl;
     }
 
     suffix_links[0] = -1;
@@ -312,12 +310,12 @@ public:
    */
   virtual void print() {
     this->debug_print_node(0, 0, 0);
-    seqan3::debug_stream << std::endl;
+    std::cout << std::endl;
 
     this->breadth_first_iteration_sequential(
         0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
           this->debug_print_node(node_index, lcp, edge_lcp);
-          seqan3::debug_stream << std::endl;
+          std::cout << std::endl;
           return true;
         });
   }
@@ -329,24 +327,23 @@ public:
       label = this->leaf_label(node_index, lcp);
     }
 
-    seqan3::debug_stream << label << "\t" << node_index << "\t"
-                         << table[node_index] << "\t" << table[node_index + 1];
+    std::cout << label << "\t" << node_index << "\t" << table[node_index]
+              << "\t" << table[node_index + 1];
 
-    seqan3::debug_stream << "\tLeaf: " << this->is_leaf(node_index);
-    seqan3::debug_stream << "\tUnevaluated: "
-                         << this->is_unevaluated(node_index);
-    seqan3::debug_stream << "\tRightmost child: "
-                         << this->is_rightmostchild(node_index);
+    std::cout << "\tLeaf: " << this->is_leaf(node_index);
+    std::cout << "\tUnevaluated: " << this->is_unevaluated(node_index);
 
-    if (this->suffix_links.size() > node_index / 2) {
-      seqan3::debug_stream << "\tSuffix link: "
-                           << this->suffix_links[node_index / 2];
-    }
+    std::cout << "\tRightmost child: " << this->is_rightmostchild(node_index);
 
-    if (this->reverse_suffix_links.size() > node_index / 2) {
-      seqan3::debug_stream << "\tReverse suffix links: "
-                           << this->reverse_suffix_links[node_index / 2];
-    }
+    //    if (this->suffix_links.size() > node_index / 2) {
+    //      std::cout << "\tSuffix link: " << this->suffix_links[node_index /
+    //      2];
+    //    }
+
+    //    if (this->reverse_suffix_links.size() > node_index / 2) {
+    //      std::cout << "\tReverse suffix links: " <<
+    //      this->reverse_suffix_links[node_index / 2];
+    //    }
   }
 
   std::string node_label(int node_index, int lcp, int edge_lcp) {

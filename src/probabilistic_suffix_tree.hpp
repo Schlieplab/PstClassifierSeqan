@@ -18,7 +18,6 @@
 
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
-#include <seqan3/core/debug_stream.hpp>
 #include <seqan3/range/all.hpp>
 #include <seqan3/range/container/bitcompressed_vector.hpp>
 #include <seqan3/range/views/to.hpp>
@@ -129,7 +128,7 @@ public:
    */
   void print() {
     this->debug_print_node(0, 0, 0);
-    seqan3::debug_stream << std::endl;
+    std::cout << std::endl;
 
     this->breadth_first_iteration_sequential(
         0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
@@ -138,7 +137,7 @@ public:
           }
           this->debug_print_node(node_index, lcp, edge_lcp);
 
-          seqan3::debug_stream << std::endl;
+          std::cout << std::endl;
           return true;
         });
   }
@@ -149,15 +148,15 @@ public:
 
     if (this->suffix_links.size() > node_index / 2 &&
         this->suffix_links[node_index / 2] != -1) {
-      seqan3::debug_stream << "\tDelta: " << this->calculate_delta(node_index);
+      std::cout << "\tDelta: " << this->calculate_delta(node_index);
 
-      seqan3::debug_stream << "\tPST Leaf: " << this->is_pst_leaf(node_index);
+      std::cout << "\tPST Leaf: " << this->is_pst_leaf(node_index);
 
-      seqan3::debug_stream << "\tTerminal: " << this->is_terminal(node_index);
+      std::cout << "\tTerminal: " << this->is_terminal(node_index);
     }
 
     if (this->status.size() > node_index / 2) {
-      seqan3::debug_stream << "\tStatus: " << this->status[node_index / 2];
+      std::cout << "\tStatus: " << this->status[node_index / 2];
     }
   }
 
@@ -356,13 +355,13 @@ protected:
       auto addSuffixLinks =
           std::chrono::duration_cast<std::chrono::seconds>(t3 - t2);
 
-      seqan3::debug_stream << "\nSupport Pruning" << std::endl;
-      seqan3::debug_stream << "    Total Duration:" << duration.count()
-                           << " sec" << std::endl;
-      seqan3::debug_stream << "        Build Tree: " << buildTree.count()
-                           << " sec" << std::endl;
-      seqan3::debug_stream << "        Add Suffix Links: "
-                           << addSuffixLinks.count() << " sec" << std::endl;
+      std::cout << "\nSupport Pruning" << std::endl;
+      std::cout << "    Total Duration:" << duration.count() << " sec"
+                << std::endl;
+      std::cout << "        Build Tree: " << buildTree.count() << " sec"
+                << std::endl;
+      std::cout << "        Add Suffix Links: " << addSuffixLinks.count()
+                << " sec" << std::endl;
     }
   }
 
@@ -398,16 +397,14 @@ protected:
       auto pruning =
           std::chrono::duration_cast<std::chrono::seconds>(stop - t2);
 
-      seqan3::debug_stream << "\nSimilarity Pruning" << std::endl;
-      seqan3::debug_stream << "    Total Duration: " << duration.count()
-                           << " sec" << std::endl;
-      seqan3::debug_stream << "        Reverse Suffix Links: "
-                           << reverseSuffix.count() << " sec" << std::endl;
-      seqan3::debug_stream << "        Calculating Probabilities: "
-                           << probabilities_timing.count() << " sec"
-                           << std::endl;
-      seqan3::debug_stream << "        Pruning: " << pruning.count() << "sec"
-                           << std::endl;
+      std::cout << "\nSimilarity Pruning" << std::endl;
+      std::cout << "    Total Duration: " << duration.count() << " sec"
+                << std::endl;
+      std::cout << "        Reverse Suffix Links: " << reverseSuffix.count()
+                << " sec" << std::endl;
+      std::cout << "        Calculating Probabilities: "
+                << probabilities_timing.count() << " sec" << std::endl;
+      std::cout << "        Pruning: " << pruning.count() << "sec" << std::endl;
     }
   }
 

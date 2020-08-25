@@ -387,19 +387,16 @@ void test_benchmark(std::string filename, bool parallel, int parallel_depth) {
 }
 
 TEST(ProbabilisticSuffixTreeLiveTest, HumanHerpesvirus5) {
-  seqan3::debug_stream << std::filesystem::current_path() << std::endl;
   std::string filename{"../../fasta/NC_006273.2.fa"};
   test_benchmark(filename, true, 1);
 }
 
 TEST(ProbabilisticSuffixTreeLiveTest, SaccharomycesCerevisiae) {
-  seqan3::debug_stream << std::filesystem::current_path() << std::endl;
   std::string filename{"../../fasta/CM010781.1.fa"};
   test_benchmark(filename, true, 1);
 }
 
 TEST(ProbabilisticSuffixTreeLiveTest, EColi) {
-  seqan3::debug_stream << std::filesystem::current_path() << std::endl;
   std::string filename{"../../fasta/CP007136.1.fa"};
   test_benchmark(filename, true, 1);
 }

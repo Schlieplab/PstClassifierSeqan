@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) {
   auto start = std::chrono::system_clock::now();
   input_arguments arguments = parse_cli_arguments(argc, argv);
 
-  seqan3::debug_stream << "Building index for " << arguments.ids[0]
+  std::cout << "Building index for " << arguments.ids[0]
                        << std::endl;
 
   std::string tree = train(arguments.sequences[0], arguments.ids[0],
