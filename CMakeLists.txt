@@ -10,5 +10,7 @@ set(SeqAn3_DIR "${CMAKE_SOURCE_DIR}/seqan3/build_system")
 find_package(SeqAn3 REQUIRED)
 set(SEQAN3_INCLUDED TRUE)
 
+include_directories("${CMAKE_SOURCE_DIR}/robin-hood-hashing/src/include")
+
 add_subdirectory(src)
 add_subdirectory(tests)

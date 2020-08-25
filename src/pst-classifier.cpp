@@ -1,16 +1,17 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
-
 #include <chrono>
+
 #include <seqan3/alphabet/all.hpp>
 #include <seqan3/argument_parser/all.hpp>
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
-#include <seqan3/range/container/bitcompressed_vector.hpp>
-#include <seqan3/std/filesystem> // use std::filesystem::path
+
+#include <seqan3/std/filesystem>
 
 #include "kl_tree.hpp"
+#include "kl_tree_map.hpp"
 #include "probabilistic_suffix_tree.hpp"
 #include "ps_tree.hpp"
 
@@ -117,6 +118,18 @@ std::string train(lst::details::sequence_t<seqan3::dna5> sequence,
                                                pruning_method,
                                                multi_core,
                                                parallel_depth};
+    pst.construct_tree();
+    return pst.to_tree();
+  } else if (estimator == "KLMAP") {
+    pst::KullbackLieblerTreeMap<seqan3::dna5> pst{id,
+                                                  sequence,
+                                                  max_depth,
+                                                  min_count,
+                                                  threshold,
+                                                  number_of_parameters,
+                                                  pruning_method,
+                                                  multi_core,
+                                                  parallel_depth};
     pst.construct_tree();
     return pst.to_tree();
   } else if (estimator == "PS") {
