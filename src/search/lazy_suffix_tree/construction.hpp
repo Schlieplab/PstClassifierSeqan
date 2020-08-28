@@ -60,8 +60,6 @@ void add_leaf(int index, std::vector<int> &table, std::vector<Flag> &flags,
 
 void add_lcp_to_suffixes(int lower_bound, int upper_bound, int lcp,
                          std::vector<int> &suffixes) {
-  static std::mutex lcp_mutex{};
-  std::lock_guard<std::mutex> lock{lcp_mutex};
   for (int i = lower_bound; i < upper_bound; i++) {
     suffixes[i] += lcp;
   }
