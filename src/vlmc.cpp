@@ -29,7 +29,7 @@ static const char *train_kl(const char *id_, const char *sequence_,
   auto sequence = to_dna(sequence_);
   std::string id{id_};
 
-  pst::KullbackLieblerTree<seqan3::dna5> pst{
+  pst::KullbackLieblerTreeMap<seqan3::dna5> pst{
       id,        sequence,   max_depth,     min_count,
       threshold, multi_core, parallel_depth};
   pst.construct_tree();
@@ -73,7 +73,7 @@ static const char *train_kl_parameters(const char *id_, const char *sequence_,
   std::string id = std::string(id_);
   auto sequence = to_dna(sequence_);
 
-  pst::KullbackLieblerTree<seqan3::dna5> pst{
+  pst::KullbackLieblerTreeMap<seqan3::dna5> pst{
       id,           sequence,   max_depth,     min_count,
       n_parameters, multi_core, parallel_depth};
 
