@@ -723,15 +723,16 @@ protected:
    * \param tree_string The output stream to write to.
    */
   void append_node_string(
-      std::string &label,
-      robin_hood::unordered_map<std::string, int> iteration_order_indices,
+      const std::string &label,
+      robin_hood::unordered_map<std::string, int> &iteration_order_indices,
       std::ostringstream &tree_string) {
-    if (label.empty()) {
-      label = "#";
-    }
 
-    tree_string << "Node: " << iteration_order_indices[label] << " " << label
-                << " ";
+    tree_string << "Node: " << iteration_order_indices[label];
+    if (label.empty()) {
+      tree_string << " # ";
+    } else {
+      tree_string << " " << label << " ";
+    }
 
     append_reverse_child_counts(label, tree_string);
 
@@ -819,7 +820,7 @@ protected:
    */
   void append_reverse_children(
       const std::string &node_label,
-      robin_hood::unordered_map<std::string, int> iteration_order_indices,
+      robin_hood::unordered_map<std::string, int> &iteration_order_indices,
       std::ostringstream &tree_string) {
     std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -2);
 

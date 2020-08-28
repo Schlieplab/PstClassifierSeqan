@@ -777,7 +777,7 @@ protected:
    * \param tree_string The output stream to write to.
    */
   void append_node_string(int node_index, int lcp, int edge_lcp,
-                          std::map<int, int> iteration_order_indices,
+                          std::map<int, int> &iteration_order_indices,
                           std::ostringstream &tree_string) {
     auto label_ = this->node_label(node_index, lcp, edge_lcp);
     if (this->is_leaf(node_index)) {
@@ -874,7 +874,7 @@ protected:
    * \param tree_string The output stream to write to.
    */
   void append_reverse_children(int node_index,
-                               std::map<int, int> iteration_order_indices,
+                               std::map<int, int> &iteration_order_indices,
                                std::ostringstream &tree_string) {
 
     std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -2);
