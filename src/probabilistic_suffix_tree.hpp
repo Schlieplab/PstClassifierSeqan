@@ -36,8 +36,6 @@ enum Status : unsigned char {
   EXCLUDED = 1 << 2,
 };
 
-// Used for printing time measurements to the terminal.
-bool time_measurement = false;
 
 /*!\brief The probabilistic suffix tree implementation.
  * \tparam alphabet_t   Alphabet type from Seqan3.
@@ -332,37 +330,11 @@ protected:
    *
    */
   void support_pruning() {
-    using namespace std::chrono;
-    auto start = std::chrono::high_resolution_clock::now();
-    auto t1 = std::chrono::high_resolution_clock::now();
-
     this->build_tree();
-
-    auto t2 = std::chrono::high_resolution_clock::now();
 
     this->add_suffix_links();
 
-    auto t3 = std::chrono::high_resolution_clock::now();
-
     status[0] = Status::INCLUDED;
-
-    if (time_measurement) {
-      auto stop = std::chrono::high_resolution_clock::now();
-      auto duration =
-          std::chrono::duration_cast<std::chrono::seconds>(stop - start);
-      auto buildTree =
-          std::chrono::duration_cast<std::chrono::seconds>(t2 - t1);
-      auto addSuffixLinks =
-          std::chrono::duration_cast<std::chrono::seconds>(t3 - t2);
-
-      std::cout << "\nSupport Pruning" << std::endl;
-      std::cout << "    Total Duration:" << duration.count() << " sec"
-                << std::endl;
-      std::cout << "        Build Tree: " << buildTree.count() << " sec"
-                << std::endl;
-      std::cout << "        Add Suffix Links: " << addSuffixLinks.count()
-                << " sec" << std::endl;
-    }
   }
 
   /**! \brief Similarity pruning phase of the algorithm
@@ -373,38 +345,14 @@ protected:
    * are reached, or until a specified threshold value.
    */
   void similarity_pruning() {
-    auto start = std::chrono::high_resolution_clock::now();
-
     this->add_reverse_suffix_links();
-    auto t1 = std::chrono::high_resolution_clock::now();
 
     this->compute_probabilities();
-    auto t2 = std::chrono::high_resolution_clock::now();
 
     if (this->pruning_method == "cutoff") {
       this->cutoff_prune();
     } else if (this->pruning_method == "parameters") {
       this->parameters_prune();
-    }
-    if (time_measurement) {
-      auto stop = std::chrono::high_resolution_clock::now();
-      auto duration =
-          std::chrono::duration_cast<std::chrono::seconds>(stop - start);
-      auto reverseSuffix =
-          std::chrono::duration_cast<std::chrono::seconds>(t1 - start);
-      auto probabilities_timing =
-          std::chrono::duration_cast<std::chrono::seconds>(t2 - t1);
-      auto pruning =
-          std::chrono::duration_cast<std::chrono::seconds>(stop - t2);
-
-      std::cout << "\nSimilarity Pruning" << std::endl;
-      std::cout << "    Total Duration: " << duration.count() << " sec"
-                << std::endl;
-      std::cout << "        Reverse Suffix Links: " << reverseSuffix.count()
-                << " sec" << std::endl;
-      std::cout << "        Calculating Probabilities: "
-                << probabilities_timing.count() << " sec" << std::endl;
-      std::cout << "        Pruning: " << pruning.count() << "sec" << std::endl;
     }
   }
 

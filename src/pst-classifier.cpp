@@ -76,17 +76,17 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
                   "Enable Multi-core utilisation.");
 
   parser.add_option(
-      arguments.parallel_depth, 's', "split-depth",
-      "Depth where to start the split into threads "
+      arguments.parallel_depth, 's', "parallel-depth",
+      "If multi-core, will spawn a new thread per node up until the "
+      "parallel-depth."
       "Higher value increase the number of threads spawned. Default 1");
+
   try {
     parser.parse();
   } catch (seqan3::argument_parser_error const &ext) {
-    seqan3::debug_stream << "[PARSER ERROR] " << ext.what() << '\n';
+    std::cout << "[PARSER ERROR] " << ext.what() << '\n';
     return arguments;
   }
-
-  auto start = std::chrono::system_clock::now();
 
   seqan3::sequence_file_input<my_traits> file_in{filename};
 
@@ -95,11 +95,6 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
     arguments.ids.emplace_back(std::move(id));
   }
 
-  auto stop = std::chrono::system_clock::now();
-  auto duration =
-      std::chrono::duration_cast<std::chrono::seconds>(stop - start);
-  std::cout << "IO reading fasta file: " << duration.count() << " sec"
-            << std::endl;
   return arguments;
 }
 
@@ -153,20 +148,12 @@ int main(int argc, char *argv[]) {
   auto start = std::chrono::system_clock::now();
   input_arguments arguments = parse_cli_arguments(argc, argv);
 
-  std::cout << "Building index for " << arguments.ids[0]
-                       << std::endl;
-
   std::string tree = train(arguments.sequences[0], arguments.ids[0],
                            arguments.max_depth, arguments.min_count,
                            arguments.threshold, arguments.number_of_parameters,
                            arguments.pruning_method, arguments.estimator,
                            arguments.multi_core, arguments.parallel_depth);
-  //  std::cout << tree << std::endl;
-  auto stop = std::chrono::system_clock::now();
-  auto duration =
-      std::chrono::duration_cast<std::chrono::seconds>(stop - start);
-  std::cout << "Total runtime with IO: " << duration.count() << " sec"
-            << std::endl;
+  std::cout << tree << std::endl;
 
   return EXIT_SUCCESS;
 }

@@ -19,7 +19,6 @@ struct my_traits : seqan3::sequence_file_input_default_traits_dna {
 
 void test_benchmark(benchmark::State &state, std::string filename,
                     bool parallel, int parallel_depth) {
-  pst::time_measurement = false;
   seqan3::sequence_file_input<my_traits> file_in{filename};
   std::vector<lst::details::sequence_t<seqan3::dna5>> sequences{};
   std::vector<std::string> ids{};
@@ -43,7 +42,6 @@ void test_benchmark(benchmark::State &state, std::string filename,
 
 void test_benchmark_map(benchmark::State &state, std::string filename,
                         bool parallel, int parallel_depth) {
-  pst::time_measurement = false;
   seqan3::sequence_file_input<my_traits> file_in{filename};
   std::vector<lst::details::sequence_t<seqan3::dna5>> sequences{};
   std::vector<std::string> ids{};

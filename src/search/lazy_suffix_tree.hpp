@@ -30,7 +30,6 @@ template <typename alph> std::string get_alphabet_name() {
 template <> std::string get_alphabet_name<seqan3::dna5>() { return "DNA5"; }
 template <> std::string get_alphabet_name<seqan3::dna4>() { return "DNA4"; }
 
-bool lst_time_measurement = false;
 
 /**! \brief Lazy Suffix Tree implementation using the WOTD algorithm.
  *
@@ -227,38 +226,14 @@ public:
     suffix_links.resize(table.size() / 2, -1);
     std::fill(suffix_links.begin(), suffix_links.end(), -1);
 
-    auto start_add_explicit = std::chrono::high_resolution_clock::now();
-
     lst::details::add_explicit_suffix_links(sequence, suffixes, table, flags,
                                             suffix_links);
-
-    auto start_add_leaf = std::chrono::high_resolution_clock::now();
 
     lst::details::add_leaf_suffix_links(sequence, suffixes, table, flags,
                                         suffix_links);
 
-    auto start_add_implicit = std::chrono::high_resolution_clock::now();
-
     lst::details::add_implicit_suffix_links(sequence, suffixes, table, flags,
                                             suffix_links);
-
-    auto stop = std::chrono::high_resolution_clock::now();
-
-    if (lst_time_measurement) {
-      auto add_explicit_duration =
-          std::chrono::duration_cast<std::chrono::seconds>(start_add_leaf -
-                                                           start_add_explicit);
-      auto add_leaf_duration = std::chrono::duration_cast<std::chrono::seconds>(
-          start_add_implicit - start_add_leaf);
-      auto add_implicit_duration =
-          std::chrono::duration_cast<std::chrono::seconds>(stop -
-                                                           start_add_implicit);
-      std::cout << "\tAdd explicit: " << add_explicit_duration.count()
-                << std::endl;
-      std::cout << "\tAdd leaf: " << add_leaf_duration.count() << std::endl;
-      std::cout << "\tAdd implicit: " << add_implicit_duration.count()
-                << std::endl;
-    }
 
     suffix_links[0] = -1;
   }

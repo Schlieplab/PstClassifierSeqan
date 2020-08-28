@@ -361,9 +361,6 @@ struct my_traits : seqan3::sequence_file_input_default_traits_dna {
       std::vector<alph>; // must be defined as a template!
 };
 void test_benchmark(std::string filename, bool parallel, int parallel_depth) {
-  pst::time_measurement = true;
-  lst::lst_time_measurement = true;
-
   seqan3::sequence_file_input<my_traits> file_in{filename};
   std::vector<lst::details::sequence_t<seqan3::dna5>> sequences{};
   std::vector<std::string> ids{};

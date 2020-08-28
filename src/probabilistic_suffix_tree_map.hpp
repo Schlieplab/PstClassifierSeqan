@@ -337,37 +337,9 @@ protected:
    *
    */
   void support_pruning() {
-    auto start = std::chrono::high_resolution_clock::now();
-
     this->build_tree();
-
-    auto t2 = std::chrono::high_resolution_clock::now();
-
-    //    this->add_suffix_links();
-
-    auto t3 = std::chrono::high_resolution_clock::now();
-
     std::string root{""};
     status.insert(root);
-
-    bool time_measurement = false;
-    if (time_measurement) {
-      auto stop = std::chrono::high_resolution_clock::now();
-      auto duration =
-          std::chrono::duration_cast<std::chrono::seconds>(stop - start);
-      auto buildTree =
-          std::chrono::duration_cast<std::chrono::seconds>(t2 - start);
-      auto addSuffixLinks =
-          std::chrono::duration_cast<std::chrono::seconds>(t3 - t2);
-
-      std::cout << "\nSupport Pruning" << std::endl;
-      std::cout << "    Total Duration:" << duration.count() << " sec"
-                << std::endl;
-      std::cout << "        Build Tree: " << buildTree.count() << " sec"
-                << std::endl;
-      std::cout << "        Add Suffix Links: " << addSuffixLinks.count()
-                << " sec" << std::endl;
-    }
   }
 
   /**! \brief Similarity pruning phase of the algorithm
