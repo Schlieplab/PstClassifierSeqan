@@ -7,7 +7,6 @@
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/alphabet/gap/all.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
-#include <seqan3/range/container/bitcompressed_vector.hpp>
 
 namespace lst::details {
 

@@ -3,19 +3,22 @@
 #include <vector>
 
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
-#include <seqan3/range/views/all.hpp>
+#include <seqan3/range/views/char_to.hpp>
+#include <seqan3/range/views/to.hpp>
 #include <seqan3/std/ranges>
 
 #include "kl_tree.hpp"
+#include "kl_tree_map.hpp"
 #include "probabilistic_suffix_tree.hpp"
 #include "ps_tree.hpp"
 
 lst::details::sequence_t<seqan3::dna5> to_dna(const char *sequence_) {
-  std::string seq = std::string{sequence_};
-  lst::details::sequence_t<seqan3::dna5> seq_ =
+  std::string seq{sequence_};
+  auto sequence_as_dna =
       seq | seqan3::views::char_to<seqan3::dna5> |
       seqan3::views::to<lst::details::sequence_t<seqan3::dna5>>;
-  return seq_;
+
+  return sequence_as_dna;
 }
 
 extern "C" {

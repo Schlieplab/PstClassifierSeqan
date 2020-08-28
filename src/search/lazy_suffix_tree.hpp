@@ -14,9 +14,9 @@
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/core/concept/tuple.hpp>
-#include <seqan3/range/container/bitcompressed_vector.hpp>
 #include <seqan3/range/views/convert.hpp>
 #include <seqan3/range/views/to.hpp>
+#include <seqan3/range/views/to_char.hpp>
 
 #include "lazy_suffix_tree/construction.hpp"
 #include "lazy_suffix_tree/iteration.hpp"

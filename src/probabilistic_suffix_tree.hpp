@@ -13,13 +13,15 @@
 #include <thread>
 #include <tuple>
 #include <typeinfo>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
-#include <seqan3/range/all.hpp>
+#include <seqan3/range/views/convert.hpp>
 #include <seqan3/range/views/to.hpp>
+#include <seqan3/range/views/to_char.hpp>
 
 #include "search/lazy_suffix_tree.hpp"
 #include "search/lazy_suffix_tree/iteration.hpp"
@@ -191,8 +193,8 @@ public:
         this->count_terminal_nodes() * (valid_characters.size() - 1);
     tree_string << "Number(parameters): " << n_parameters << std::endl;
 
-    std::map<int, int> lcps{};
-    std::map<int, int> edge_lcps{};
+    std::unordered_map<int, int> lcps{};
+    std::unordered_map<int, int> edge_lcps{};
     lcps[0] = 0;
     edge_lcps[0] = 0;
     this->breadth_first_iteration_sequential(
@@ -204,7 +206,7 @@ public:
           return true;
         });
 
-    std::map<int, int> iteration_order_indices{};
+    std::unordered_map<int, int> iteration_order_indices{};
     int i = 0;
     this->pst_breadth_first_iteration(0, 0,
                                       [&](int node_index, int level) -> bool {
@@ -777,14 +779,12 @@ protected:
    * \param tree_string The output stream to write to.
    */
   void append_node_string(int node_index, int lcp, int edge_lcp,
-                          std::map<int, int> &iteration_order_indices,
+                          std::unordered_map<int, int> &iteration_order_indices,
                           std::ostringstream &tree_string) {
-    auto label_ = this->node_label(node_index, lcp, edge_lcp);
+    auto label = this->node_label(node_index, lcp, edge_lcp);
     if (this->is_leaf(node_index)) {
-      label_ = this->leaf_label(node_index, lcp);
+      label = this->leaf_label(node_index, lcp);
     }
-    std::string label =
-        label_ | seqan3::views::to_char | seqan3::views::to<std::string>;
     if (node_index == 0) {
       label = "#";
     }
@@ -873,9 +873,10 @@ protected:
    * \param[in] node_index The node index to operate on.
    * \param tree_string The output stream to write to.
    */
-  void append_reverse_children(int node_index,
-                               std::map<int, int> &iteration_order_indices,
-                               std::ostringstream &tree_string) {
+  void
+  append_reverse_children(int node_index,
+                          std::unordered_map<int, int> &iteration_order_indices,
+                          std::ostringstream &tree_string) {
 
     std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -2);
 

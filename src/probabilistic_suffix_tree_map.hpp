@@ -21,9 +21,9 @@
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
-#include <seqan3/range/all.hpp>
-#include <seqan3/range/container/bitcompressed_vector.hpp>
+#include <seqan3/range/views/convert.hpp>
 #include <seqan3/range/views/to.hpp>
+#include <seqan3/range/views/to_char.hpp>
 
 #include <robin_hood.h>
 
