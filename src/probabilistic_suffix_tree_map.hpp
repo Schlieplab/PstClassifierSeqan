@@ -461,8 +461,7 @@ protected:
     int n_children = 0;
 
     for (auto char_rank : this->valid_characters) {
-      alphabet_t c{};
-      seqan3::assign_rank_to(char_rank, c);
+      alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
 
       std::string child_label = label + c.to_char();
 
@@ -544,8 +543,7 @@ protected:
     std::array<int, seqan3::alphabet_size<alphabet_t>> child_counts{};
 
     for (auto char_rank : this->valid_characters) {
-      alphabet_t c{};
-      seqan3::assign_rank_to(char_rank, c);
+      alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
 
       std::string child_label = label + c.to_char();
 
@@ -591,8 +589,7 @@ protected:
    */
   bool is_pst_leaf(const std::string &node_label) {
     for (auto char_rank : this->valid_characters) {
-      alphabet_t c{};
-      seqan3::assign_rank_to(char_rank, c);
+      alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
 
       std::string child_label = c.to_char() + node_label;
 
@@ -614,8 +611,7 @@ protected:
    */
   bool is_terminal(const std::string &node_label) {
     for (auto char_rank : this->valid_characters) {
-      alphabet_t c{};
-      seqan3::assign_rank_to(char_rank, c);
+      alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
 
       std::string child_label = c.to_char() + node_label;
 
@@ -639,8 +635,7 @@ protected:
   bool became_terminal(const std::string &node_label,
                        const std::string &removed_label) {
     for (auto char_rank : this->valid_characters) {
-      alphabet_t c{};
-      seqan3::assign_rank_to(char_rank, c);
+      alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
 
       std::string child_label = c.to_char() + node_label;
 
@@ -735,8 +730,7 @@ protected:
     std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -1);
 
     for (auto char_rank : this->valid_characters) {
-      alphabet_t c{};
-      seqan3::assign_rank_to(char_rank, c);
+      alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
 
       std::string child_label = c.to_char() + node_label;
 
@@ -771,8 +765,7 @@ protected:
     std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -2);
 
     for (auto char_rank : this->valid_characters) {
-      alphabet_t c{};
-      seqan3::assign_rank_to(char_rank, c);
+      alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
 
       std::string child_label = c.to_char() + node_label;
 
@@ -865,8 +858,7 @@ protected:
   void iterate_children(const std::string &label,
                         const std::function<void(const std::string &)> &f) {
     for (auto char_rank : this->valid_characters) {
-      alphabet_t c{};
-      seqan3::assign_rank_to(char_rank, c);
+      alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
 
       std::string child_label = label + c.to_char();
       f(child_label);
@@ -882,8 +874,7 @@ protected:
   void iterate_pst_children(const std::string &label,
                             const std::function<void(const std::string &)> &f) {
     for (auto char_rank : this->valid_characters) {
-      alphabet_t c{};
-      seqan3::assign_rank_to(char_rank, c);
+      alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
 
       std::string child_label = c.to_char() + label;
 
