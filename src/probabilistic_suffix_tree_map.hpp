@@ -351,39 +351,12 @@ protected:
    * are reached, or until a specified threshold value.
    */
   void similarity_pruning() {
-    auto start = std::chrono::high_resolution_clock::now();
-
-    //    this->add_reverse_suffix_links();
-    auto t1 = std::chrono::high_resolution_clock::now();
-
     this->compute_probabilities();
-    auto t2 = std::chrono::high_resolution_clock::now();
 
     if (this->pruning_method == "cutoff") {
       this->cutoff_prune();
     } else if (this->pruning_method == "parameters") {
       this->parameters_prune();
-    }
-    bool time_measurement = false;
-    if (time_measurement) {
-      auto stop = std::chrono::high_resolution_clock::now();
-      auto duration =
-          std::chrono::duration_cast<std::chrono::seconds>(stop - start);
-      auto reverseSuffix =
-          std::chrono::duration_cast<std::chrono::seconds>(t1 - start);
-      auto probabilities_timing =
-          std::chrono::duration_cast<std::chrono::seconds>(t2 - t1);
-      auto pruning =
-          std::chrono::duration_cast<std::chrono::seconds>(stop - t2);
-
-      std::cout << "\nSimilarity Pruning" << std::endl;
-      std::cout << "    Total Duration: " << duration.count() << " sec"
-                << std::endl;
-      std::cout << "        Reverse Suffix Links: " << reverseSuffix.count()
-                << " sec" << std::endl;
-      std::cout << "        Calculating Probabilities: "
-                << probabilities_timing.count() << " sec" << std::endl;
-      std::cout << "        Pruning: " << pruning.count() << "sec" << std::endl;
     }
   }
 
