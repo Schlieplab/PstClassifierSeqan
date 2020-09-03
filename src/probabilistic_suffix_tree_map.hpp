@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cmath>
 #include <ctime>
+#include <filesystem>
 #include <functional>
 #include <iostream>
 #include <mutex>
@@ -102,9 +103,36 @@ public:
         dna4 | seqan3::views::convert<seqan3::gapped<alphabet_t>> |
         seqan3::views::to<std::vector<seqan3::gapped<alphabet_t>>>};
 
-    for (auto c : characters) {
+    for (auto &c : characters) {
       auto char_rank = seqan3::to_rank(c);
       valid_characters.insert(char_rank);
+    }
+  }
+
+  /*!\brief Reads a tree form a file.
+   * \param[in] id The id of the model.
+   * \param[in] sequence The text to construct from.
+   */
+  ProbabilisticSuffixTreeMap(std::filesystem::path filename) {
+    std::ifstream input(filename);
+    if (!input.is_open()) {
+      throw std::invalid_argument{"Failed to open file."};
+    }
+
+    using seqan3::operator""_dna4;
+    seqan3::dna4_vector dna4{"ACGT"_dna4};
+
+    std::vector<seqan3::gapped<alphabet_t>> characters{
+        dna4 | seqan3::views::convert<seqan3::gapped<alphabet_t>> |
+        seqan3::views::to<std::vector<seqan3::gapped<alphabet_t>>>};
+
+    for (auto &c : characters) {
+      auto char_rank = seqan3::to_rank(c);
+      valid_characters.insert(char_rank);
+    }
+
+    for (std::string line; std::getline(input, line, '\n');) {
+      parse_line(line, characters);
     }
   }
 
@@ -113,6 +141,9 @@ public:
    * steps from the VOMC construction algorithm.
    */
   void construct_tree() {
+    if (this->sequence.size() <= 0) {
+      throw std::invalid_argument{"Construct tree called without a sequence."};
+    }
     this->support_pruning();
     this->similarity_pruning();
   }
@@ -320,7 +351,6 @@ public:
   std::string pruning_method;
 
   robin_hood::unordered_set<std::string> status{};
-
   robin_hood::unordered_map<std::string, int> counts{};
   robin_hood::unordered_map<
       std::string, std::array<float, seqan3::alphabet_size<alphabet_t>>>
@@ -881,6 +911,77 @@ protected:
       if (is_included(child_label)) {
         f(child_label);
       }
+    }
+  }
+
+  /** Parses a line in the tree format.
+   *
+   * Adds the node label, counts and probabilities corresponding to the line.
+   *
+   * @param line Line to parse.
+   * @param characters The valid characters, has to agree with input.
+   */
+  void parse_line(const std::string &line,
+                  std::vector<seqan3::gapped<alphabet_t>> &characters) {
+    if (line.substr(0, 5) != "Node:") {
+      return;
+    }
+
+    std::stringstream line_stream{line};
+
+    std::string node_label{"-1"};
+    int node_count = 0;
+
+    std::string word, prev_word;
+
+    bool found_label = false;
+    bool found_count = false;
+    bool found_probs = false;
+    int prob_index = 0;
+
+    while (line_stream >> word) {
+      if (word == "[" && !found_label) {
+        node_label = prev_word;
+        if (node_label == "#") {
+          node_label = "";
+        }
+        this->status.insert(node_label);
+        found_label = true;
+
+      } else if (prev_word == "]" && !found_count) {
+        node_count = std::stoi(word);
+        this->counts[node_label] = node_count;
+        found_count = true;
+
+      } else if (found_count && !found_probs) {
+        if (word[0] == ']') {
+          found_probs = true;
+        } else if (word != "[") {
+          float child_count = std::stof(word);
+          auto c = characters[prob_index];
+          int char_rank = seqan3::to_rank(c);
+          this->probabilities[node_label][char_rank] = child_count;
+          prob_index++;
+        }
+      }
+      prev_word = std::move(word);
+    }
+    convert_counts_to_probabilities(node_label);
+  }
+
+  /** Utility for parsing, converts the raw counts initially stored in the
+   * probabilities map to probabilities.
+   *
+   * @param node_label Label to convert counts for.
+   */
+  void convert_counts_to_probabilities(std::string &node_label) {
+    float child_sum =
+        std::accumulate(this->probabilities[node_label].begin(),
+                        this->probabilities[node_label].end(), 0.0);
+
+    for (int i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
+      this->probabilities[node_label][i] =
+          float(this->probabilities[node_label][i]) / child_sum;
     }
   }
 };

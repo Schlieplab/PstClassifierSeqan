@@ -259,3 +259,34 @@ TEST(ProbabilisticSuffixTreeLiveTest, EColi) {
     test_benchmark(filename, true, 2);
   }
 }
+
+TEST_F(ProbabilisticSuffixTreeTestMap, FromTreeToStreamToTree) {
+  std::filesystem::path filename{"./test.tree"};
+
+  pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree{
+      "TEST", long_sequence, 15, 4, 192, "parameters", false};
+  tree.construct_tree();
+  auto tree_out = tree.to_tree();
+  std::ofstream out{filename};
+  out << tree_out;
+  out.close();
+
+  pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree_stream{filename};
+
+  // Tree may contain other, non-essential counts.
+  for (auto &[k, v] : tree_stream.counts) {
+    EXPECT_EQ(tree.counts[k], v);
+  }
+
+  for (auto &v : tree.status) {
+    EXPECT_TRUE(tree_stream.status.find(v) != tree_stream.status.end());
+  }
+
+  for (auto &[k, v] : tree_stream.probabilities) {
+    for (int i = 0; i < v.size(); i++) {
+      EXPECT_FLOAT_EQ(tree.probabilities[k][i], v[i]);
+    }
+  }
+
+  std::filesystem::remove(filename);
+}
