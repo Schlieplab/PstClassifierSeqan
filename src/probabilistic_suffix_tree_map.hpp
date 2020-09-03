@@ -339,7 +339,8 @@ protected:
   void support_pruning() {
     this->build_tree();
     std::string root{""};
-    status.insert(root);
+    this->status.insert(root);
+    this->counts[root] = this->sequence.size();
   }
 
   /**! \brief Similarity pruning phase of the algorithm
