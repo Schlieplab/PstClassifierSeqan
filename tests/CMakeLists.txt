@@ -67,13 +67,22 @@ macro(test_case unit_test)
   unset (target)
 endmacro(test_case)
 
+macro(benchmark_case case)
+  get_filename_component(target "${case}" NAME_WE)
+
+  add_executable(${target} ${case})
+  target_link_libraries(${target} benchmark)
+  target_link_libraries(${target} seqan3::seqan3)
+  target_link_libraries(${target} Threads::Threads)
+
+  unset (case)
+  unset (target)
+endmacro(benchmark_case)
+
 test_case(probabilistic_suffix_tree_tests.cpp)
 test_case(probabilistic_suffix_tree_map_tests.cpp)
 
 add_subdirectory(search)
 add_subdirectory(search/lazy_suffix_tree)
 
-add_executable(benchmarks benchmarks.cpp)
-target_link_libraries(benchmarks benchmark)
-target_link_libraries(benchmarks seqan3::seqan3)
-target_link_libraries(benchmarks Threads::Threads)
+benchmark_case(construction_benchmarks.cpp)
