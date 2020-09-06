@@ -7,6 +7,7 @@
 #include <queue>
 #include <stack>
 #include <tuple>
+#include <typeinfo>
 #include <vector>
 
 #include <seqan3/alphabet/composite/alphabet_variant.hpp>
@@ -29,7 +30,6 @@ template <typename alph> std::string get_alphabet_name() {
 }
 template <> std::string get_alphabet_name<seqan3::dna5>() { return "DNA5"; }
 template <> std::string get_alphabet_name<seqan3::dna4>() { return "DNA4"; }
-
 
 /**! \brief Lazy Suffix Tree implementation using the WOTD algorithm.
  *

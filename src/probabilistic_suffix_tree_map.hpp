@@ -70,7 +70,7 @@ public:
                              lst::details::sequence_t<alphabet_t> &sequence)
 
       : ProbabilisticSuffixTreeMap(id, sequence, 15, 100, 1.2, 0, "cutoff",
-                                   true, 2) {} // TODO get number of cores
+                                   true, 2) {}
 
   /*!\brief Constructor.
    * \param[in] id_ The id of the model.
@@ -90,8 +90,8 @@ public:
                              size_t max_depth_, size_t freq_,
                              size_t number_of_parameters_,
                              std::string pruning_method_,
-                             bool multi_core_ = true, int split_depth_ = 2)
-      : lst::LazySuffixTree<alphabet_t>(sequence_, multi_core_, split_depth_),
+                             bool multi_core_ = true, int parallel_depth = 2)
+      : lst::LazySuffixTree<alphabet_t>(sequence_, multi_core_, parallel_depth),
         id(std::move(id_)), freq(freq_), max_depth(max_depth_),
         number_of_parameters(number_of_parameters_),
         pruning_method(std::move(pruning_method_)) {
@@ -112,7 +112,7 @@ public:
    * \param[in] id The id of the model.
    * \param[in] sequence The text to construct from.
    */
-  ProbabilisticSuffixTreeMap(std::filesystem::path filename) {
+  ProbabilisticSuffixTreeMap(std::filesystem::path &filename) {
     std::ifstream input(filename);
     if (!input.is_open()) {
       throw std::invalid_argument{"Failed to open file."};

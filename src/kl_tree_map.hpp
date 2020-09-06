@@ -28,7 +28,7 @@ public:
   KullbackLieblerTreeMap(std::string id,
                          lst::details::sequence_t<alphabet_t> &sequence)
       : ProbabilisticSuffixTreeMap<alphabet_t>(id, sequence),
-        cutoff_value(1.2) {}
+        cutoff_value(3.9075) {}
 
   /*!\brief Constructor for parameters pruning.
    * \param[in] id_ The id of the model.
@@ -87,12 +87,20 @@ public:
                          lst::details::sequence_t<alphabet_t> &sequence,
                          size_t max_depth, size_t freq, float cutoff_value_,
                          size_t number_of_parameters,
-                         std::string pruning_method, bool multi_core,
-                         int parallel_depth)
+                         std::string pruning_method, bool multi_core = true,
+                         int parallel_depth = 2)
       : ProbabilisticSuffixTreeMap<alphabet_t>(
             id, sequence, max_depth, freq, number_of_parameters, pruning_method,
             multi_core, parallel_depth),
         cutoff_value(cutoff_value_) {}
+
+  /*!\brief Reads a tree form a file.
+   * \param[in] id The id of the model.
+   * \param[in] sequence The text to construct from.
+   */
+  KullbackLieblerTreeMap(std::filesystem::path &filename)
+      : ProbabilisticSuffixTreeMap<alphabet_t>(filename), cutoff_value(3.9075) {
+  }
 
 protected:
   float cutoff_value = 1.2;
