@@ -534,7 +534,7 @@ protected:
 
       std::string child_label = label + c.to_char();
 
-      if (this->is_included(child_label) && this->counts[child_label] != 0) {
+      if (this->counts[child_label] != 0) {
         n_children += 1;
       }
     }
