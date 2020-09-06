@@ -15,7 +15,6 @@
 #include <string>
 #include <thread>
 #include <tuple>
-#include <typeinfo>
 #include <utility>
 #include <vector>
 
@@ -250,6 +249,25 @@ public:
     return n_terminal_nodes;
   }
 
+  /**! \brief Get the terminal nodes in the tree.
+   *
+   * \return vector of indices to all terminal nodes.
+   */
+  std::vector<std::string> get_terminal_nodes() {
+    std::vector<std::string> terminal{};
+
+    this->pst_breadth_first_iteration(
+        [&](const std::string &child_label, int level) -> bool {
+          if (this->is_terminal(child_label)) {
+            terminal.push_back(child_label);
+          }
+
+          return true;
+        });
+
+    return terminal;
+  }
+
   /**! \brief Iterates over the nodes in the PST.
    *
    * \param start_index Index of the node to start iteration at.
@@ -342,13 +360,27 @@ public:
     return label.substr(1);
   }
 
-  std::string id;
+  std::string get_closest_state(const std::string &label) {
+    for (int i = 0; i < label.size(); i++) {
+      if (this->status.find(label.substr(i)) != this->status.end()) {
+        return label.substr(i);
+      }
+    }
 
-  robin_hood::unordered_set<int> valid_characters{};
-  size_t freq;
-  size_t max_depth;
-  size_t number_of_parameters;
-  std::string pruning_method;
+    return "";
+  }
+
+  float get_transition_probability(const std::string &label, int char_rank) {
+    return this->probabilities[label][char_rank];
+  }
+
+  float get_transition_probability(const std::string& label, const char character) {
+    auto c = seqan3::assign_char_to(character, alphabet_t{});
+    auto char_rank = c.to_rank();
+    return this->probabilities[label][char_rank];
+  }
+
+  std::string id;
 
   robin_hood::unordered_set<std::string> status{};
   robin_hood::unordered_map<std::string, int> counts{};
@@ -356,8 +388,15 @@ public:
       std::string, std::array<float, seqan3::alphabet_size<alphabet_t>>>
       probabilities{};
 
+  robin_hood::unordered_set<int> valid_characters{};
+
 protected:
   friend class ProbabilisticSuffixTreeTest;
+  size_t freq;
+  size_t max_depth;
+  size_t number_of_parameters;
+
+  std::string pruning_method;
   /**! \brief Support pruning phase of the algorithm.
    * \details
    * Extends a lazy suffix tree as long as the counts of each node is above
