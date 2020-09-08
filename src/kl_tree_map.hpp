@@ -123,8 +123,7 @@ protected:
     }
 
     while (!bottom_up.empty()) {
-      auto node_label = bottom_up.front();
-      bottom_up.pop();
+      auto &node_label = bottom_up.front();
 
       if (node_label.empty()) {
         continue;
@@ -140,6 +139,7 @@ protected:
           bottom_up.push(parent_label);
         }
       }
+      bottom_up.pop();
     }
   }
 

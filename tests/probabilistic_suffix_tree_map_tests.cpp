@@ -260,6 +260,24 @@ TEST(ProbabilisticSuffixTreeLiveTest, EColi) {
   }
 }
 
+void compare_trees(pst::ProbabilisticSuffixTreeMap<seqan3::dna5> left,
+                   pst::ProbabilisticSuffixTreeMap<seqan3::dna5> right) {
+  // Left can contain other, non-essential counts.
+  for (auto &[k, v] : right.counts) {
+    EXPECT_EQ(left.counts[k], v);
+  }
+
+  for (auto &v : left.status) {
+    EXPECT_TRUE(right.status.find(v) != right.status.end());
+  }
+
+  for (auto &[k, v] : right.probabilities) {
+    for (int i = 0; i < v.size(); i++) {
+      EXPECT_FLOAT_EQ(left.probabilities[k][i], v[i]);
+    }
+  }
+}
+
 TEST_F(ProbabilisticSuffixTreeTestMap, FromTreeToStreamToTree) {
   std::filesystem::path filename{"./test.tree"};
 
@@ -273,20 +291,18 @@ TEST_F(ProbabilisticSuffixTreeTestMap, FromTreeToStreamToTree) {
 
   pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree_stream{filename};
 
-  // Tree may contain other, non-essential counts.
-  for (auto &[k, v] : tree_stream.counts) {
-    EXPECT_EQ(tree.counts[k], v);
-  }
-
-  for (auto &v : tree.status) {
-    EXPECT_TRUE(tree_stream.status.find(v) != tree_stream.status.end());
-  }
-
-  for (auto &[k, v] : tree_stream.probabilities) {
-    for (int i = 0; i < v.size(); i++) {
-      EXPECT_FLOAT_EQ(tree.probabilities[k][i], v[i]);
-    }
-  }
+  compare_trees(tree, tree_stream);
 
   std::filesystem::remove(filename);
+}
+
+TEST_F(ProbabilisticSuffixTreeTestMap, FromTreeToStringToTree) {
+  pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree{
+      "TEST", long_sequence, 15, 4, 192, "parameters", false};
+  tree.construct_tree();
+  auto tree_out = tree.to_tree();
+
+  pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree_string{tree_out};
+
+  compare_trees(tree, tree_string);
 }

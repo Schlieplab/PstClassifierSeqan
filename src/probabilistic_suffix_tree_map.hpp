@@ -6,6 +6,7 @@
 #include <cmath>
 #include <ctime>
 #include <filesystem>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <mutex>
@@ -22,10 +23,10 @@
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/range/views/convert.hpp>
-#include <seqan3/range/views/to.hpp>
 #include <seqan3/range/views/to_char.hpp>
 
 #include <robin_hood.h>
+#include <seqan3/range/views/to.hpp>
 
 #include "search/lazy_suffix_tree.hpp"
 #include "search/lazy_suffix_tree/iteration.hpp"
@@ -95,15 +96,9 @@ public:
         id(std::move(id_)), freq(freq_), max_depth(max_depth_),
         number_of_parameters(number_of_parameters_),
         pruning_method(std::move(pruning_method_)) {
-    using seqan3::operator""_dna4;
-    seqan3::dna4_vector dna4{"ACGT"_dna4};
-
-    std::vector<seqan3::gapped<alphabet_t>> characters{
-        dna4 | seqan3::views::convert<seqan3::gapped<alphabet_t>> |
-        seqan3::views::to<std::vector<seqan3::gapped<alphabet_t>>>};
-
+    auto characters = get_valid_characters();
     for (auto &c : characters) {
-      auto char_rank = seqan3::to_rank(c);
+      int char_rank = seqan3::to_rank(c);
       valid_characters.insert(char_rank);
     }
   }
@@ -118,19 +113,28 @@ public:
       throw std::invalid_argument{"Failed to open file."};
     }
 
-    using seqan3::operator""_dna4;
-    seqan3::dna4_vector dna4{"ACGT"_dna4};
-
-    std::vector<seqan3::gapped<alphabet_t>> characters{
-        dna4 | seqan3::views::convert<seqan3::gapped<alphabet_t>> |
-        seqan3::views::to<std::vector<seqan3::gapped<alphabet_t>>>};
-
+    auto characters = get_valid_characters();
     for (auto &c : characters) {
-      auto char_rank = seqan3::to_rank(c);
+      int char_rank = seqan3::to_rank(c);
       valid_characters.insert(char_rank);
     }
 
     for (std::string line; std::getline(input, line, '\n');) {
+      parse_line(line, characters);
+    }
+  }
+
+  /*!\brief Reads a from the tree format.
+   * \param[in] sequence The text to construct from.
+   */
+  ProbabilisticSuffixTreeMap(std::string &tree) {
+    auto characters = get_valid_characters();
+    for (auto &c : characters) {
+      int char_rank = seqan3::to_rank(c);
+      valid_characters.insert(char_rank);
+    }
+    std::stringstream tree_stream{tree};
+    for (std::string line; std::getline(tree_stream, line, '\n');) {
       parse_line(line, characters);
     }
   }
@@ -413,6 +417,22 @@ protected:
   size_t number_of_parameters;
 
   std::string pruning_method;
+
+  /**! \brief Set the characters that are considered valid.
+   * This needs to be modified to accept a custom set of valid characters.
+   * \return vector of valid characters.
+   */
+  std::vector<seqan3::gapped<alphabet_t>> get_valid_characters() const {
+    using seqan3::operator""_dna4;
+    seqan3::dna4_vector dna4{"ACGT"_dna4};
+
+    std::vector<seqan3::gapped<alphabet_t>> characters{
+        dna4 | seqan3::views::convert<seqan3::gapped<alphabet_t>> |
+        ranges::_to_::to<std::vector<seqan3::gapped<alphabet_t>>>};
+
+    return characters;
+  }
+
   /**! \brief Support pruning phase of the algorithm.
    * \details
    * Extends a lazy suffix tree as long as the counts of each node is above
@@ -978,14 +998,19 @@ protected:
    */
   void parse_line(const std::string &line,
                   std::vector<seqan3::gapped<alphabet_t>> &characters) {
-    if (line.substr(0, 5) != "Node:") {
-      return;
+    if (line.substr(0, 5) == "Node:") {
+      parse_node(line, characters);
+    } else if (line.substr(0, 5) == "Name:") {
+      this->id = line.substr(6);
     }
+  }
 
+  void parse_node(const std::string &line,
+                  std::vector<seqan3::gapped<alphabet_t>> &characters) {
     std::stringstream line_stream{line};
 
     std::string node_label{"-1"};
-    int node_count = 0;
+    int node_count;
 
     std::string word, prev_word;
 
