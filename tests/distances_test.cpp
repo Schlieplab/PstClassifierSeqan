@@ -29,20 +29,20 @@ protected:
 };
 
 TEST_F(DistancesTest, CVSymmetry) {
-  auto result_forward = pst::cv(first, second);
-  auto result_backward = pst::cv(second, first);
-  EXPECT_NE(result_forward, result_backward);
+  auto result_forward = pst::distances::cv(first, second);
+  auto result_backward = pst::distances::cv(second, first);
+  EXPECT_FLOAT_EQ(result_forward, result_backward);
 }
 
 TEST_F(DistancesTest, CVIdentity) {
-  auto result_zero = pst::cv(first, first);
+  auto result_zero = pst::distances::cv(first, first);
   EXPECT_EQ(result_zero, 0);
 }
 
 TEST_F(DistancesTest, CVSnapshots) {
   float expected_dissimilar = 0.46000117222458986;
-  EXPECT_FLOAT_EQ(expected_dissimilar, pst::cv(first, third));
+  EXPECT_FLOAT_EQ(expected_dissimilar, pst::distances::cv(first, third));
 
   float expected_similar = 0.10424618759761345;
-  EXPECT_FLOAT_EQ(expected_similar, pst::cv(first, second));
+  EXPECT_FLOAT_EQ(expected_similar, pst::distances::cv(first, second));
 }

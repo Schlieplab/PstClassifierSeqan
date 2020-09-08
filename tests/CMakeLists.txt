@@ -60,6 +60,7 @@ macro(test_case unit_test)
   target_link_libraries(${target} gtest_main)
   target_link_libraries(${target} seqan3::seqan3)
   target_link_libraries(${target} Threads::Threads)
+  target_link_libraries(${target} Eigen3::Eigen)
 
   add_test(NAME ${target} COMMAND ${target})
 
@@ -74,6 +75,7 @@ macro(benchmark_case case)
   target_link_libraries(${target} benchmark)
   target_link_libraries(${target} seqan3::seqan3)
   target_link_libraries(${target} Threads::Threads)
+  target_link_libraries(${target} Eigen3::Eigen)
 
   unset (case)
   unset (target)

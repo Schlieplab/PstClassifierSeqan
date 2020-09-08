@@ -157,7 +157,7 @@ public:
     std::cout << std::endl;
 
     this->breadth_first_iteration_label(
-        root, 0, [&](const std::string &label, int level) -> bool {
+        root, 0, [&](const std::string label, int level) -> bool {
           if (this->is_excluded(label)) {
             return true;
           }
@@ -214,14 +214,14 @@ public:
     robin_hood::unordered_map<std::string, int> iteration_order_indices{};
     int i = 0;
     this->pst_breadth_first_iteration(
-        [&](const std::string &child_label, int level) -> bool {
+        [&](const std::string child_label, int level) -> bool {
           iteration_order_indices[child_label] = i;
           i++;
           return true;
         });
 
     this->pst_breadth_first_iteration(
-        [&](const std::string &child_label, int level) -> bool {
+        [&](const std::string child_label, int level) -> bool {
           this->append_node_string(child_label, iteration_order_indices,
                                    tree_string);
           return true;
@@ -238,7 +238,7 @@ public:
     int n_terminal_nodes = 0;
 
     this->pst_breadth_first_iteration(
-        [&](const std::string &child_label, int level) -> bool {
+        [&](const std::string child_label, int level) -> bool {
           if (this->is_terminal(child_label)) {
             n_terminal_nodes += 1;
           }
@@ -249,23 +249,32 @@ public:
     return n_terminal_nodes;
   }
 
+  std::vector<std::string> terminal_nodes{};
   /**! \brief Get the terminal nodes in the tree.
    *
-   * \return vector of indices to all terminal nodes.
+   * \return vector of all terminal nodes, sorted.
    */
   std::vector<std::string> get_terminal_nodes() {
-    std::vector<std::string> terminal{};
+    if (terminal_nodes.size() > 0) {
+      return terminal_nodes;
+    }
+
+    std::vector<std::string> nodes{};
 
     this->pst_breadth_first_iteration(
-        [&](const std::string &child_label, int level) -> bool {
+        [&](const std::string child_label, int level) -> bool {
           if (this->is_terminal(child_label)) {
-            terminal.push_back(child_label);
+            nodes.push_back(std::move(child_label));
           }
 
           return true;
         });
 
-    return terminal;
+    std::sort(nodes.begin(), nodes.end());
+
+    terminal_nodes = nodes;
+
+    return nodes;
   }
 
   /**! \brief Iterates over the nodes in the PST.
@@ -274,7 +283,7 @@ public:
    *
    */
   void pst_breadth_first_iteration(
-      const std::function<bool(const std::string &, int)> &f) {
+      const std::function<bool(const std::string, int)> &f) {
     std::string root{""};
     pst_breadth_first_iteration(root, 0, f);
   }
@@ -290,51 +299,57 @@ public:
    */
   void pst_breadth_first_iteration(
       const std::string &start_label, const int start_level,
-      const std::function<bool(const std::string &, int)> &f) {
+      const std::function<bool(const std::string, int)> &f) {
     std::queue<std::tuple<std::string, int>> queue{};
 
     queue.emplace(start_label, start_level);
 
     while (!queue.empty()) {
       auto &[label, level] = queue.front();
-      queue.pop();
 
-      if (f(label, level)) {
-        this->iterate_pst_children(
-            label, [&, level = level](const std::string &child_label) {
-              if (is_included(child_label)) {
-                queue.emplace(child_label, level + 1);
-              }
-            });
+      std::vector<std::string> children{};
+      this->iterate_pst_children(label, [&](const std::string child_label) {
+        children.emplace_back(std::move(child_label));
+      });
+
+      if (f(std::move(label), level)) {
+        for (auto &child : children) {
+          queue.emplace(std::move(child), level + 1);
+        }
       }
+      queue.pop();
     }
   }
 
   void breadth_first_iteration_label(
-      const std::function<bool(const std::string &, int)> &f) {
+      const std::function<bool(const std::string, int)> &f) {
     std::string root{""};
     this->breadth_first_iteration_label(root, 0, f);
   }
 
   void breadth_first_iteration_label(
       const std::string &start_label, const int start_level,
-      const std::function<bool(const std::string &, int)> &f) {
+      const std::function<bool(const std::string, int)> &f) {
     std::queue<std::tuple<std::string, int>> queue{};
 
     queue.emplace(start_label, start_level);
 
     while (!queue.empty()) {
-      auto [label, level] = queue.front();
-      queue.pop();
+      auto &[label, level] = queue.front();
 
-      if (f(label, level)) {
-        this->iterate_children(
-            label, [&, level = level](const std::string &child_label) {
-              if (is_included(child_label)) {
-                queue.emplace(child_label, level + 1);
-              }
-            });
+      std::vector<std::string> children{};
+      this->iterate_children(label, [&](const std::string child_label) {
+        if (is_included(child_label)) {
+          children.emplace_back(std::move(child_label));
+        }
+      });
+
+      if (f(std::move(label), level)) {
+        for (auto &child : children) {
+          queue.emplace(std::move(child), level + 1);
+        }
       }
+      queue.pop();
     }
   }
 
@@ -345,8 +360,8 @@ public:
    */
   std::vector<std::string> get_pst_children(const std::string &label) {
     std::vector<std::string> children{};
-    this->iterate_pst_children(label, [&](const std::string &child_label) {
-      children.push_back(child_label);
+    this->iterate_pst_children(label, [&](const std::string child_label) {
+      children.push_back(std::move(child_label));
     });
     return children;
   }
@@ -374,7 +389,8 @@ public:
     return this->probabilities[label][char_rank];
   }
 
-  float get_transition_probability(const std::string& label, const char character) {
+  float get_transition_probability(const std::string &label,
+                                   const char character) {
     auto c = seqan3::assign_char_to(character, alphabet_t{});
     auto char_rank = c.to_rank();
     return this->probabilities[label][char_rank];
@@ -491,7 +507,7 @@ protected:
     this->assign_node_probabilities("");
 
     this->breadth_first_iteration_label(
-        [&](const std::string &label, int level) {
+        [&](const std::string label, int level) {
           this->assign_node_probabilities(label);
           return true;
         });
@@ -581,8 +597,7 @@ protected:
     int alphabet_size = this->valid_characters.size() - 1;
     while (!queue.empty() &&
            n_terminal_nodes * alphabet_size > this->number_of_parameters) {
-      auto [node_label, delta] = queue.top();
-      queue.pop();
+      auto &[node_label, delta] = queue.top();
 
       if (node_label.empty()) {
         continue;
@@ -598,6 +613,7 @@ protected:
       if (!this->became_terminal(parent_label, node_label)) {
         n_terminal_nodes -= 1;
       }
+      queue.pop();
     }
   }
 
@@ -637,9 +653,9 @@ protected:
     std::vector<std::string> bottom_nodes{};
 
     this->pst_breadth_first_iteration(
-        [&](const std::string &child_label, int level) -> bool {
+        [&](const std::string child_label, int level) -> bool {
           if (this->is_pst_leaf(child_label)) {
-            bottom_nodes.emplace_back(child_label);
+            bottom_nodes.emplace_back(std::move(child_label));
           }
 
           return true;
@@ -862,7 +878,7 @@ protected:
   int nodes_in_tree() {
     int n_nodes = 0;
     this->pst_breadth_first_iteration(
-        [&](const std::string &node_label, int level) -> bool {
+        [&](const std::string node_label, int level) -> bool {
           if (is_included(node_label)) {
             n_nodes += 1;
           }
@@ -941,14 +957,14 @@ protected:
    * \param f function to call on every child.
    */
   void iterate_pst_children(const std::string &label,
-                            const std::function<void(const std::string &)> &f) {
+                            const std::function<void(const std::string)> &f) {
     for (auto char_rank : this->valid_characters) {
       alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
 
-      std::string child_label = c.to_char() + label;
+      std::string child_label{c.to_char() + label};
 
       if (is_included(child_label)) {
-        f(child_label);
+        f(std::move(child_label));
       }
     }
   }
