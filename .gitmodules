@@ -2,7 +2,15 @@
 	path = seqan3
 	url = git@github.com:seqan/seqan3.git
 	branch = master
+[submodule "HighFive"]
+	path = HighFive
+	url = git@github.com:BlueBrain/HighFive.git
+	branch = master
 [submodule "robin-hood-hashing"]
 	path = robin-hood-hashing
 	url = git@github.com:martinus/robin-hood-hashing
-	branch = a695906
+	branch = master
+[submodule "eigen"]
+	path = eigen
+	url = git@gitlab.com:libeigen/eigen.git
+	branch = 3.3
