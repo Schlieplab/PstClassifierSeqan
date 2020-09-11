@@ -1,1 +1,2 @@
 test_case(lazy_suffix_tree_tests.cpp)
+benchmark_case(building_benchmarks.cpp)
