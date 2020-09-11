@@ -64,7 +64,6 @@ public:
         parallel_depth(parallel_depth) {
 
     suffixes = std::vector<int>(this->sequence.size() + 1);
-    std::iota(this->suffixes.begin(), this->suffixes.end(), 0);
 
     lst::details::expand_root(this->sequence, this->suffixes, this->table,
                               this->flags);

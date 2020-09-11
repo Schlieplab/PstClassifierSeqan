@@ -10,14 +10,12 @@
 
 namespace lst::details {
 
-std::mutex expand_table_mutex;
-
 template <seqan3::alphabet alphabet_t>
 using sequence_t = std::vector<alphabet_t>;
 
-template <seqan3::alphabet alphabet_t = seqan3::dna5>
+template <class T = int, seqan3::alphabet alphabet_t = seqan3::dna5>
 using alphabet_array =
-    std::array<int, seqan3::alphabet_size<seqan3::gapped<alphabet_t>>>;
+    std::array<T, seqan3::alphabet_size<seqan3::gapped<alphabet_t>>>;
 
 enum Flag : unsigned char {
   NONE = 0,
@@ -129,22 +127,22 @@ void add_children(const alphabet_array<alphabet_t> &counts, int lower_bound,
     index += count;
   }
 
-  int right_most_child_index = flags.size() - 2;
+  auto right_most_child_index = flags.size() - 2;
 
-  if (last_added_leaf) {
-    // Should be 1, but I've added a value to leaves to allow for
-    // explicit nodes.
-    right_most_child_index = flags.size() - 2;
-  }
+  //  if (last_added_leaf) {
+  //    // Should be 1, but I've added a value to leaves to allow for
+  //    // explicit nodes.
+  //    right_most_child_index = flags.size() - 2;
+  //  }
 
   flags[right_most_child_index] =
       Flag(flags[right_most_child_index] | Flag::RIGHT_MOST_CHILD);
 }
 
 template <seqan3::alphabet alphabet_t>
-alphabet_array<alphabet_t>
-suffix_pointers(const alphabet_array<alphabet_t> &counts) {
-  alphabet_array<alphabet_t> pointers{};
+alphabet_array<int, alphabet_t>
+suffix_pointers(const alphabet_array<int, alphabet_t> &counts) {
+  alphabet_array<int, alphabet_t> pointers{};
 
   int counter = 0;
   for (int i = 0; i < counts.size(); i++) {
@@ -156,41 +154,71 @@ suffix_pointers(const alphabet_array<alphabet_t> &counts) {
 }
 
 template <seqan3::alphabet alphabet_t>
-void sort_suffixes(alphabet_array<alphabet_t> counts, int lower_bound,
-                   int upper_bound, const sequence_t<alphabet_t> &sequence,
+void sort_suffixes(const alphabet_array<int, alphabet_t> &counts,
+                   int lower_bound, int upper_bound,
+                   const sequence_t<alphabet_t> &sequence,
                    std::vector<int> &suffixes) {
   std::vector<int> temp_suffixes(suffixes.begin() + lower_bound,
                                  suffixes.begin() + upper_bound);
 
   auto pointers = suffix_pointers<alphabet_t>(counts);
+  for (auto &p : pointers) {
+    p += lower_bound;
+  }
 
-  for (int i = lower_bound; i < upper_bound; i++) {
-    auto character = get_character(sequence, temp_suffixes[i - lower_bound]);
-    int character_rank = seqan3::to_rank(character);
+  for (int suffix : temp_suffixes) {
+    auto character_rank = get_character_rank(sequence, suffix);
 
-    int suffix_index = pointers[character_rank] + lower_bound;
-    assert(suffix_index < upper_bound);
+    int suffix_index = pointers[character_rank]++;
 
-    suffixes[suffix_index] = temp_suffixes[i - lower_bound];
+    suffixes[suffix_index] = suffix;
+  }
+}
+
+template <seqan3::alphabet alphabet_t>
+void sort_suffixes_root(const alphabet_array<int, alphabet_t> &counts,
+                        const sequence_t<alphabet_t> &sequence,
+                        std::vector<int> &suffixes) {
+  // Haven't got suffixes before root is created.
+  auto pointers = suffix_pointers<alphabet_t>(counts);
+
+  for (int i = 0; i < suffixes.size(); i++) {
+    auto character_rank = get_character_rank(sequence, i);
+
+    int suffix_index = pointers[character_rank];
+
+    suffixes[suffix_index] = i;
 
     pointers[character_rank] += 1;
   }
 }
 
 template <seqan3::alphabet alphabet_t>
-alphabet_array<alphabet_t>
+alphabet_array<int, alphabet_t>
 count_suffixes(int lower_bound, int upper_bound,
                const sequence_t<alphabet_t> &sequence,
                const std::vector<int> &suffixes) {
   assert(upper_bound <= suffixes.size());
   assert(lower_bound >= 0);
 
-  alphabet_array<alphabet_t> count{};
-  count.fill(0);
+  alphabet_array<int, alphabet_t> count{};
 
   for (int i = lower_bound; i < upper_bound; i++) {
-    auto character = get_character(sequence, suffixes[i]);
-    int character_rank = seqan3::to_rank(character);
+    auto character_rank = get_character_rank(sequence, suffixes[i]);
+    count[character_rank] += 1;
+  }
+
+  return count;
+}
+
+template <seqan3::alphabet alphabet_t>
+alphabet_array<int, alphabet_t>
+count_suffixes_root(const sequence_t<alphabet_t> &sequence) {
+  // Haven't got suffixes before root is created.
+  alphabet_array<int, alphabet_t> count{};
+
+  for (int i = 0; i < sequence.size() + 1; i++) {
+    auto character_rank = get_character_rank(sequence, i);
     count[character_rank] += 1;
   }
 
@@ -202,11 +230,10 @@ void expand_root(const sequence_t<alphabet_t> &sequence,
                  std::vector<int> &suffixes, std::vector<int> &table,
                  std::vector<Flag> &flags) {
   int lower_bound = 0;
-  int upper_bound = suffixes.size();
 
-  auto counts = count_suffixes(lower_bound, upper_bound, sequence, suffixes);
+  auto counts = count_suffixes_root(sequence);
 
-  sort_suffixes(counts, lower_bound, upper_bound, sequence, suffixes);
+  sort_suffixes_root(counts, sequence, suffixes);
 
   add_children<alphabet_t>(counts, lower_bound, suffixes, table, flags);
 }
