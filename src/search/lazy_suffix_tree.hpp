@@ -340,13 +340,18 @@ public:
     return lst::details::node_occurrences(node_index, this->table, this->flags);
   }
 
+  int node_occurrences(int node_index, std::vector<int> &table_,
+                       std::vector<lst::details::Flag> &flags_) {
+    return lst::details::node_occurrences(node_index, table_, flags_);
+  }
+
   lst::details::sequence_t<alphabet_t> sequence;
   std::vector<int> suffixes{};
   std::vector<int> table{0, 2};
   std::vector<lst::details::Flag> flags{lst::details::Flag::RIGHT_MOST_CHILD,
                                         lst::details::Flag::NONE};
   std::vector<int> suffix_links{};
-  std::vector<lst::details::alphabet_array<alphabet_t>> reverse_suffix_links{};
+  std::vector<lst::details::alphabet_array<int, alphabet_t>> reverse_suffix_links{};
 
 protected:
   bool multi_core;
