@@ -81,7 +81,6 @@ macro(benchmark_case case)
   unset (target)
 endmacro(benchmark_case)
 
-test_case(probabilistic_suffix_tree_tests.cpp)
 test_case(probabilistic_suffix_tree_map_tests.cpp)
 test_case(distances_test.cpp)
 

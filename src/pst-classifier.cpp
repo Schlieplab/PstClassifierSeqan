@@ -11,10 +11,8 @@
 
 #include <seqan3/std/filesystem>
 
-#include "kl_tree.hpp"
 #include "kl_tree_map.hpp"
-#include "probabilistic_suffix_tree.hpp"
-#include "ps_tree.hpp"
+#include "probabilistic_suffix_tree_map.hpp"
 
 struct input_arguments {
   size_t max_depth{15};
@@ -105,18 +103,6 @@ std::string train(lst::details::sequence_t<seqan3::dna5> sequence,
                   bool multi_core, int parallel_depth) {
 
   if (estimator == "KL") {
-    pst::KullbackLieblerTree<seqan3::dna5> pst{id,
-                                               sequence,
-                                               max_depth,
-                                               min_count,
-                                               threshold,
-                                               number_of_parameters,
-                                               pruning_method,
-                                               multi_core,
-                                               parallel_depth};
-    pst.construct_tree();
-    return pst.to_tree();
-  } else if (estimator == "KLMAP") {
     pst::KullbackLieblerTreeMap<seqan3::dna5> pst{id,
                                                   sequence,
                                                   max_depth,
@@ -126,17 +112,6 @@ std::string train(lst::details::sequence_t<seqan3::dna5> sequence,
                                                   pruning_method,
                                                   multi_core,
                                                   parallel_depth};
-    pst.construct_tree();
-    return pst.to_tree();
-  } else if (estimator == "PS") {
-    pst::PeresShieldsTree<seqan3::dna5> pst{id,
-                                            sequence,
-                                            max_depth,
-                                            min_count,
-                                            number_of_parameters,
-                                            pruning_method,
-                                            multi_core,
-                                            parallel_depth};
     pst.construct_tree();
     return pst.to_tree();
   } else {
