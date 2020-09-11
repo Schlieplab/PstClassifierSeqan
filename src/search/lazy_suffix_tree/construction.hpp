@@ -90,16 +90,17 @@ template <seqan3::alphabet alphabet_t>
 int longest_common_prefix(int lower_bound, int upper_bound,
                           const sequence_t<alphabet_t> &sequence,
                           const std::vector<int> &suffixes) {
-  for (int prefix_length = 0;; prefix_length++) {
+  for (int prefix_length = 1;; prefix_length++) {
     if (prefix_length + suffixes[upper_bound - 1] >= suffixes.size()) {
       return prefix_length - 1;
     }
 
-    auto character =
-        get_character(sequence, suffixes[lower_bound] + prefix_length);
+    auto character_rank =
+        get_character_rank(sequence, suffixes[lower_bound] + prefix_length);
 
     for (int i = lower_bound + 1; i < upper_bound; i++) {
-      if (get_character(sequence, suffixes[i] + prefix_length) != character) {
+      if (get_character_rank(sequence, suffixes[i] + prefix_length) !=
+          character_rank) {
         return prefix_length;
       }
     }
