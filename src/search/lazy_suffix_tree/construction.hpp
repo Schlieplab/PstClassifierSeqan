@@ -76,6 +76,17 @@ seqan3::gapped<alphabet_t> get_character(const sequence_t<alphabet_t> &sequence,
 }
 
 template <seqan3::alphabet alphabet_t>
+inline int get_character_rank(const sequence_t<alphabet_t> &sequence,
+                              int index) {
+  // In testing, this is faster than manually checking bounds
+  try {
+    return sequence.at(index).to_rank();
+  } catch (std::out_of_range const &error) {
+    return seqan3::alphabet_size<alphabet_t>;
+  }
+}
+
+template <seqan3::alphabet alphabet_t>
 int longest_common_prefix(int lower_bound, int upper_bound,
                           const sequence_t<alphabet_t> &sequence,
                           const std::vector<int> &suffixes) {

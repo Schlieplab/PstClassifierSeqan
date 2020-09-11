@@ -31,8 +31,6 @@
 #include "search/lazy_suffix_tree.hpp"
 #include "search/lazy_suffix_tree/iteration.hpp"
 
-std::mutex counts_mutex_map;
-
 namespace pst {
 
 /*!\brief The probabilistic suffix tree implementation.
@@ -474,45 +472,36 @@ protected:
    * Also saves the count of the node as well as if it is included or excluded.
    */
   void build_tree() {
+    std::mutex counts_mutex{};
     this->breadth_first_iteration(
-        0, 0, true, [&](int node_index, int lcp, int &edge_lcp) -> bool {
-          int count = this->node_occurrences(node_index);
+        0, 0, true,
+        [&](int node_index, int lcp, int edge_lcp, auto &table_,
+            auto &flags_) -> bool {
+          int count = this->node_occurrences(node_index, table_, flags_);
 
-          if (this->is_leaf(node_index) && edge_lcp == 1) {
+          if (this->is_leaf(node_index, flags_) && edge_lcp == 1) {
             return false;
           }
 
-          if (this->is_leaf(node_index)) {
-            edge_lcp = this->sequence.size() - this->table[node_index] + 1;
+          if (this->is_leaf(node_index, flags_)) {
+            edge_lcp = this->sequence.size() - table_[node_index] + 1;
           }
           bool include_sub_node = true;
 
           for (int i = 1; i <= edge_lcp && include_sub_node; i++) {
-            include_sub_node = this->check_node(node_index, lcp, i, count);
-            auto label = this->node_label(node_index, lcp, i);
-            std::lock_guard counts_lock{counts_mutex_map};
+            include_sub_node =
+                this->include_node(node_index, lcp, i, count, table_);
+
+            auto label = this->node_label(node_index, lcp, i, table_, flags_);
+            std::lock_guard counts_lock{counts_mutex};
+            this->counts[label] = count;
             if (include_sub_node) {
               this->status.insert(label);
             }
-            this->counts[label] = count;
           }
 
-          return this->check_node(node_index, lcp, edge_lcp, count);
+          return include_sub_node;
         });
-  }
-
-  /**! Check if the node with node_index should be included.
-   *
-   * \param node_index The index of the node.
-   * \param lcp The LCP of the node.
-   * \param edge_lcp The edge length (lcp) of the node.
-   * \return if the node was included.
-   */
-  bool check_node(int node_index, int lcp, int edge_lcp, int count) {
-    int label_start = this->table[node_index] - lcp;
-    int label_end = this->table[node_index] + edge_lcp;
-
-    return this->include_node(label_start, label_end, count);
   }
 
   /**! \brief Computes and saves the forward probabilities of each node.
@@ -920,11 +909,15 @@ protected:
    * \param count number of times the label occurs in the sequence.
    * \return true if the node should be included.
    */
-  bool include_node(int label_start, int label_end, int count) {
+  bool include_node(int node_index, int lcp, int edge_lcp, int count,
+                    std::vector<int> &table_) {
+    int label_start = table_[node_index] - lcp;
+    int label_end = table_[node_index] + edge_lcp;
     int label_length = label_end - label_start;
 
+    // All characters before table_[node_index] have already been checked.
     return label_length < this->max_depth && count >= this->freq &&
-           label_valid(label_start, label_end);
+           label_valid(table_[node_index], label_end);
   }
 
   /**! \brief Checks if a label is valid.
@@ -934,12 +927,9 @@ protected:
    * \return true if the label is valid, false otherwise.
    */
   bool label_valid(int label_start, int label_end) {
-    // TODO this can be more efficient if we know the edge_lcp, everything
-    // before has already been checked...
     for (int i = label_start; i < label_end; i++) {
-      auto character = this->get_character(i);
-      auto char_rank = seqan3::to_rank(character);
-      if (this->valid_characters.find(char_rank) ==
+      auto character_rank = this->get_character_rank(i);
+      if (this->valid_characters.find(character_rank) ==
           this->valid_characters.end()) {
         return false;
       }
