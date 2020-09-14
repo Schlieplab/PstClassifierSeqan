@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <iostream>
+
 #include "../../../src/search/lazy_suffix_tree/construction.hpp"
 using namespace lst::details;
 
@@ -11,15 +13,15 @@ using seqan3::operator""_dna5;
 
 class ConstructionTests : public ::testing::Test {
 protected:
-  void SetUp() override {
-  }
+  void SetUp() override {}
 
   sequence_t<seqan3::dna5> sequence{"CACAC"_dna5};
   std::vector<int> suffixes{0, 1, 2, 3, 4, 5};
-  std::vector<int> table{0, 2, 2, 5, 5};
-  std::vector<Flag> flags{Flag::UNEVALUATED, Flag::NONE, Flag::UNEVALUATED,
-                          Flag::NONE,
-                          Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)};
+  Table<> table{{0, Flag::UNEVALUATED},
+                {2, Flag::NONE},
+                {2, Flag::UNEVALUATED},
+                {5, Flag::NONE},
+                {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)}};
 };
 
 TEST_F(ConstructionTests, CountSuffixes) {
@@ -75,14 +77,21 @@ TEST_F(ConstructionTests, AddLcpToSuffixes) {
 }
 
 TEST_F(ConstructionTests, AddChildren) {
-  table = std::vector<int>{};
-  flags = std::vector<Flag>{};
+  table = Table{};
   std::array<int, 6> counts = count_suffixes(0, 6, sequence, suffixes);
-  add_children<seqan3::dna5>(counts, 0, suffixes, table, flags);
+  add_children<seqan3::dna5>(counts, 0, suffixes, table);
+
+  std::vector<int> tree_values{};
+  std::vector<Flag> tree_flags{};
+  for (auto &e : table.table) {
+    tree_values.push_back(e.value);
+    tree_flags.push_back(e.flag);
+  }
 
   // Changed to allow for explicit labels in the tree
   std::vector<int> expected_table{0, 2, 2, 5, 5, 0};
-  EXPECT_EQ(table, expected_table);
+
+  EXPECT_EQ(tree_values, expected_table);
 
   std::vector<Flag> expected_flags{
       Flag::UNEVALUATED,
@@ -92,17 +101,23 @@ TEST_F(ConstructionTests, AddChildren) {
       Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
       Flag::NONE, // Added to allow for explicit labels in the tree
   };
-  EXPECT_EQ(flags, expected_flags);
+  EXPECT_EQ(tree_flags, expected_flags);
 }
 
 TEST_F(ConstructionTests, ExpandRoot) {
-  table = std::vector<int>{};
-  flags = std::vector<Flag>{};
-  expand_root(sequence, suffixes, table, flags);
+  table = Table{};
+  expand_root(sequence, suffixes, table);
+
+  std::vector<int> tree_values{};
+  std::vector<Flag> tree_flags{};
+  for (auto &e : table.table) {
+    tree_values.push_back(e.value);
+    tree_flags.push_back(e.flag);
+  }
 
   // Changed to allow for explicit labels in the tree
   std::vector<int> expected_table{0, 2, 2, 5, 5, 0};
-  EXPECT_EQ(table, expected_table);
+  EXPECT_EQ(tree_values, expected_table);
 
   std::vector<Flag> expected_flags{
       Flag::UNEVALUATED,
@@ -112,17 +127,16 @@ TEST_F(ConstructionTests, ExpandRoot) {
       Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
       Flag::NONE, // Added to allow for explicit labels in the tree
   };
-  EXPECT_EQ(flags, expected_flags);
+  EXPECT_EQ(tree_flags, expected_flags);
 
   std::vector<int> expected_suffixes{1, 3, 0, 2, 4, 5};
   EXPECT_EQ(suffixes, expected_suffixes);
 }
 
 TEST_F(ConstructionTests, ExpandTest) {
-  table = std::vector<int>{};
-  flags = std::vector<Flag>{};
-  expand_root(sequence, suffixes, table, flags);
-  expand_node(0, sequence, suffixes, table, flags);
+  table = Table{};
+  expand_root(sequence, suffixes, table);
+  expand_node(0, sequence, suffixes, table);
 
   // Changed to allow for explicit labels in the tree
   std::vector<int> expected_table{1, 6, 2, 5, 5, 0, 3, 0, 5, 0};
@@ -140,8 +154,15 @@ TEST_F(ConstructionTests, ExpandTest) {
       Flag::NONE, // Added to allow for explicit labels in the tree
   };
 
-  EXPECT_EQ(table, expected_table);
-  EXPECT_EQ(flags, expected_flags);
+  std::vector<int> tree_values{};
+  std::vector<Flag> tree_flags{};
+  for (auto &e : table.table) {
+    tree_values.push_back(e.value);
+    tree_flags.push_back(e.flag);
+  }
+
+  EXPECT_EQ(tree_values, expected_table);
+  EXPECT_EQ(tree_flags, expected_flags);
 }
 
 TEST_F(ConstructionTests, GetCharacter) {

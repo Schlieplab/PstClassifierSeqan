@@ -1,10 +1,8 @@
 #include <gtest/gtest.h>
 
-#include <vector>
-
-#include "../../../src/search/lazy_suffix_tree.hpp"
 #include "../../../src/search/lazy_suffix_tree/construction.hpp"
-#include "../../../src/search/lazy_suffix_tree/suffix_links.hpp"
+#include "../../../src/search/lazy_suffix_tree/iteration.hpp"
+#include <vector>
 
 using namespace lst::details;
 
@@ -13,58 +11,54 @@ using seqan3::operator""_dna5;
 
 class IterationTests : public ::testing::Test {
 protected:
-  void SetUp() override {
-  }
+  void SetUp() override {}
   sequence_t<seqan3::dna5> sequence{"CACAC"_dna5};
 
-  std::vector<int> table{0, 2, 1, 8,  0, 12, 5, 0, 3, 0,
-                         5, 0, 1, 16, 5, 0,  3, 0, 5, 0};
-  std::vector<Flag> flags{
-      Flag::RIGHT_MOST_CHILD,
-      Flag::NONE,
-      Flag::NONE,
-      Flag::NONE,
-      Flag::NONE,
-      Flag::NONE,
-      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
-      Flag::NONE, // Added to allow for explicit labels in the tree
-      Flag::LEAF,
-      Flag::NONE, // Added to allow for explicit labels in the tree
-      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
-      Flag::NONE, // Added to allow for explicit labels in the tree
-      Flag::NONE,
-      Flag::NONE,
-      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
-      Flag::NONE, // Added to allow for explicit labels in the tree
-      Flag::LEAF,
-      Flag::NONE, // Added to allow for explicit labels in the tree
-      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
-      Flag::NONE, // Added to allow for explicit labels in the tree
+  Table<> table{
+      {0, Flag::RIGHT_MOST_CHILD},
+      {2, Flag::NONE},
+      {1, Flag::NONE},
+      {8, Flag::NONE},
+      {0, Flag::NONE},
+      {12, Flag::NONE},
+      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
+      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
+      {3, Flag::LEAF},
+      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
+      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
+      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
+      {1, Flag::NONE},
+      {16, Flag::NONE},
+      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
+      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
+      {3, Flag::LEAF},
+      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
+      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
+      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
   };
   std::vector<int> suffixes{3, 5, 3, 5, 5, 5};
 };
 
 TEST_F(IterationTests, GetEdgeLCP) {
-  int root_edge_lcp = get_edge_lcp(0, sequence, suffixes, table, flags);
+  int root_edge_lcp = get_edge_lcp(0, sequence, suffixes, table);
   EXPECT_EQ(root_edge_lcp, 0);
 
-  int ac_edge_lcp = get_edge_lcp(2, sequence, suffixes, table, flags);
+  int ac_edge_lcp = get_edge_lcp(2, sequence, suffixes, table);
   EXPECT_EQ(ac_edge_lcp, 2);
 }
 
 TEST_F(IterationTests, NodeOccurrences) {
-  int root_occurrences = node_occurrences(0, table, flags);
+  int root_occurrences = node_occurrences(0, table);
   EXPECT_EQ(root_occurrences, 6);
 
-  int ac_occurrences = node_occurrences(2, table, flags);
+  int ac_occurrences = node_occurrences(2, table);
   EXPECT_EQ(ac_occurrences, 2);
 }
 
 TEST_F(IterationTests, IterateChildren) {
   std::vector<int> visited{};
 
-  iterate_children(0, table, flags,
-                   [&](int index) { visited.push_back(index); });
+  iterate_children(0, table, [&](int index) { visited.push_back(index); });
 
   std::vector<int> expected_visited{2, 4, 6};
 
@@ -73,7 +67,7 @@ TEST_F(IterationTests, IterateChildren) {
 
 TEST_F(IterationTests, BreadthFirstIteration) {
   std::vector<int> visited{};
-  breadth_first_iteration(sequence, suffixes, table, flags, true,
+  breadth_first_iteration(sequence, suffixes, table, true,
                           [&](int index, int lcp, int edge_lcp) -> bool {
                             visited.push_back(index);
                             return true;
@@ -89,7 +83,7 @@ TEST_F(IterationTests, BreadthFirstIterationParallel) {
   for (int i = 0; i < 6; i++) {
     std::set<int> visited{};
     breadth_first_iteration_parallel(
-        sequence, suffixes, table, flags, true,
+        sequence, suffixes, table, true,
         [&](int index, int lcp, int edge_lcp) -> bool {
           visited.insert(index);
           return true;

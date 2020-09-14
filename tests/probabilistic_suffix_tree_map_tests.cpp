@@ -43,15 +43,6 @@ protected:
   pst::ProbabilisticSuffixTreeMap<seqan3::dna4> probabilisticSuffixTreeParallel;
 };
 
-TEST_F(ProbabilisticSuffixTreeTestMap, ConstructorTable) {
-
-  std::vector<int> expected_table{0, 2, 1,  10, 0, 0, 2, 14, 7, 0, 2, 18, 7,
-                                  0, 4, 22, 3,  0, 6, 0, 3,  0, 5, 0, 7,  0};
-  probabilisticSuffixTree.construct_tree();
-
-  EXPECT_EQ(probabilisticSuffixTree.table, expected_table);
-}
-
 TEST_F(ProbabilisticSuffixTreeTestMap, ConstructorStatus) {
   robin_hood::unordered_set<std::string> expected_status{
       "", "A", "G", "T", "AT", "GA", "TA", "TT"};

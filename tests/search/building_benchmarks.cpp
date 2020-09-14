@@ -11,7 +11,7 @@ using seqan3::operator""_dna5;
 
 class LSTFixture : public benchmark::Fixture {
 public:
-  void SetUp(const ::benchmark::State &state) {
+  void SetUp(const ::benchmark::State &state) override {
     std::random_device rd;
     gen = std::mt19937{rd()};
     sequence = random_sequence(1000000);
@@ -45,94 +45,84 @@ BENCHMARK_F(LSTFixture, ExpandRoot)(benchmark::State &state) {
   for (auto _ : state) {
     state.PauseTiming();
 
-    std::vector<int> table{0, 2};
+    lst::details::Table<> table{{0, lst::details::Flag::RIGHT_MOST_CHILD},
+                                {2, lst::details::Flag::NONE}};
+
     std::vector<int> suffixes(sequence.size() + 1);
-    std::iota(suffixes.begin(), suffixes.end(), 0);
-    std::vector<lst::details::Flag> flags{lst::details::Flag::RIGHT_MOST_CHILD,
-                                          lst::details::Flag::NONE};
 
     state.ResumeTiming();
 
-    lst::details::expand_root(sequence, suffixes, table, flags);
+    lst::details::expand_root(sequence, suffixes, table);
   }
 }
 
 BENCHMARK_F(LSTFixture, ExpandNodeLevel1)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  int first_level_child = tree.table[1];
-  std::mutex mutex{};
+  int first_level_child = tree.table[1].value;
 
   for (auto _ : state) {
     state.PauseTiming();
 
     std::vector<int> suffixes_copy(tree.suffixes.begin(), tree.suffixes.end());
-    std::vector<int> table_copy(tree.table.begin(), tree.table.end());
-    std::vector<lst::details::Flag> flags_copy(tree.flags.begin(),
-                                               tree.flags.end());
+    lst::details::Table<> table_copy = tree.table;
 
     state.ResumeTiming();
 
     lst::details::expand_node(first_level_child, tree.sequence, suffixes_copy,
-                              table_copy, flags_copy, mutex);
+                              table_copy);
   }
 }
 
 BENCHMARK_F(LSTFixture, ExpandNodeLevel2)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  int first_level_child = tree.table[1];
-  std::mutex mutex{};
+  int first_level_child = tree.table[1].value;
 
   lst::details::expand_node(first_level_child, tree.sequence, tree.suffixes,
-                            tree.table, tree.flags, mutex);
-  int second_level_child = tree.table[first_level_child + 1];
+                            tree.table);
+  int second_level_child = tree.table[first_level_child + 1].value;
 
   for (auto _ : state) {
     state.PauseTiming();
 
     std::vector<int> suffixes_copy(tree.suffixes.begin(), tree.suffixes.end());
-    std::vector<int> table_copy(tree.table.begin(), tree.table.end());
-    std::vector<lst::details::Flag> flags_copy(tree.flags.begin(),
-                                               tree.flags.end());
+    lst::details::Table<> table_copy = tree.table;
 
     state.ResumeTiming();
 
     lst::details::expand_node(second_level_child, tree.sequence, suffixes_copy,
-                              table_copy, flags_copy, mutex);
+                              table_copy);
   }
 }
 
 BENCHMARK_F(LSTFixture, ExpandNodeLevel3)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  int first_level_child = tree.table[1];
-  std::mutex mutex{};
+  int first_level_child = tree.table[1].value;
 
   lst::details::expand_node(first_level_child, tree.sequence, tree.suffixes,
-                            tree.table, tree.flags, mutex);
-  int second_level_child = tree.table[first_level_child + 1];
+                            tree.table);
+  int second_level_child = tree.table[first_level_child + 1].value;
   lst::details::expand_node(second_level_child, tree.sequence, tree.suffixes,
-                            tree.table, tree.flags, mutex);
-  int third_level_child = tree.table[second_level_child + 1];
+                            tree.table);
+  int third_level_child = tree.table[second_level_child + 1].value;
 
   for (auto _ : state) {
     state.PauseTiming();
 
     std::vector<int> suffixes_copy(tree.suffixes.begin(), tree.suffixes.end());
-    std::vector<int> table_copy(tree.table.begin(), tree.table.end());
-    std::vector<lst::details::Flag> flags_copy(tree.flags.begin(),
-                                               tree.flags.end());
+    lst::details::Table<> table_copy = tree.table;
 
     state.ResumeTiming();
 
     lst::details::expand_node(third_level_child, tree.sequence, suffixes_copy,
-                              table_copy, flags_copy, mutex);
+                              table_copy);
   }
 }
 
 BENCHMARK_F(LSTFixture, LongestCommonPrefix)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  int first_level_child = tree.table[1];
-  int lower_bound = tree.table[first_level_child];
-  int upper_bound = tree.table[first_level_child + 1];
+  int first_level_child = tree.table[1].value;
+  int lower_bound = tree.table[first_level_child].value;
+  int upper_bound = tree.table[first_level_child + 1].value;
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(lst::details::longest_common_prefix(
@@ -142,9 +132,9 @@ BENCHMARK_F(LSTFixture, LongestCommonPrefix)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, AddLCPToSuffixes)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  int first_level_child = tree.table[1];
-  int lower_bound = tree.table[first_level_child];
-  int upper_bound = tree.table[first_level_child + 1];
+  int first_level_child = tree.table[1].value;
+  int lower_bound = tree.table[first_level_child].value;
+  int upper_bound = tree.table[first_level_child + 1].value;
 
   for (auto _ : state) {
     state.PauseTiming();
@@ -160,10 +150,10 @@ BENCHMARK_F(LSTFixture, AddLCPToSuffixes)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, CountSuffixes)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  int first_level_child = tree.table[1];
+  int first_level_child = tree.table[1].value;
 
-  int lower_bound = tree.table[first_level_child];
-  int upper_bound = tree.table[first_level_child + 1];
+  int lower_bound = tree.table[first_level_child].value;
+  int upper_bound = tree.table[first_level_child + 1].value;
   int lcp = lst::details::longest_common_prefix(lower_bound, upper_bound,
                                                 tree.sequence, tree.suffixes);
   lst::details::add_lcp_to_suffixes(lower_bound, upper_bound, lcp,
@@ -177,10 +167,10 @@ BENCHMARK_F(LSTFixture, CountSuffixes)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, SortSuffixes)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  int first_level_child = tree.table[1];
+  int first_level_child = tree.table[1].value;
 
-  int lower_bound = tree.table[first_level_child];
-  int upper_bound = tree.table[first_level_child + 1];
+  int lower_bound = tree.table[first_level_child].value;
+  int upper_bound = tree.table[first_level_child + 1].value;
   int lcp = lst::details::longest_common_prefix(lower_bound, upper_bound,
                                                 tree.sequence, tree.suffixes);
   lst::details::add_lcp_to_suffixes(lower_bound, upper_bound, lcp,
@@ -201,10 +191,10 @@ BENCHMARK_F(LSTFixture, SortSuffixes)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, SuffixPointers)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  int first_level_child = tree.table[1];
+  int first_level_child = tree.table[1].value;
 
-  int lower_bound = tree.table[first_level_child];
-  int upper_bound = tree.table[first_level_child + 1];
+  int lower_bound = tree.table[first_level_child].value;
+  int upper_bound = tree.table[first_level_child + 1].value;
   int lcp = lst::details::longest_common_prefix(lower_bound, upper_bound,
                                                 tree.sequence, tree.suffixes);
   lst::details::add_lcp_to_suffixes(lower_bound, upper_bound, lcp,
@@ -221,10 +211,10 @@ BENCHMARK_F(LSTFixture, SuffixPointers)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, CopySuffixes)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  int first_level_child = tree.table[1];
+  int first_level_child = tree.table[1].value;
 
-  int lower_bound = tree.table[first_level_child];
-  int upper_bound = tree.table[first_level_child + 1];
+  int lower_bound = tree.table[first_level_child].value;
+  int upper_bound = tree.table[first_level_child + 1].value;
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(
@@ -235,10 +225,10 @@ BENCHMARK_F(LSTFixture, CopySuffixes)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, AddChildren)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  int first_level_child = tree.table[1];
+  int first_level_child = tree.table[1].value;
 
-  int lower_bound = tree.table[first_level_child];
-  int upper_bound = tree.table[first_level_child + 1];
+  int lower_bound = tree.table[first_level_child].value;
+  int upper_bound = tree.table[first_level_child + 1].value;
   int lcp = lst::details::longest_common_prefix(lower_bound, upper_bound,
                                                 tree.sequence, tree.suffixes);
   lst::details::add_lcp_to_suffixes(lower_bound, upper_bound, lcp,
@@ -252,12 +242,10 @@ BENCHMARK_F(LSTFixture, AddChildren)(benchmark::State &state) {
 
   for (auto _ : state) {
     state.PauseTiming();
-    std::vector<int> table_copy(tree.table.begin(), tree.table.end());
-    std::vector<lst::details::Flag> flags_copy(tree.flags.begin(),
-                                               tree.flags.end());
+    lst::details::Table<> table_copy = tree.table;
     state.ResumeTiming();
     lst::details::add_children<seqan3::dna5>(counts, lower_bound, tree.suffixes,
-                                             table_copy, flags_copy);
+                                             table_copy);
   }
 }
 
@@ -269,35 +257,32 @@ BENCHMARK_F(LSTFixture, GetCharacterRank)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, GetEdgeLcpExpanded)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  int first_level_child = tree.table[1];
-  std::mutex mutex{};
+  int first_level_child = tree.table[1].value;
 
   lst::details::expand_node(first_level_child, tree.sequence, tree.suffixes,
-                            tree.table, tree.flags, mutex);
+                            tree.table);
 
   for (auto _ : state) {
-    benchmark::DoNotOptimize(
-        lst::details::get_edge_lcp(first_level_child, tree.sequence,
-                                   tree.suffixes, tree.table, tree.flags));
+    benchmark::DoNotOptimize(lst::details::get_edge_lcp(
+        first_level_child, tree.sequence, tree.suffixes, tree.table));
   }
 }
 
 BENCHMARK_F(LSTFixture, GetEdgeLcpNotExpanded)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  int first_level_child = tree.table[1];
+  int first_level_child = tree.table[1].value;
 
   for (auto _ : state) {
-    benchmark::DoNotOptimize(
-        lst::details::get_edge_lcp(first_level_child, tree.sequence,
-                                   tree.suffixes, tree.table, tree.flags));
+    benchmark::DoNotOptimize(lst::details::get_edge_lcp(
+        first_level_child, tree.sequence, tree.suffixes, tree.table));
   }
 }
 
 BENCHMARK_F(LSTFixture, IteratingOverSuffixes)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  int first_level_child = tree.table[1];
-  int lower_bound = tree.table[first_level_child];
-  int upper_bound = tree.table[first_level_child + 1];
+  int first_level_child = tree.table[1].value;
+  int lower_bound = tree.table[first_level_child].value;
+  int upper_bound = tree.table[first_level_child + 1].value;
 
   for (auto _ : state) {
     for (int i = lower_bound; i < upper_bound; i++) {

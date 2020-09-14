@@ -13,8 +13,8 @@
 
 namespace lst::details {
 
-int next_child_index(int node_index, const std::vector<Flag> &flags) {
-  if (is_leaf(node_index, flags)) {
+int next_child_index(int node_index, const Table<> &table) {
+  if (is_leaf(node_index, table)) {
     // Should be 1, but I've added a value to leaves to allow for
     // explicit nodes.
     return node_index + 2;
@@ -23,27 +23,25 @@ int next_child_index(int node_index, const std::vector<Flag> &flags) {
   }
 }
 
-void iterate_children(int node_index, const std::vector<int> &table,
-                      const std::vector<Flag> &flags,
+void iterate_children(int node_index, const Table<> &table,
                       const std::function<void(int)> &f) {
-  if (is_leaf(node_index, flags) || is_unevaluated(node_index, flags)) {
+  if (is_leaf(node_index, table) || is_unevaluated(node_index, table)) {
     return;
   }
 
-  int first_child = table[node_index + 1];
+  int first_child = table[node_index + 1].value;
 
   for (int i = first_child; i <= table.size();) {
     f(i);
 
-    if (is_rightmostchild(i, flags)) {
+    if (is_rightmostchild(i, table)) {
       break;
     }
-    i = next_child_index(i, flags);
+    i = next_child_index(i, table);
   }
 }
 
-int node_occurrences(int node_index, const std::vector<int> &table,
-                     const std::vector<Flag> &flags) {
+int node_occurrences(int node_index, const Table<> &table) {
   assert(node_index <= table.size());
 
   int occurrences = 0;
@@ -55,12 +53,12 @@ int node_occurrences(int node_index, const std::vector<int> &table,
     int index = queue.front();
     queue.pop();
 
-    if (is_leaf(index, flags)) {
+    if (is_leaf(index, table)) {
       occurrences += 1;
-    } else if (is_unevaluated(index, flags)) {
-      occurrences += table[index + 1] - table[index];
+    } else if (is_unevaluated(index, table)) {
+      occurrences += table[index + 1].value - table[index].value;
     } else {
-      iterate_children(index, table, flags, [&](int i) { queue.push(i); });
+      iterate_children(index, table, [&](int i) { queue.push(i); });
     }
   }
 
@@ -74,18 +72,15 @@ int node_occurrences(int node_index, const std::vector<int> &table,
  * \param sequence Sequence the tree is built over.
  * \param suffixes Suffix vector of the tree.
  * \param table Table vector of the tree.
- * \param flags Flags vector of the tree
  * \param expand_nodes Determines if nodes should be explored (construction) or
  * if we only want to visit nodes. \param f Callback for the visited nodes.
  */
 template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration(const sequence_t<alphabet_t> &sequence,
-                             std::vector<int> &suffixes,
-                             std::vector<int> &table, std::vector<Flag> &flags,
+                             std::vector<int> &suffixes, Table<> &table,
                              bool expand_nodes,
                              const std::function<bool(int, int, int)> &f) {
-  breadth_first_iteration(0, 0, sequence, suffixes, table, flags, expand_nodes,
-                          f);
+  breadth_first_iteration(0, 0, sequence, suffixes, table, expand_nodes, f);
 }
 
 /**
@@ -97,15 +92,13 @@ void breadth_first_iteration(const sequence_t<alphabet_t> &sequence,
  * \param sequence Sequence the tree is built over.
  * \param suffixes Suffix vector of the tree.
  * \param table Table vector of the tree.
- * \param flags Flags vector of the tree
  * \param expand_nodes Determines if nodes should be explored (construction) or
  * if we only want to visit nodes. \param f Callback for the visited nodes.
  */
 template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration(int start_index, int start_lcp,
                              const sequence_t<alphabet_t> &sequence,
-                             std::vector<int> &suffixes,
-                             std::vector<int> &table, std::vector<Flag> &flags,
+                             std::vector<int> &suffixes, Table<> &table,
                              bool expand_nodes,
                              const std::function<bool(int, int, int &)> &f) {
   std::queue<std::tuple<int, int>> queue{};
@@ -116,15 +109,15 @@ void breadth_first_iteration(int start_index, int start_lcp,
     queue.pop();
 
     auto [new_lcp, consider_children] = visit_top_node(
-        node_index, lcp, sequence, suffixes, table, flags, expand_nodes, f);
+        node_index, lcp, sequence, suffixes, table, expand_nodes, f);
 
     if (!consider_children) {
       continue;
     }
 
-    iterate_children(
-        node_index, table, flags,
-        [&, new_lcp = new_lcp](int index) { queue.emplace(index, new_lcp); });
+    iterate_children(node_index, table, [&, new_lcp = new_lcp](int index) {
+      queue.emplace(index, new_lcp);
+    });
   }
 }
 
@@ -135,7 +128,6 @@ void breadth_first_iteration(int start_index, int start_lcp,
  * \param sequence Sequence the tree is built over.
  * \param suffixes Suffix vector of the tree.
  * \param table Table vector of the tree.
- * \param flags Flags vector of the tree
  * \param expand_nodes Determines if nodes should be explored (construction) or
  * if we only want to visit nodes. \param f Callback for the visited nodes.
  * \param parallel_depth Number of levels to spawn new processes for.
@@ -143,9 +135,9 @@ void breadth_first_iteration(int start_index, int start_lcp,
 template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration_parallel(
     const sequence_t<alphabet_t> &sequence, std::vector<int> &suffixes,
-    std::vector<int> &table, std::vector<Flag> &flags, bool expand_nodes,
+    Table<> &table, bool expand_nodes,
     const std::function<bool(int, int, int &)> &f, int parallel_depth) {
-  breadth_first_iteration_parallel_(0, 0, 0, sequence, suffixes, table, flags,
+  breadth_first_iteration_parallel_(0, 0, 0, sequence, suffixes, table,
                                     expand_nodes, f, parallel_depth);
 }
 
@@ -156,7 +148,6 @@ void breadth_first_iteration_parallel(
  * \param sequence Sequence the tree is built over.
  * \param suffixes Suffix vector of the tree.
  * \param table Table vector of the tree.
- * \param flags Flags vector of the tree
  * \param expand_nodes Determines if nodes should be explored (construction) or
  * if we only want to visit nodes. \param f Callback for the visited nodes.
  * \param parallel_depth Number of levels to spawn new processes for.
@@ -164,11 +155,10 @@ void breadth_first_iteration_parallel(
 template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration_parallel(
     int start_index, int start_lcp, const sequence_t<alphabet_t> &sequence,
-    std::vector<int> &suffixes, std::vector<int> &table,
-    std::vector<Flag> &flags, bool expand_nodes,
+    std::vector<int> &suffixes, Table<> &table, bool expand_nodes,
     const std::function<bool(int, int, int &)> &f, int parallel_depth) {
   breadth_first_iteration_parallel_(start_index, start_lcp, 0, sequence,
-                                    suffixes, table, flags, expand_nodes, f,
+                                    suffixes, table, expand_nodes, f,
                                     parallel_depth);
 }
 
@@ -176,7 +166,7 @@ template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration_parallel_(
     int start_index, int start_lcp, int start_depth,
     const sequence_t<alphabet_t> &sequence, std::vector<int> &suffixes,
-    std::vector<int> &table, std::vector<Flag> &flags, bool expand_nodes,
+    Table<> &table, bool expand_nodes,
     const std::function<bool(int, int, int &)> &f, int parallel_depth) {
 
   std::vector<std::thread> threads{};
@@ -189,7 +179,7 @@ void breadth_first_iteration_parallel_(
     queue.pop();
 
     auto [new_lcp, consider_children] = visit_top_node(
-        node_index, lcp, sequence, suffixes, table, flags, expand_nodes, f);
+        node_index, lcp, sequence, suffixes, table, expand_nodes, f);
 
     if (!consider_children) {
       continue;
@@ -197,16 +187,16 @@ void breadth_first_iteration_parallel_(
 
     if (depth < parallel_depth) {
       // Spawn threads per children
-      iterate_children(node_index, table, flags,
+      iterate_children(node_index, table,
                        [&, new_lcp = new_lcp, depth = depth](int index) {
                          threads.push_back(spawn_iteration_thread(
                              index, new_lcp, depth + 1, sequence, suffixes,
-                             table, flags, expand_nodes, f, parallel_depth));
+                             table, expand_nodes, f, parallel_depth));
                        });
 
     } else {
       // Continue working in this thread.
-      iterate_children(node_index, table, flags,
+      iterate_children(node_index, table,
                        [&, new_lcp = new_lcp, depth = depth](int index) {
                          queue.emplace(index, new_lcp, depth + 1);
                        });
@@ -223,18 +213,17 @@ void breadth_first_iteration_parallel_(
 template <seqan3::alphabet alphabet_t>
 std::tuple<int, bool>
 visit_top_node(int node_index, int lcp, const sequence_t<alphabet_t> &sequence,
-               std::vector<int> &suffixes, std::vector<int> &table,
-               std::vector<Flag> &flags, bool expand_nodes,
+               std::vector<int> &suffixes, Table<> &table, bool expand_nodes,
                const std::function<bool(int, int, int &)> &f) {
   if (node_index == 0) {
-    return {get_edge_lcp(node_index, sequence, suffixes, table, flags), true};
+    return {get_edge_lcp(node_index, sequence, suffixes, table), true};
   }
 
   int edge_lcp;
-  if (is_unevaluated(node_index, flags) && expand_nodes) {
-    edge_lcp = expand_node(node_index, sequence, suffixes, table, flags);
+  if (is_unevaluated(node_index, table) && expand_nodes) {
+    edge_lcp = expand_node(node_index, sequence, suffixes, table);
   } else {
-    edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
+    edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table);
   }
 
   bool consider_children = f(node_index, lcp, edge_lcp);
@@ -245,7 +234,7 @@ visit_top_node(int node_index, int lcp, const sequence_t<alphabet_t> &sequence,
   // It is possible that the call to f expands implicit nodes, may need to
   // recalculate the edge_lcp.
   // int old_edge_lcp = edge_lcp;
-  edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table, flags);
+  edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table);
 
   int new_lcp = lcp + edge_lcp;
   return {new_lcp, true};
@@ -254,8 +243,7 @@ visit_top_node(int node_index, int lcp, const sequence_t<alphabet_t> &sequence,
 template <seqan3::alphabet alphabet_t>
 std::thread spawn_iteration_thread(
     int node_index, int lcp, int depth, const sequence_t<alphabet_t> &sequence,
-    std::vector<int> &suffixes, std::vector<int> &table,
-    std::vector<Flag> &flags, bool expand_nodes,
+    std::vector<int> &suffixes, Table<> &table, bool expand_nodes,
     const std::function<bool(int, int, int &)> &f, int parallel_depth) {
 
   return std::thread{breadth_first_iteration_parallel_<alphabet_t>,
@@ -265,7 +253,6 @@ std::thread spawn_iteration_thread(
                      std::ref(sequence),
                      std::ref(suffixes),
                      std::ref(table),
-                     std::ref(flags),
                      expand_nodes,
                      f,
                      parallel_depth};
@@ -273,54 +260,33 @@ std::thread spawn_iteration_thread(
 
 template <seqan3::alphabet alphabet_t>
 int get_edge_lcp(int node_index, const sequence_t<alphabet_t> &sequence,
-                 const std::vector<int> &suffixes,
-                 const std::vector<int> &table,
-                 const std::vector<Flag> &flags) {
+                 const std::vector<int> &suffixes, const Table<> &table) {
   if (node_index == 0) {
     return 0;
   }
 
-  if (is_leaf(node_index, flags)) {
-    return suffixes.size() - table[node_index];
+  if (is_leaf(node_index, table)) {
+    return suffixes.size() - table[node_index].value;
   }
 
-  if (is_unevaluated(node_index, flags)) {
-    return lst::details::longest_common_prefix(
-        table[node_index], table[node_index + 1], sequence, suffixes);
+  if (is_unevaluated(node_index, table)) {
+    return lst::details::longest_common_prefix(table[node_index].value,
+                                               table[node_index + 1].value,
+                                               sequence, suffixes);
   }
 
   int smallest_child_index = suffixes.size();
 
-  iterate_children(node_index, table, flags, [&](int index) {
-    int sequence_index = get_sequence_index(index, suffixes, table, flags);
+  iterate_children(node_index, table, [&](int index) {
+    int sequence_index = get_sequence_index(index, suffixes, table);
     smallest_child_index = std::min(smallest_child_index, sequence_index);
   });
 
-  assert(smallest_child_index > table[node_index]);
+  assert(smallest_child_index > table[node_index].value);
 
-  int edge_lcp = smallest_child_index - table[node_index];
+  int edge_lcp = smallest_child_index - table[node_index].value;
 
   return edge_lcp;
-}
-
-template <seqan3::alphabet alphabet_t>
-int memoized_get_edge_lcp(int node_index,
-                          const sequence_t<alphabet_t> &sequence,
-                          const std::vector<int> &suffixes,
-                          const std::vector<int> &table,
-                          const std::vector<Flag> &flags) {
-  return get_edge_lcp(node_index, sequence, suffixes, table, flags);
-
-  static std::mutex mutex;
-  static std::map<int, int> cache;
-
-  auto lock = std::lock_guard<std::mutex>(mutex);
-
-  if (cache.count(node_index)) {
-    return cache[node_index];
-  }
-  return cache[node_index] =
-             get_edge_lcp(node_index, sequence, suffixes, table, flags);
 }
 
 } // namespace lst::details

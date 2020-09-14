@@ -7,8 +7,6 @@
 
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
-#include <seqan3/range/container/bitcompressed_vector.hpp>
-
 
 using namespace lst::details;
 
@@ -44,47 +42,59 @@ protected:
 TEST_F(LazySuffixTreeTest, SimpleTest) {
   tree.expand_all();
 
-  std::vector<int> expected_table{0, 2, 1, 8,  0, 12, 5, 0, 3, 0,
-                                  5, 0, 1, 16, 5, 0,  3, 0, 5, 0};
-  EXPECT_EQ(tree.table, expected_table);
+  Table<> expected_table{
+      {0, Flag::RIGHT_MOST_CHILD},
+      {2, Flag::NONE},
+      {1, Flag::NONE},
+      {8, Flag::NONE},
+      {0, Flag::NONE},
+      {12, Flag::NONE},
+      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
+      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
+      {3, Flag::LEAF},
+      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
+      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
+      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
+      {1, Flag::NONE},
+      {16, Flag::NONE},
+      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
+      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
+      {3, Flag::LEAF},
+      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
+      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
+      {0, Flag::NONE}}; // Added to allow for explicit labels in the tree
+
+  std::vector<int> expected_values{};
+  for (auto &e : expected_table.table) {
+    expected_values.push_back(e.value);
+  }
+  std::vector<int> tree_values{};
+  for (auto &e : tree.table.table) {
+    tree_values.push_back(e.value);
+  }
+  std::vector<Flag> expected_flags{};
+  for (auto &e : expected_table.table) {
+    expected_flags.push_back(e.flag);
+  }
+  std::vector<Flag> tree_flags{};
+  for (auto &e : tree.table.table) {
+    tree_flags.push_back(e.flag);
+  }
+  EXPECT_EQ(tree_values, expected_values);
+  EXPECT_EQ(tree_flags, expected_flags);
 
   std::vector<int> expected_suffixes{3, 5, 3, 5, 5, 5};
   EXPECT_EQ(tree.suffixes, expected_suffixes);
-
-  std::vector<Flag> expected_flags{
-      Flag::RIGHT_MOST_CHILD,
-      Flag::NONE,
-      Flag::NONE,
-      Flag::NONE,
-      Flag::NONE,
-      Flag::NONE,
-      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
-      Flag::NONE, // Added to allow for explicit labels in the tree
-      Flag::LEAF,
-      Flag::NONE, // Added to allow for explicit labels in the tree
-      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
-      Flag::NONE, // Added to allow for explicit labels in the tree
-      Flag::NONE,
-      Flag::NONE,
-      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
-      Flag::NONE, // Added to allow for explicit labels in the tree
-      Flag::LEAF,
-      Flag::NONE, // Added to allow for explicit labels in the tree
-      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
-      Flag::NONE, // Added to allow for explicit labels in the tree
-  };
-
-  EXPECT_EQ(tree.flags, expected_flags);
 }
 
 TEST_F(LazySuffixTreeTest, LongerTests) {
   sequence_t<seqan3::dna5> longer_sequence{"CACACACACACACACACACACACAGT"_dna5};
   lst::LazySuffixTree<seqan3::dna5> tree{longer_sequence};
   tree.expand_all();
-  EXPECT_TRUE(tree.table.size() != 0);
+  EXPECT_FALSE(tree.table.table.empty());
 
   tree4.expand_all();
-  EXPECT_TRUE(tree4.table.size() != 0);
+  EXPECT_FALSE(tree4.table.table.empty());
 }
 
 TEST_F(LazySuffixTreeTest, LabelSets) {

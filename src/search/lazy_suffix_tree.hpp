@@ -65,8 +65,7 @@ public:
 
     suffixes = std::vector<int>(this->sequence.size() + 1);
 
-    lst::details::expand_root(this->sequence, this->suffixes, this->table,
-                              this->flags);
+    lst::details::expand_root(this->sequence, this->suffixes, this->table);
   }
 
   /**! \brief Fully builds the lazy suffix tree.
@@ -76,7 +75,7 @@ public:
     for (int i = 0; i < this->table.size(); i++) {
       if (this->is_unevaluated(i)) {
         lst::details::expand_node(i, this->sequence, this->suffixes,
-                                  this->table, this->flags);
+                                  this->table);
       }
     }
   }
@@ -210,8 +209,7 @@ public:
    */
   void add_implicit_nodes(int node_index, int edge_lcp) {
     if (edge_lcp > 1) {
-      lst::details::add_implicit_nodes(node_index, edge_lcp, this->table,
-                                       this->flags);
+      lst::details::add_implicit_nodes(node_index, edge_lcp, this->table);
     }
   }
 
@@ -225,13 +223,13 @@ public:
     suffix_links.resize(table.size() / 2, -1);
     std::fill(suffix_links.begin(), suffix_links.end(), -1);
 
-    lst::details::add_explicit_suffix_links(sequence, suffixes, table, flags,
+    lst::details::add_explicit_suffix_links(sequence, suffixes, table,
                                             suffix_links);
 
-    lst::details::add_leaf_suffix_links(sequence, suffixes, table, flags,
+    lst::details::add_leaf_suffix_links(sequence, suffixes, table,
                                         suffix_links);
 
-    lst::details::add_implicit_suffix_links(sequence, suffixes, table, flags,
+    lst::details::add_implicit_suffix_links(sequence, suffixes, table,
                                             suffix_links);
 
     suffix_links[0] = -1;
@@ -268,8 +266,7 @@ public:
             return true;
           }
 
-          auto character = this->get_character(node_start);
-          int character_rank = seqan3::to_rank(character);
+          auto character_rank = this->get_character_rank(node_start);
 
           if (reverse_suffix_links[suffix_parent / 2][character_rank] == -1) {
             reverse_suffix_links[suffix_parent / 2][character_rank] =
@@ -301,8 +298,8 @@ public:
       label = this->leaf_label(node_index, lcp);
     }
 
-    std::cout << label << "\t" << node_index << "\t" << table[node_index]
-              << "\t" << table[node_index + 1];
+    std::cout << label << "\t" << node_index << "\t" << table[node_index].value
+              << "\t" << table[node_index + 1].value;
 
     std::cout << "\tLeaf: " << this->is_leaf(node_index);
     std::cout << "\tUnevaluated: " << this->is_unevaluated(node_index);
@@ -337,21 +334,16 @@ public:
   }
 
   int node_occurrences(int node_index) {
-    return lst::details::node_occurrences(node_index, this->table, this->flags);
-  }
-
-  int node_occurrences(int node_index, std::vector<int> &table_,
-                       std::vector<lst::details::Flag> &flags_) {
-    return lst::details::node_occurrences(node_index, table_, flags_);
+    return lst::details::node_occurrences(node_index, this->table);
   }
 
   lst::details::sequence_t<alphabet_t> sequence;
   std::vector<int> suffixes{};
-  std::vector<int> table{0, 2};
-  std::vector<lst::details::Flag> flags{lst::details::Flag::RIGHT_MOST_CHILD,
-                                        lst::details::Flag::NONE};
+  lst::details::Table<> table{{0, lst::details::Flag::RIGHT_MOST_CHILD},
+                              {2, lst::details::Flag::NONE}};
   std::vector<int> suffix_links{};
-  std::vector<lst::details::alphabet_array<int, alphabet_t>> reverse_suffix_links{};
+  std::vector<lst::details::alphabet_array<int, alphabet_t>>
+      reverse_suffix_links{};
 
 protected:
   bool multi_core;
@@ -373,9 +365,9 @@ protected:
       queue.pop();
 
       if (is_leaf(index)) {
-        start_indices.push_back(table[index] - lcp);
+        start_indices.push_back(table[index].value - lcp);
       } else if (is_unevaluated(index)) {
-        for (int i = table[index]; i < table[index + 1]; i++) {
+        for (int i = table[index].value; i < table[index + 1].value; i++) {
           start_indices.push_back(suffixes[i] - lcp);
         }
       } else {
@@ -402,9 +394,8 @@ protected:
 
       int edge_lcp;
       if (is_unevaluated(node_index)) {
-        edge_lcp =
-            lst::details::expand_node(node_index, this->sequence,
-                                      this->suffixes, this->table, this->flags);
+        edge_lcp = lst::details::expand_node(node_index, this->sequence,
+                                             this->suffixes, this->table);
       } else {
         edge_lcp = this->get_edge_lcp(node_index);
       }
@@ -444,7 +435,7 @@ protected:
                     std::vector<alphabet_t> &pattern,
                     lst::details::sequence_t<alphabet_t> &edge) {
     for (int i = 0; pattern_lcp + i < pattern.size() && i < edge.size(); i++) {
-      int sequence_index = table[node_index] + i;
+      int sequence_index = table[node_index].value + i;
       auto character = this->get_character(sequence_index);
 
       if (character != pattern[pattern_lcp + i]) {
@@ -467,7 +458,7 @@ protected:
   }
 
   std::string leaf_label(int node_index, int lcp) {
-    int node_start = table[node_index] - lcp;
+    int node_start = table[node_index].value - lcp;
     lst::details::sequence_t<alphabet_t> label(
         this->sequence.begin() + node_start, this->sequence.end());
 
@@ -478,23 +469,27 @@ protected:
 
   int get_sequence_index(int node_index) {
     return lst::details::get_sequence_index(node_index, this->suffixes,
-                                            this->table, this->flags);
+                                            this->table);
   }
 
   seqan3::gapped<alphabet_t> get_character(int index) {
     return lst::details::get_character(this->sequence, index);
   }
 
+  int get_character_rank(int index) {
+    return lst::details::get_character_rank(this->sequence, index);
+  }
+
   bool is_leaf(int node_index) {
-    return lst::details::is_leaf(node_index, flags);
+    return lst::details::is_leaf(node_index, this->table);
   }
 
   bool is_unevaluated(int node_index) {
-    return lst::details::is_unevaluated(node_index, flags);
+    return lst::details::is_unevaluated(node_index, this->table);
   }
 
   bool is_rightmostchild(int node_index) {
-    return lst::details::is_rightmostchild(node_index, flags);
+    return lst::details::is_rightmostchild(node_index, this->table);
   }
 
   /** \brief Determines if the node should be skipped during various iterations
@@ -515,7 +510,7 @@ protected:
    * \param f function to call on every child.
    */
   void iterate_children(int node_index, const std::function<void(int)> &f) {
-    lst::details::iterate_children(node_index, this->table, this->flags, f);
+    lst::details::iterate_children(node_index, this->table, f);
   }
 
   /**! \brief Get the edge LCP of the node.
@@ -525,7 +520,7 @@ protected:
    */
   int get_edge_lcp(int node_index) {
     return lst::details::get_edge_lcp(node_index, this->sequence,
-                                      this->suffixes, this->table, this->flags);
+                                      this->suffixes, this->table);
   }
 
   void breadth_first_iteration(int node_index, int start_lcp, bool expand_nodes,
@@ -533,11 +528,11 @@ protected:
     if (this->multi_core) {
       lst::details::breadth_first_iteration_parallel(
           node_index, start_lcp, this->sequence, this->suffixes, this->table,
-          this->flags, expand_nodes, f, this->parallel_depth);
+          expand_nodes, f, this->parallel_depth);
     } else {
-      lst::details::breadth_first_iteration(
-          node_index, start_lcp, this->sequence, this->suffixes, this->table,
-          this->flags, expand_nodes, f);
+      lst::details::breadth_first_iteration(node_index, start_lcp,
+                                            this->sequence, this->suffixes,
+                                            this->table, expand_nodes, f);
     }
   }
 
@@ -546,7 +541,7 @@ protected:
       const std::function<bool(int, int, int)> &f) {
     lst::details::breadth_first_iteration(node_index, start_lcp, this->sequence,
                                           this->suffixes, this->table,
-                                          this->flags, expand_nodes, f);
+                                          expand_nodes, f);
   }
 };
 } // namespace lst

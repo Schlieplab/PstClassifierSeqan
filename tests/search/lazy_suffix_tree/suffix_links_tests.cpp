@@ -2,7 +2,6 @@
 
 #include <vector>
 
-#include "../../../src/search/lazy_suffix_tree.hpp"
 #include "../../../src/search/lazy_suffix_tree/construction.hpp"
 #include "../../../src/search/lazy_suffix_tree/suffix_links.hpp"
 
@@ -14,71 +13,68 @@ using seqan3::operator""_dna5;
 
 class SuffixLinksTests : public ::testing::Test {
 protected:
-  void SetUp() override {
-  }
+  void SetUp() override {}
 
   sequence_t<seqan3::dna5> sequence{"CACAC"_dna5};
 
-  std::vector<int> table{0, 2, 1, 8,  0, 12, 5, 0, 3, 0,
-                         5, 0, 1, 16, 5, 0,  3, 0, 5, 0};
-  std::vector<Flag> flags{
-      Flag::RIGHT_MOST_CHILD,
-      Flag::NONE,
-      Flag::NONE,
-      Flag::NONE,
-      Flag::NONE,
-      Flag::NONE,
-      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
-      Flag::NONE, // Added to allow for explicit labels in the tree
-      Flag::LEAF,
-      Flag::NONE, // Added to allow for explicit labels in the tree
-      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
-      Flag::NONE, // Added to allow for explicit labels in the tree
-      Flag::NONE,
-      Flag::NONE,
-      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
-      Flag::NONE, // Added to allow for explicit labels in the tree
-      Flag::LEAF,
-      Flag::NONE, // Added to allow for explicit labels in the tree
-      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
-      Flag::NONE, // Added to allow for explicit labels in the tree
+  Table<> table{
+      {0, Flag::RIGHT_MOST_CHILD},
+      {2, Flag::NONE},
+      {1, Flag::NONE},
+      {8, Flag::NONE},
+      {0, Flag::NONE},
+      {12, Flag::NONE},
+      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
+      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
+      {3, Flag::LEAF},
+      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
+      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
+      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
+      {1, Flag::NONE},
+      {16, Flag::NONE},
+      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
+      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
+      {3, Flag::LEAF},
+      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
+      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
+      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
+
   };
+
   std::vector<int> suffixes{3, 5, 3, 5, 5, 5};
 
   std::vector<int> unfinished_suffixes{1, 3, 0, 2, 4, 5};
-  ;
-  std::vector<int> unfinished_table{0, 2, 2, 5, 5, 0};
-  std::vector<Flag> unfinished_flags{
-      Flag::UNEVALUATED,
-      Flag::NONE,
-      Flag::UNEVALUATED,
-      Flag::NONE,
-      Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
-      Flag::NONE, // Added to allow for explicit labels in the tree
+
+  Table<> unfinished_table{
+      {0, Flag::UNEVALUATED},
+      {2, Flag::NONE},
+      {2, Flag::UNEVALUATED},
+      {5, Flag::NONE},
+      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
+      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
   };
 };
 
 TEST_F(SuffixLinksTests, TreeHeight) {
-  int height = tree_height<seqan3::dna5>(sequence, suffixes, table, flags);
+  int height = tree_height<seqan3::dna5>(sequence, suffixes, table);
 
   EXPECT_EQ(3, height);
 }
 
 TEST_F(SuffixLinksTests, TreeHeightParallel) {
-  int height =
-      tree_height_parallel<seqan3::dna5>(sequence, suffixes, table, flags, 2);
+  int height = tree_height_parallel<seqan3::dna5>(sequence, suffixes, table, 2);
 
   EXPECT_EQ(3, height);
 }
 
 TEST_F(SuffixLinksTests, LeafIndex) {
-  int leaf_index = get_leaf_index(6, 0, suffixes, table, flags);
+  int leaf_index = get_leaf_index(6, 0, suffixes, table);
   EXPECT_EQ(leaf_index, 5);
 
-  int root_leaf_index = get_leaf_index(0, 0, suffixes, table, flags);
+  int root_leaf_index = get_leaf_index(0, 0, suffixes, table);
   EXPECT_EQ(root_leaf_index, -1);
 
-  int unfinished_leaf_index = get_leaf_index(
-      0, 0, unfinished_suffixes, unfinished_table, unfinished_flags);
+  int unfinished_leaf_index =
+      get_leaf_index(0, 0, unfinished_suffixes, unfinished_table);
   EXPECT_EQ(unfinished_leaf_index, 1);
 }

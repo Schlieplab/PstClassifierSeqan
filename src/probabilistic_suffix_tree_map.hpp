@@ -474,25 +474,23 @@ protected:
   void build_tree() {
     std::mutex counts_mutex{};
     this->breadth_first_iteration(
-        0, 0, true,
-        [&](int node_index, int lcp, int edge_lcp, auto &table_,
-            auto &flags_) -> bool {
-          int count = this->node_occurrences(node_index, table_, flags_);
+        0, 0, true, [&](int node_index, int lcp, int edge_lcp) -> bool {
+          int count = this->node_occurrences(node_index);
 
-          if (this->is_leaf(node_index, flags_) && edge_lcp == 1) {
+          if (this->is_leaf(node_index) && edge_lcp == 1) {
             return false;
           }
 
-          if (this->is_leaf(node_index, flags_)) {
-            edge_lcp = this->sequence.size() - table_[node_index] + 1;
+          if (this->is_leaf(node_index)) {
+            edge_lcp =
+                this->sequence.size() - this->table[node_index].value + 1;
           }
           bool include_sub_node = true;
 
           for (int i = 1; i <= edge_lcp && include_sub_node; i++) {
-            include_sub_node =
-                this->include_node(node_index, lcp, i, count, table_);
+            include_sub_node = this->include_node(node_index, lcp, i, count);
 
-            auto label = this->node_label(node_index, lcp, i, table_, flags_);
+            auto label = this->node_label(node_index, lcp, i);
             std::lock_guard counts_lock{counts_mutex};
             this->counts[label] = count;
             if (include_sub_node) {
@@ -909,15 +907,14 @@ protected:
    * \param count number of times the label occurs in the sequence.
    * \return true if the node should be included.
    */
-  bool include_node(int node_index, int lcp, int edge_lcp, int count,
-                    std::vector<int> &table_) {
-    int label_start = table_[node_index] - lcp;
-    int label_end = table_[node_index] + edge_lcp;
+  bool include_node(int node_index, int lcp, int edge_lcp, int count) {
+    int label_start = this->table[node_index].value - lcp;
+    int label_end = this->table[node_index].value + edge_lcp;
     int label_length = label_end - label_start;
 
-    // All characters before table_[node_index] have already been checked.
+    // All characters before table[node_index] have already been checked.
     return label_length < this->max_depth && count >= this->freq &&
-           label_valid(table_[node_index], label_end);
+           label_valid(this->table[node_index].value, label_end);
   }
 
   /**! \brief Checks if a label is valid.
