@@ -281,8 +281,9 @@ void expand_root(const sequence_t<alphabet_t> &sequence,
 }
 
 template <seqan3::alphabet alphabet_t>
-int expand_node(int node_index, const sequence_t<alphabet_t> &sequence,
-                std::vector<int> &suffixes, Table<> &table) {
+std::tuple<int, int> expand_node(int node_index,
+                                 const sequence_t<alphabet_t> &sequence,
+                                 std::vector<int> &suffixes, Table<> &table) {
   assert(is_unevaluated(node_index, table));
 
   int lower_bound = table[node_index].value;
@@ -304,7 +305,9 @@ int expand_node(int node_index, const sequence_t<alphabet_t> &sequence,
 
   add_children<alphabet_t>(counts, lower_bound, suffixes, table);
   table[node_index].flag = Flag(table[node_index].flag & ~Flag::UNEVALUATED);
-  return lcp;
+
+  int count = upper_bound - lower_bound;
+  return {lcp, count};
 }
 
 void add_implicit_nodes(int node_index, int edge_lcp, Table<> &table) {

@@ -79,7 +79,7 @@ template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration(const sequence_t<alphabet_t> &sequence,
                              std::vector<int> &suffixes, Table<> &table,
                              bool expand_nodes,
-                             const std::function<bool(int, int, int)> &f) {
+                             const std::function<bool(int, int, int, int)> &f) {
   breadth_first_iteration(0, 0, sequence, suffixes, table, expand_nodes, f);
 }
 
@@ -100,7 +100,7 @@ void breadth_first_iteration(int start_index, int start_lcp,
                              const sequence_t<alphabet_t> &sequence,
                              std::vector<int> &suffixes, Table<> &table,
                              bool expand_nodes,
-                             const std::function<bool(int, int, int &)> &f) {
+                             const std::function<bool(int, int, int, int)> &f) {
   std::queue<std::tuple<int, int>> queue{};
   queue.emplace(start_index, start_lcp);
 
@@ -136,7 +136,7 @@ template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration_parallel(
     const sequence_t<alphabet_t> &sequence, std::vector<int> &suffixes,
     Table<> &table, bool expand_nodes,
-    const std::function<bool(int, int, int &)> &f, int parallel_depth) {
+    const std::function<bool(int, int, int, int)> &f, int parallel_depth) {
   breadth_first_iteration_parallel_(0, 0, 0, sequence, suffixes, table,
                                     expand_nodes, f, parallel_depth);
 }
@@ -156,7 +156,7 @@ template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration_parallel(
     int start_index, int start_lcp, const sequence_t<alphabet_t> &sequence,
     std::vector<int> &suffixes, Table<> &table, bool expand_nodes,
-    const std::function<bool(int, int, int &)> &f, int parallel_depth) {
+    const std::function<bool(int, int, int, int)> &f, int parallel_depth) {
   breadth_first_iteration_parallel_(start_index, start_lcp, 0, sequence,
                                     suffixes, table, expand_nodes, f,
                                     parallel_depth);
@@ -167,7 +167,7 @@ void breadth_first_iteration_parallel_(
     int start_index, int start_lcp, int start_depth,
     const sequence_t<alphabet_t> &sequence, std::vector<int> &suffixes,
     Table<> &table, bool expand_nodes,
-    const std::function<bool(int, int, int &)> &f, int parallel_depth) {
+    const std::function<bool(int, int, int, int)> &f, int parallel_depth) {
 
   std::vector<std::thread> threads{};
 
@@ -214,19 +214,23 @@ template <seqan3::alphabet alphabet_t>
 std::tuple<int, bool>
 visit_top_node(int node_index, int lcp, const sequence_t<alphabet_t> &sequence,
                std::vector<int> &suffixes, Table<> &table, bool expand_nodes,
-               const std::function<bool(int, int, int &)> &f) {
+               const std::function<bool(int, int, int, int)> &f) {
   if (node_index == 0) {
     return {get_edge_lcp(node_index, sequence, suffixes, table), true};
   }
 
-  int edge_lcp;
+  int edge_lcp, node_count;
   if (is_unevaluated(node_index, table) && expand_nodes) {
-    edge_lcp = expand_node(node_index, sequence, suffixes, table);
+    auto [edge_lcp_, node_count_] =
+        expand_node(node_index, sequence, suffixes, table);
+    edge_lcp = edge_lcp_;
+    node_count = node_count_;
   } else {
     edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table);
+    node_count = node_occurrences(node_index, table);
   }
 
-  bool consider_children = f(node_index, lcp, edge_lcp);
+  bool consider_children = f(node_index, lcp, edge_lcp, node_count);
   if (!consider_children) {
     return {-1, false};
   }
@@ -244,7 +248,7 @@ template <seqan3::alphabet alphabet_t>
 std::thread spawn_iteration_thread(
     int node_index, int lcp, int depth, const sequence_t<alphabet_t> &sequence,
     std::vector<int> &suffixes, Table<> &table, bool expand_nodes,
-    const std::function<bool(int, int, int &)> &f, int parallel_depth) {
+    const std::function<bool(int, int, int, int)> &f, int parallel_depth) {
 
   return std::thread{breadth_first_iteration_parallel_<alphabet_t>,
                      node_index,

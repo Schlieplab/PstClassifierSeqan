@@ -89,9 +89,9 @@ public:
     static std::mutex labels_mutex{};
 
     this->breadth_first_iteration(
-        0, 0, true, [&](int node_index, int lcp, int edge_lcp) -> bool {
+        0, 0, true,
+        [&](int node_index, int lcp, int edge_lcp, int occurrences) -> bool {
           auto label = node_label(node_index, lcp, edge_lcp);
-          int occurrences = this->node_occurrences(node_index);
 
           if (is_leaf(node_index)) {
             label = leaf_label(node_index, lcp);
@@ -140,13 +140,15 @@ public:
    * edge length and occurrences of each node.  Should return if further
    * iteration of the node is needed.
    */
-  void breadth_first_iteration(const std::function<bool(int, int, int)> &f) {
+  void
+  breadth_first_iteration(const std::function<bool(int, int, int, int)> &f) {
     this->breadth_first_iteration(
-        0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
+        0, 0, false,
+        [&](int node_index, int lcp, int edge_lcp, int node_count) -> bool {
           if (this->skip_node(node_index)) {
             return true;
           } else {
-            return f(node_index, lcp, edge_lcp);
+            return f(node_index, lcp, edge_lcp, node_count);
           }
         });
   }
@@ -161,13 +163,14 @@ public:
    * iteration of the node is needed.
    */
   void breadth_first_iteration_sequential(
-      const std::function<bool(int, int, int)> &f) {
+      const std::function<bool(int, int, int, int)> &f) {
     this->breadth_first_iteration_sequential(
-        0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
+        0, 0, false,
+        [&](int node_index, int lcp, int edge_lcp, int node_count) -> bool {
           if (this->skip_node(node_index)) {
             return true;
           } else {
-            return f(node_index, lcp, edge_lcp);
+            return f(node_index, lcp, edge_lcp, node_count);
           }
         });
   }
@@ -252,7 +255,8 @@ public:
     }
 
     this->breadth_first_iteration_sequential(
-        0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
+        0, 0, false,
+        [&](int node_index, int lcp, int edge_lcp, int node_count) -> bool {
           if (this->skip_node(node_index)) {
             return true;
           }
@@ -284,7 +288,8 @@ public:
     std::cout << std::endl;
 
     this->breadth_first_iteration_sequential(
-        0, 0, false, [&](int node_index, int lcp, int edge_lcp) -> bool {
+        0, 0, false,
+        [&](int node_index, int lcp, int edge_lcp, int node_count) -> bool {
           this->debug_print_node(node_index, lcp, edge_lcp);
           std::cout << std::endl;
           return true;
@@ -394,8 +399,9 @@ protected:
 
       int edge_lcp;
       if (is_unevaluated(node_index)) {
-        edge_lcp = lst::details::expand_node(node_index, this->sequence,
-                                             this->suffixes, this->table);
+        auto [edge_lcp_, _] = lst::details::expand_node(
+            node_index, this->sequence, this->suffixes, this->table);
+        edge_lcp = edge_lcp_;
       } else {
         edge_lcp = this->get_edge_lcp(node_index);
       }
@@ -523,8 +529,9 @@ protected:
                                       this->suffixes, this->table);
   }
 
-  void breadth_first_iteration(int node_index, int start_lcp, bool expand_nodes,
-                               const std::function<bool(int, int, int &)> &f) {
+  void
+  breadth_first_iteration(int node_index, int start_lcp, bool expand_nodes,
+                          const std::function<bool(int, int, int, int)> &f) {
     if (this->multi_core) {
       lst::details::breadth_first_iteration_parallel(
           node_index, start_lcp, this->sequence, this->suffixes, this->table,
@@ -538,7 +545,7 @@ protected:
 
   void breadth_first_iteration_sequential(
       int node_index, int start_lcp, bool expand_nodes,
-      const std::function<bool(int, int, int)> &f) {
+      const std::function<bool(int, int, int, int)> &f) {
     lst::details::breadth_first_iteration(node_index, start_lcp, this->sequence,
                                           this->suffixes, this->table,
                                           expand_nodes, f);

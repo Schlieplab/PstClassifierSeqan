@@ -474,9 +474,8 @@ protected:
   void build_tree() {
     std::mutex counts_mutex{};
     this->breadth_first_iteration(
-        0, 0, true, [&](int node_index, int lcp, int edge_lcp) -> bool {
-          int count = this->node_occurrences(node_index);
-
+        0, 0, true,
+        [&](int node_index, int lcp, int edge_lcp, int node_count) -> bool {
           if (this->is_leaf(node_index) && edge_lcp == 1) {
             return false;
           }
@@ -492,7 +491,8 @@ protected:
 
             auto label = this->node_label(node_index, lcp, i);
             std::lock_guard counts_lock{counts_mutex};
-            this->counts[label] = count;
+
+            this->counts[seq] = node_count;
             if (include_sub_node) {
               this->status.insert(label);
             }
