@@ -1,6 +1,8 @@
 # distutils: language = c++
 
 from libcpp cimport bool
+from libcpp.vector cimport vector
+from libcpp.string cimport string
 
 cdef extern from "../../src/vlmc.cpp":
     const char *train_kl_parameters(const char *id_, const char *sequence_,
@@ -9,6 +11,9 @@ cdef extern from "../../src/vlmc.cpp":
 
     const char *train_kl(const char *id_, const char *sequence_, size_t max_depth,
                          size_t min_count, float threshold, bool multi_core, int parallel_depth)
+
+    const string train_kl_cpp(const string id_, const string sequence_, size_t max_depth,
+                                                                               size_t min_count, float threshold, bool multi_core, int parallel_depth)
 
 
 cpdef str train(str name, str sequence, int max_depth, int min_count, int threshold, bool multi_core, int parallel_depth):
@@ -49,14 +54,11 @@ cpdef str train(str name, str sequence, int max_depth, int min_count, int thresh
     str
         The vlmc in a tree format.  First rows are metadata, and following rows are nodes in the tree.
     """
-    cdef bytes tree = train_kl(name.encode(), sequence.encode(), max_depth, min_count, threshold, multi_core, parallel_depth)
+    cdef string tree = train_kl_cpp(name.encode(), sequence.encode(), max_depth, min_count, threshold, multi_core, parallel_depth)
     return tree.decode("utf-8")
 
 
-from libcpp.vector cimport vector
-from libcpp.string cimport string
-
-cdef extern from "../../src/score-sequences.cpp":
+cdef extern from "../../src/distances/score.hpp" namespace "pst":
     vector[vector[double]] score_cpp(vector[string] tree_strings, vector[string] sequence_list)
 
 

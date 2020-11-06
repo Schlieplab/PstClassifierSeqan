@@ -13,7 +13,7 @@ COPY python-package/CMakeLists.txt /PstClassifierSeqan/python-package/CMakeLists
 COPY python-package/dev-requirements.txt /PstClassifierSeqan/python-package/dev-requirements.txt
 
 
-RUN apt-get update -y && apt-get install -y cmake ninja-build libhdf5-serial-dev libeigen3-dev
+RUN apt-get update -y && apt-get install -y cmake ninja-build
 
 WORKDIR /PstClassifierSeqan/python-package/
 
@@ -34,7 +34,7 @@ COPY python-package/CMakeLists.txt /PstClassifierSeqan/python-package/CMakeLists
 COPY python-package/dev-requirements.txt /PstClassifierSeqan/python-package/dev-requirements.txt
 
 
-RUN apt-get update -y && apt-get install -y cmake ninja-build libhdf5-serial-dev libeigen3-dev
+RUN apt-get update -y && apt-get install -y cmake ninja-build
 
 WORKDIR /PstClassifierSeqan/python-package/
 
@@ -56,7 +56,7 @@ COPY python-package/CMakeLists.txt /PstClassifierSeqan/python-package/CMakeLists
 COPY python-package/dev-requirements.txt /PstClassifierSeqan/python-package/dev-requirements.txt
 
 
-RUN apt-get update -y && apt-get install -y cmake ninja-build libhdf5-serial-dev libeigen3-dev
+RUN apt-get update -y && apt-get install -y cmake ninja-build
 
 WORKDIR /PstClassifierSeqan/python-package/
 
