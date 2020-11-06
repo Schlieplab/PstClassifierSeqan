@@ -1,1 +1,1 @@
-from ._libvlmc import train
+from ._libvlmc import train, score_sequences_cython, score_sequences

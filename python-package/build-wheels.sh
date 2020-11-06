@@ -6,3 +6,4 @@ for PYVER in $VERSIONS; do
   $PYVER -m pip install -r dev-requirements.txt
   $PYVER setup.py bdist_wheel
 done
+

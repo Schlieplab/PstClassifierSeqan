@@ -48,3 +48,23 @@ cpdef str train(str name, str sequence, int max_depth, int min_count, int thresh
     """
     cdef bytes tree = train_kl(name.encode(), sequence.encode(), max_depth, min_count, threshold)
     return tree.decode("utf-8")
+
+
+from libcpp.vector cimport vector
+from libcpp.string cimport string
+
+cdef extern from "../../src/score-sequences.cpp":
+    vector[vector[double]] score_cpp(vector[string] tree_strings, vector[string] sequence_list)
+
+
+cpdef vector[vector[double]] score_sequences_cython(list trees, list sequence_list):
+    cdef vector[string] trees_ = [tree.encode() for tree in trees]
+    cdef vector[string] arr = [s.encode() for s in sequence_list]
+
+    return score_cpp(trees_, arr)
+
+
+cpdef score_sequences(trees, sequence_list):
+    import numpy as np
+
+    return np.array(score_sequences_cython(trees, sequence_list))
