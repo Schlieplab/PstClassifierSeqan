@@ -33,6 +33,9 @@
 
 namespace pst {
 
+using vec_t = std::deque<std::tuple<int, int, int, bool>>;
+thread_local vec_t thread_vec{};
+
 /*!\brief The probabilistic suffix tree implementation.
  * \tparam alphabet_t   Alphabet type from Seqan3.
  *
@@ -257,23 +260,21 @@ public:
    * \return vector of all terminal nodes, sorted.
    */
   std::vector<std::string> get_terminal_nodes() {
+    static std::mutex terminal_mutex{};
     if (terminal_nodes.size() > 0) {
       return terminal_nodes;
     }
 
     std::vector<std::string> nodes{};
-
-    this->pst_breadth_first_iteration(
-        [&](const std::string child_label, int level) -> bool {
-          if (this->is_terminal(child_label)) {
-            nodes.push_back(std::move(child_label));
-          }
-
-          return true;
-        });
+    for (const auto &child_label : this->status) {
+      if (this->is_terminal(child_label)) {
+        nodes.push_back(child_label);
+      }
+    }
 
     std::sort(nodes.begin(), nodes.end());
 
+    std::lock_guard terminal_lock{terminal_mutex};
     terminal_nodes = nodes;
 
     return nodes;
@@ -340,7 +341,7 @@ public:
       auto &[label, level] = queue.front();
 
       std::vector<std::string> children{};
-      this->iterate_children(label, [&](const std::string child_label) {
+      this->iterate_pst_children(label, [&](const std::string child_label) {
         if (is_included(child_label)) {
           children.emplace_back(std::move(child_label));
         }
@@ -378,9 +379,14 @@ public:
   }
 
   std::string get_closest_state(const std::string &label) {
+    if (label.empty()) {
+      return label;
+    }
+
     for (int i = 0; i < label.size(); i++) {
-      if (this->status.find(label.substr(i)) != this->status.end()) {
-        return label.substr(i);
+      auto sublabel = label.substr(i);
+      if (this->status.find(sublabel) != this->status.end()) {
+        return sublabel;
       }
     }
 
@@ -392,10 +398,29 @@ public:
   }
 
   float get_transition_probability(const std::string &label,
-                                   const char character) {
+                                   const char &character) {
     auto c = seqan3::assign_char_to(character, alphabet_t{});
     auto char_rank = c.to_rank();
-    return this->probabilities[label][char_rank];
+    if (this->valid_characters.find(char_rank) ==
+        this->valid_characters.end()) {
+      return 1.0;
+    } else {
+      return this->probabilities[label][char_rank];
+    }
+  }
+
+  int get_max_order() {
+    if (this->max_order != -1) {
+      return this->max_order;
+    }
+    int max_order_ = 0;
+    for (const auto &label : this->status) {
+      max_order_ = std::max(int(label.size()), max_order_);
+    }
+
+    this->max_order = max_order_;
+
+    return max_order_;
   }
 
   std::string id;
@@ -407,6 +432,7 @@ public:
       probabilities{};
 
   robin_hood::unordered_set<int> valid_characters{};
+  int max_order = -1;
 
 protected:
   friend class ProbabilisticSuffixTreeTest;
@@ -473,6 +499,9 @@ protected:
    */
   void build_tree() {
     std::mutex counts_mutex{};
+    vec_t global_vec{};
+    thread_vec = vec_t{};
+
     this->breadth_first_iteration(
         0, 0, true,
         [&](int node_index, int lcp, int edge_lcp, int node_count) -> bool {
@@ -484,22 +513,44 @@ protected:
             edge_lcp =
                 this->sequence.size() - this->table[node_index].value + 1;
           }
-          bool include_sub_node = true;
+          bool include_node = true;
 
-          for (int i = 1; i <= edge_lcp && include_sub_node; i++) {
-            include_sub_node = this->include_node(node_index, lcp, i, count);
+          for (int i = 1; i <= edge_lcp && include_node; i++) {
 
-            auto label = this->node_label(node_index, lcp, i);
-            std::lock_guard counts_lock{counts_mutex};
+            bool include_sub_node =
+                this->include_node(node_index, lcp, i, node_count);
 
-            this->counts[seq] = node_count;
-            if (include_sub_node) {
-              this->status.insert(label);
-            }
+            int node_start = this->table[node_index].value - lcp;
+            int node_end = std::min(this->table[node_index].value + i,
+                                    int(this->sequence.size()));
+
+            thread_vec.emplace_back(node_start, node_end, node_count,
+                                    include_sub_node);
+
+            include_node = include_sub_node;
           }
 
-          return include_sub_node;
+          return include_node;
+        },
+        [&]() {
+          std::lock_guard lock{counts_mutex};
+          std::move(thread_vec.begin(), thread_vec.end(),
+                    std::back_inserter(global_vec));
         });
+
+    for (auto [node_start, node_end, node_count, include_node_] : global_vec) {
+      lst::details::sequence_t<alphabet_t> label_dna(
+          this->sequence.begin() + node_start,
+          this->sequence.begin() + node_end);
+
+      std::string label =
+          label_dna | seqan3::views::to_char | seqan3::views::to<std::string>;
+
+      this->counts[label] = node_count;
+      if (include_node_) {
+        this->status.insert(label);
+      }
+    }
   }
 
   /**! \brief Computes and saves the forward probabilities of each node.
@@ -607,6 +658,7 @@ protected:
       auto &[node_label, delta] = queue.top();
 
       if (node_label.empty()) {
+        queue.pop();
         continue;
       }
       this->status.erase(node_label);
@@ -659,14 +711,11 @@ protected:
   std::vector<std::string> get_pst_leaves() {
     std::vector<std::string> bottom_nodes{};
 
-    this->pst_breadth_first_iteration(
-        [&](const std::string child_label, int level) -> bool {
-          if (this->is_pst_leaf(child_label)) {
-            bottom_nodes.emplace_back(std::move(child_label));
-          }
-
-          return true;
-        });
+    for (const auto &child_label : this->status) {
+      if (this->is_pst_leaf(child_label)) {
+        bottom_nodes.emplace_back(child_label);
+      }
+    }
 
     return bottom_nodes;
   }
@@ -882,18 +931,7 @@ protected:
    *
    * \return The number of nodes in the tree.
    */
-  int nodes_in_tree() {
-    int n_nodes = 0;
-    this->pst_breadth_first_iteration(
-        [&](const std::string node_label, int level) -> bool {
-          if (is_included(node_label)) {
-            n_nodes += 1;
-          }
-          return true;
-        });
-
-    return n_nodes;
-  }
+  int nodes_in_tree() { return this->status.size(); }
 
   /**! \brief Determine if a node should be included in the tree.
    * \details
@@ -980,8 +1018,8 @@ protected:
    *
    * Adds the node label, counts and probabilities corresponding to the line.
    *
-   * @param line Line to parse.
-   * @param characters The valid characters, has to agree with input.
+   * \param line Line to parse.
+   * \param characters The valid characters, has to agree with input.
    */
   void parse_line(const std::string &line,
                   std::vector<seqan3::gapped<alphabet_t>> &characters) {

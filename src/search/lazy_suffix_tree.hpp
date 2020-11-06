@@ -140,8 +140,8 @@ public:
    * edge length and occurrences of each node.  Should return if further
    * iteration of the node is needed.
    */
-  void
-  breadth_first_iteration(const std::function<bool(int, int, int, int)> &f) {
+  void breadth_first_iteration(const std::function<bool(int, int, int, int)> &f,
+                               const std::function<void()> &done) {
     this->breadth_first_iteration(
         0, 0, false,
         [&](int node_index, int lcp, int edge_lcp, int node_count) -> bool {
@@ -150,7 +150,8 @@ public:
           } else {
             return f(node_index, lcp, edge_lcp, node_count);
           }
-        });
+        },
+        done);
   }
 
   /**! \brief Breadth first traversal of the tree, sequentially
@@ -529,17 +530,18 @@ protected:
                                       this->suffixes, this->table);
   }
 
-  void
-  breadth_first_iteration(int node_index, int start_lcp, bool expand_nodes,
-                          const std::function<bool(int, int, int, int)> &f) {
+  void breadth_first_iteration(int node_index, int start_lcp, bool expand_nodes,
+                               const std::function<bool(int, int, int, int)> &f,
+                               const std::function<void()> &done) {
     if (this->multi_core) {
       lst::details::breadth_first_iteration_parallel(
           node_index, start_lcp, this->sequence, this->suffixes, this->table,
-          expand_nodes, f, this->parallel_depth);
+          expand_nodes, f, done, this->parallel_depth);
     } else {
       lst::details::breadth_first_iteration(node_index, start_lcp,
                                             this->sequence, this->suffixes,
                                             this->table, expand_nodes, f);
+      done();
     }
   }
 
