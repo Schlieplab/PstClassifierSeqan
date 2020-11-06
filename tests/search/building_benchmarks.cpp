@@ -291,4 +291,15 @@ BENCHMARK_F(LSTFixture, IteratingOverSuffixes)(benchmark::State &state) {
   }
 }
 
+BENCHMARK_F(LSTFixture, NodeOccurrences)(benchmark::State &state) {
+  lst::LazySuffixTree tree{sequence, false};
+  int first_level_child = tree.table[1].value;
+  lst::details::expand_node(first_level_child, tree.sequence, tree.suffixes,
+                            tree.table);
+
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(node_occurrences(first_level_child, tree.table));
+  }
+}
+
 BENCHMARK_MAIN();

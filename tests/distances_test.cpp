@@ -46,3 +46,39 @@ TEST_F(DistancesTest, CVSnapshots) {
   float expected_similar = 0.10424618759761345;
   EXPECT_FLOAT_EQ(expected_similar, pst::distances::cv(first, second));
 }
+
+TEST_F(DistancesTest, AllContexts) {
+  auto contexts = pst::distances::details::get_all_contexts<seqan3::dna5>(
+      2, first.valid_characters);
+
+  std::vector<std::string> expected_contexts{"AA", "AC", "AG", "AT", "CA", "CC",
+                                             "CG", "CT", "GA", "GC", "GG", "GT",
+                                             "TA", "TC", "TG", "TT"};
+
+  EXPECT_EQ(contexts, expected_contexts);
+}
+
+TEST_F(DistancesTest, CVEstimationSymmetry) {
+  auto result_forward = pst::distances::cv_estimation(first, second);
+  auto result_backward = pst::distances::cv_estimation(second, first);
+  EXPECT_FLOAT_EQ(result_forward, result_backward);
+}
+
+TEST_F(DistancesTest, CVEstimationIdentity) {
+  auto result_zero = pst::distances::cv_estimation(first, first);
+  EXPECT_EQ(result_zero, 0);
+}
+
+TEST_F(DistancesTest, BackgroudState) {
+  std::string c1{"AACG"};
+  std::string c2{"AACG"};
+  std::string c3{"ACG"};
+  std::string c4{"CG"};
+  std::string c5{"G"};
+  EXPECT_EQ(pst::distances::details::get_background_state(c1, 2), "CG");
+  EXPECT_EQ(pst::distances::details::get_background_state(c2, 3), "ACG");
+  EXPECT_EQ(pst::distances::details::get_background_state(c2, 1), "G");
+  EXPECT_EQ(pst::distances::details::get_background_state(c3, 2), "CG");
+  EXPECT_EQ(pst::distances::details::get_background_state(c4, 2), "CG");
+  EXPECT_EQ(pst::distances::details::get_background_state(c5, 2), "G");
+}
