@@ -126,6 +126,7 @@ protected:
       auto &node_label = bottom_up.front();
 
       if (node_label.empty()) {
+        bottom_up.pop();
         continue;
       }
 
