@@ -1,14 +1,19 @@
 FROM python:3.8-buster as python38
 
-COPY /src /PstClassifierSeqan/src
+COPY src /PstClassifierSeqan/src
 COPY seqan3 /PstClassifierSeqan/seqan3
+COPY robin-hood-hashing /PstClassifierSeqan/robin-hood-hashing
+COPY HighFive /PstClassifierSeqan/HighFive
+COPY eigen /PstClassifierSeqan/eigen
+COPY python-package/ /PstClassifierSeqan/python-package/
+COPY python-package/HighFive /PstClassifierSeqan/python-package/HighFive
 COPY python-package/libvlmc /PstClassifierSeqan/python-package/libvlmc
 COPY python-package/setup.py /PstClassifierSeqan/python-package/setup.py
 COPY python-package/CMakeLists.txt /PstClassifierSeqan/python-package/CMakeLists.txt
 COPY python-package/dev-requirements.txt /PstClassifierSeqan/python-package/dev-requirements.txt
 
 
-RUN apt-get update -y && apt-get install -y cmake ninja-build
+RUN apt-get update -y && apt-get install -y cmake ninja-build libhdf5-serial-dev libeigen3-dev
 
 WORKDIR /PstClassifierSeqan/python-package/
 
@@ -17,15 +22,19 @@ RUN python3.8 setup.py bdist_wheel
 
 FROM python:3.7-buster as python37
 
-COPY /src /PstClassifierSeqan/src
+COPY src /PstClassifierSeqan/src
 COPY seqan3 /PstClassifierSeqan/seqan3
+COPY robin-hood-hashing /PstClassifierSeqan/robin-hood-hashing
+COPY HighFive /PstClassifierSeqan/HighFive
+COPY eigen /PstClassifierSeqan/eigen
+COPY python-package/HighFive /PstClassifierSeqan/python-package/HighFive
 COPY python-package/libvlmc /PstClassifierSeqan/python-package/libvlmc
 COPY python-package/setup.py /PstClassifierSeqan/python-package/setup.py
 COPY python-package/CMakeLists.txt /PstClassifierSeqan/python-package/CMakeLists.txt
 COPY python-package/dev-requirements.txt /PstClassifierSeqan/python-package/dev-requirements.txt
 
 
-RUN apt-get update -y && apt-get install -y cmake ninja-build
+RUN apt-get update -y && apt-get install -y cmake ninja-build libhdf5-serial-dev libeigen3-dev
 
 WORKDIR /PstClassifierSeqan/python-package/
 
@@ -35,15 +44,19 @@ RUN python3.7 setup.py bdist_wheel
 
 FROM python:3.6-buster as python36
 
-COPY /src /PstClassifierSeqan/src
+COPY src /PstClassifierSeqan/src
 COPY seqan3 /PstClassifierSeqan/seqan3
+COPY robin-hood-hashing /PstClassifierSeqan/robin-hood-hashing
+COPY HighFive /PstClassifierSeqan/HighFive
+COPY eigen /PstClassifierSeqan/eigen
+COPY python-package/HighFive /PstClassifierSeqan/python-package/HighFive
 COPY python-package/libvlmc /PstClassifierSeqan/python-package/libvlmc
 COPY python-package/setup.py /PstClassifierSeqan/python-package/setup.py
 COPY python-package/CMakeLists.txt /PstClassifierSeqan/python-package/CMakeLists.txt
 COPY python-package/dev-requirements.txt /PstClassifierSeqan/python-package/dev-requirements.txt
 
 
-RUN apt-get update -y && apt-get install -y cmake ninja-build
+RUN apt-get update -y && apt-get install -y cmake ninja-build libhdf5-serial-dev libeigen3-dev
 
 WORKDIR /PstClassifierSeqan/python-package/
 
