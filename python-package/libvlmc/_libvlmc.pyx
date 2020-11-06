@@ -1,14 +1,17 @@
 # distutils: language = c++
 
+from libcpp cimport bool
+
 cdef extern from "../../src/vlmc.cpp":
     const char *train_kl_parameters(const char *id_, const char *sequence_,
                                     size_t max_depth, size_t min_count,
-                                    size_t n_parameters)
+                                    size_t n_parameters, bool multi_core, int parallel_depth)
 
     const char *train_kl(const char *id_, const char *sequence_, size_t max_depth,
-                         size_t min_count, float threshold)
+                         size_t min_count, float threshold, bool multi_core, int parallel_depth)
 
-cpdef str train(str name, str sequence, int max_depth, int min_count, int threshold):
+
+cpdef str train(str name, str sequence, int max_depth, int min_count, int threshold, bool multi_core, int parallel_depth):
     """Trains a VLMC with the given sequence and parameters.
 
     Parameters
@@ -46,7 +49,7 @@ cpdef str train(str name, str sequence, int max_depth, int min_count, int thresh
     str
         The vlmc in a tree format.  First rows are metadata, and following rows are nodes in the tree.
     """
-    cdef bytes tree = train_kl(name.encode(), sequence.encode(), max_depth, min_count, threshold)
+    cdef bytes tree = train_kl(name.encode(), sequence.encode(), max_depth, min_count, threshold, multi_core, parallel_depth)
     return tree.decode("utf-8")
 
 
