@@ -23,6 +23,7 @@ float negative_log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
   std::string sequence =
       sequence_dna | seqan3::views::to_char | seqan3::views::to<std::string>;
 
+  int length = 0;
   for (int i = 0; i < sequence.size(); i++) {
     std::string subsequence =
         sequence.substr(std::max(0, i - order_max), std::min(i, order_max));
@@ -33,11 +34,12 @@ float negative_log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 
     auto probability = tree.get_transition_probability(context, char_);
     if (probability != 0) {
+      length += 1;
       log_likelihood += std::log(probability);
     }
   }
 
-  return -log_likelihood / float(sequence.size());
+  return -log_likelihood / float(length);
 }
 
 template <seqan3::alphabet alphabet_t>

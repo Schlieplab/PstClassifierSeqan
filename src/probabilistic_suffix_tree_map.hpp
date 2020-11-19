@@ -403,7 +403,7 @@ public:
     auto char_rank = c.to_rank();
     if (this->valid_characters.find(char_rank) ==
         this->valid_characters.end()) {
-      return 1.0;
+      return 0.0;
     } else {
       return this->probabilities[label][char_rank];
     }
