@@ -17,41 +17,41 @@ namespace pst {
 
 using tree_t = pst::ProbabilisticSuffixTreeMap<seqan3::dna5>;
 
-void score_slice(
-    int start_index, int stop_index, std::vector<double> &scores,
-    std::vector<tree_t> &trees, std::vector<seqan3::dna5> &sequence,
+void score_slices(
+    int start_index, int stop_index, std::vector<std::vector<double>> &scores,
+    std::vector<tree_t> &trees,
+    std::vector<std::vector<seqan3::dna5>> &sequences,
     const std::function<float(tree_t &, std::vector<seqan3::dna5> &)> &fun) {
 
-  for (int i = start_index; i < stop_index; i++) {
-    scores[i] = fun(trees[i], sequence);
+  for (int j = 0; j < sequences.size(); j++) {
+    for (int i = start_index; i < stop_index; i++) {
+      scores[j][i] = fun(trees[i], sequences[j]);
+    }
   }
 }
 
 std::vector<std::vector<double>>
 score_sequences(std::vector<tree_t> &trees, std::vector<std::string> &sequences,
                 int background_order) {
-  std::vector<std::vector<double>> scores{};
+  std::vector<std::vector<double>> scores(sequences.size(),
+                                          std::vector<double>(trees.size()));
 
-  int sequence_idx = 0;
-
-  for (auto &sequence : sequences) {
-    std::vector<seqan3::dna5> seq = sequence |
+  std::vector<std::vector<seqan3::dna5>> dna_sequences(sequences.size());
+  for (int sequence_idx = 0; sequence_idx < sequences.size(); sequence_idx++) {
+    std::vector<seqan3::dna5> seq = sequences[sequence_idx] |
                                     seqan3::views::char_to<seqan3::dna5> |
                                     seqan3::views::to<std::vector>;
-
-    std::vector<double> scores_row(trees.size());
-
-    auto fun = [&](int start_index, int stop_index) {
-      score_slice(
-          start_index, stop_index, std::ref(scores_row), std::ref(trees),
-          std::ref(seq),
-          pst::distances::negative_log_likelihood_symmetric<seqan3::dna5>);
-    };
-
-    pst::parallelize::parallelize(trees.size(), fun);
-
-    scores.push_back(scores_row);
+    dna_sequences[sequence_idx] = seq;
   }
+
+  auto fun = [&](int start_index, int stop_index) {
+    score_slices(
+        start_index, stop_index, std::ref(scores), std::ref(trees),
+        std::ref(dna_sequences),
+        pst::distances::negative_log_likelihood_symmetric<seqan3::dna5>);
+  };
+
+  pst::parallelize::parallelize(trees.size(), fun);
 
   return scores;
 }
