@@ -139,6 +139,7 @@ public:
    * \param f callback function which gives the start, end sequence index,
    * edge length and occurrences of each node.  Should return if further
    * iteration of the node is needed.
+   * \param done callback function to signal that no more nodes can be iterated.
    */
   void breadth_first_iteration(const std::function<bool(int, int, int, int)> &f,
                                const std::function<void()> &done) {
@@ -174,6 +175,22 @@ public:
             return f(node_index, lcp, edge_lcp, node_count);
           }
         });
+  }
+
+  /**! \brief Breadth first traversal of the tree, without constructing the
+   * table. \details Accepts a callback function which for each node gives node
+   * index, lcp and edge lcp.
+   *
+   * \param f callback function which gives the start, end sequence index,
+   * edge length and occurrences of each node.  Should return if further
+   * iteration of the node is needed.
+   * \param done callback function to signal that no more nodes can be iterated.
+   */
+  void breadth_first_iteration_table_less(
+      const std::function<bool(int, int, int, int, bool)> &f,
+      const std::function<void()> &done) {
+    lst::details::breadth_first_iteration_table_less(
+        this->parallel_depth, sequence, suffixes, f, done);
   }
 
   /**! \brief Expands implicit nodes in the tree.

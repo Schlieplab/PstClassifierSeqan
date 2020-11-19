@@ -502,27 +502,23 @@ protected:
     vec_t global_vec{};
     thread_vec = vec_t{};
 
-    this->breadth_first_iteration(
-        0, 0, true,
-        [&](int node_index, int lcp, int edge_lcp, int node_count) -> bool {
-          if (this->is_leaf(node_index) && edge_lcp == 1) {
+    this->breadth_first_iteration_table_less(
+        [&](int sequence_index, int lcp, int edge_lcp, int node_count,
+            bool is_leaf) -> bool {
+          if (is_leaf && edge_lcp == 1) {
             return false;
           }
 
-          if (this->is_leaf(node_index)) {
-            edge_lcp =
-                this->sequence.size() - this->table[node_index].value + 1;
-          }
           bool include_node = true;
 
           for (int i = 1; i <= edge_lcp && include_node; i++) {
 
             bool include_sub_node =
-                this->include_node(node_index, lcp, i, node_count);
+                this->include_node(sequence_index, lcp, i, node_count);
 
-            int node_start = this->table[node_index].value - lcp;
-            int node_end = std::min(this->table[node_index].value + i,
-                                    int(this->sequence.size()));
+            int node_start = sequence_index - lcp;
+            int node_end =
+                std::min(sequence_index + i, int(this->sequence.size()));
 
             thread_vec.emplace_back(node_start, node_end, node_count,
                                     include_sub_node);
@@ -537,6 +533,8 @@ protected:
           std::move(thread_vec.begin(), thread_vec.end(),
                     std::back_inserter(global_vec));
         });
+
+    this->suffixes.resize(0);
 
     for (auto [node_start, node_end, node_count, include_node_] : global_vec) {
       lst::details::sequence_t<alphabet_t> label_dna(
@@ -945,14 +943,14 @@ protected:
    * \param count number of times the label occurs in the sequence.
    * \return true if the node should be included.
    */
-  bool include_node(int node_index, int lcp, int edge_lcp, int count) {
-    int label_start = this->table[node_index].value - lcp;
-    int label_end = this->table[node_index].value + edge_lcp;
+  bool include_node(int sequence_index, int lcp, int edge_lcp, int count) {
+    int label_start = sequence_index - lcp;
+    int label_end = sequence_index + edge_lcp;
     int label_length = label_end - label_start;
 
-    // All characters before table[node_index] have already been checked.
-    return label_length < this->max_depth && count >= this->freq &&
-           label_valid(this->table[node_index].value, label_end);
+    // All characters before sequence_index have already been checked.
+    return label_length <= this->max_depth && count >= this->freq &&
+           label_valid(sequence_index, label_end);
   }
 
   /**! \brief Checks if a label is valid.

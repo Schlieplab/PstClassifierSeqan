@@ -183,6 +183,27 @@ void add_children(const alphabet_array<int, alphabet_t> &counts,
 }
 
 template <seqan3::alphabet alphabet_t>
+std::vector<std::tuple<int, int>>
+get_children(const alphabet_array<int, alphabet_t> &counts, int lower_bound,
+             const std::vector<int> &suffixes) {
+
+  std::vector<std::tuple<int, int>> children{};
+  int index = lower_bound;
+
+  for (auto count : counts) {
+    if (count == 0) {
+      continue;
+    } else if (count == 1) {
+      children.emplace_back(suffixes[index], -1);
+    } else {
+      children.emplace_back(index, index + count);
+    }
+    index += count;
+  }
+  return children;
+}
+
+template <seqan3::alphabet alphabet_t>
 alphabet_array<int, alphabet_t>
 suffix_pointers(const alphabet_array<int, alphabet_t> &counts) {
   alphabet_array<int, alphabet_t> pointers{};
@@ -281,6 +302,23 @@ void expand_root(const sequence_t<alphabet_t> &sequence,
 }
 
 template <seqan3::alphabet alphabet_t>
+std::tuple<int, alphabet_array<int, alphabet_t>>
+expand_core(int lower_bound, int upper_bound,
+            const sequence_t<alphabet_t> &sequence,
+            std::vector<int> &suffixes) {
+  int lcp = longest_common_prefix(lower_bound, upper_bound, sequence, suffixes);
+  add_lcp_to_suffixes(lower_bound, upper_bound, lcp, suffixes);
+
+  auto counts = count_suffixes(lower_bound, upper_bound, sequence, suffixes);
+
+  if (lcp != 0) {
+    sort_suffixes(counts, lower_bound, upper_bound, sequence, suffixes);
+  }
+
+  return {lcp, counts};
+}
+
+template <seqan3::alphabet alphabet_t>
 std::tuple<int, int> expand_node(int node_index,
                                  const sequence_t<alphabet_t> &sequence,
                                  std::vector<int> &suffixes, Table<> &table) {
@@ -290,13 +328,8 @@ std::tuple<int, int> expand_node(int node_index,
   int upper_bound = table[node_index + 1].value;
   int suffix_lower_bound = suffixes[lower_bound];
 
-  int lcp = longest_common_prefix(lower_bound, upper_bound, sequence, suffixes);
-  assert(lcp > 0);
-  add_lcp_to_suffixes(lower_bound, upper_bound, lcp, suffixes);
-
-  auto counts = count_suffixes(lower_bound, upper_bound, sequence, suffixes);
-
-  sort_suffixes(counts, lower_bound, upper_bound, sequence, suffixes);
+  auto [lcp, counts] =
+      expand_core(lower_bound, upper_bound, sequence, suffixes);
 
   std::lock_guard<std::mutex> unevaluated_lock{table.mutex};
 
@@ -308,6 +341,23 @@ std::tuple<int, int> expand_node(int node_index,
 
   int count = upper_bound - lower_bound;
   return {lcp, count};
+}
+
+template <seqan3::alphabet alphabet_t>
+std::tuple<int, int, int, std::vector<std::tuple<int, int>>>
+evaluate_node(int lower_bound, int upper_bound,
+              const sequence_t<alphabet_t> &sequence,
+              std::vector<int> &suffixes) {
+
+  int sequence_index = suffixes[lower_bound];
+
+  auto [lcp, counts] =
+      expand_core(lower_bound, upper_bound, sequence, suffixes);
+
+  auto children = get_children<alphabet_t>(counts, lower_bound, suffixes);
+
+  int count = upper_bound - lower_bound;
+  return {sequence_index, lcp, count, children};
 }
 
 void add_implicit_nodes(int node_index, int edge_lcp, Table<> &table) {

@@ -66,6 +66,105 @@ int node_occurrences(int node_index, const Table<> &table) {
 }
 
 /**
+ * Iterates over the tree in a breadth-first fashion without constructing the
+ * tree.
+ *
+ * \tparam alphabet_t seqan3::alphabet type
+ * \param start_lower_bound lower bound of unevaluated node
+ * \param start_upper_bound upper bound of unevaluated node
+ * \param start_lcp Longest common prefix of the node.
+ * \param start_level Depth in tree.
+ * \param parallel_depth Depth to spawn threads to.
+ * \param sequence Sequence the tree is built over.
+ * \param suffixes Suffix vector of the tree.
+ * \param table Table vector of the tree.
+ * \param f Callback for the visited nodes.
+ * \param done Callback to signal that there are no more nodes to iterate.
+ */
+template <seqan3::alphabet alphabet_t>
+void breadth_first_iteration_table_less_(
+    int start_lower_bound, int start_upper_bound, int start_lcp,
+    int start_level, int parallel_depth, const sequence_t<alphabet_t> &sequence,
+    std::vector<int> &suffixes,
+    const std::function<bool(int, int, int, int, bool)> &f,
+    const std::function<void()> &done) {
+  std::vector<std::thread> threads{};
+
+  std::queue<std::tuple<int, int, int, int>> queue{};
+  queue.emplace(start_lower_bound, start_upper_bound, start_lcp, start_level);
+
+  while (!queue.empty()) {
+    auto [lower, upper, lcp, level] = queue.front();
+    queue.pop();
+    if (lower == 0 && upper == suffixes.size()) {
+    }
+
+    if (upper == -1) {
+      f(lower, lcp, sequence.size() - lower + 1, 1, true);
+      continue;
+    }
+
+    auto [sequence_index, edge_lcp, node_count, children] =
+        evaluate_node(lower, upper, sequence, suffixes);
+
+    bool consider_children =
+        f(sequence_index, lcp, edge_lcp, node_count, false);
+
+    if (!consider_children) {
+      continue;
+    }
+    int new_lcp = lcp + edge_lcp;
+
+    if (level < parallel_depth) {
+      for (auto &[child_lower, child_upper] : children) {
+        threads.emplace_back(breadth_first_iteration_table_less_<alphabet_t>,
+                             child_lower, child_upper, new_lcp, level + 1,
+                             parallel_depth, std::ref(sequence),
+                             std::ref(suffixes), f, done);
+      }
+    } else {
+      for (auto &[child_lower, child_upper] : children) {
+        queue.emplace(child_lower, child_upper, new_lcp, level + 1);
+      }
+    }
+  }
+
+  done();
+
+  for (auto &thread : threads) {
+    if (thread.joinable()) {
+      thread.join();
+    }
+  }
+}
+
+/**
+ * Iterates over the tree in a breadth-first fashion without constructing the
+ * tree.
+ *
+ * \tparam alphabet_t seqan3::alphabet type
+ * \param start_lower_bound lower bound of unevaluated node
+ * \param start_upper_bound upper bound of unevaluated node
+ * \param start_lcp Longest common prefix of the node.
+ * \param start_level Depth in tree.
+ * \param parallel_depth Depth to spawn threads to.
+ * \param sequence Sequence the tree is built over.
+ * \param suffixes Suffix vector of the tree.
+ * \param table Table vector of the tree.
+ * \param f Callback for the visited nodes.
+ * \param done Callback to signal that there are no more nodes to iterate.
+ */
+template <seqan3::alphabet alphabet_t>
+void breadth_first_iteration_table_less(
+    int parallel_depth, const sequence_t<alphabet_t> &sequence,
+    std::vector<int> &suffixes,
+    const std::function<bool(int, int, int, int, bool)> &f,
+    const std::function<void()> &done) {
+  breadth_first_iteration_table_less_<alphabet_t>(
+      0, suffixes.size(), 0, 0, parallel_depth, sequence, suffixes, f, done);
+}
+
+/**
  * Iterates over the structure in a breadth-first fashion.
  *
  * \tparam alphabet_t seqan3::alphabet type
