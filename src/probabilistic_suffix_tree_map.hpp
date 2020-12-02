@@ -101,6 +101,7 @@ public:
     for (auto &c : characters) {
       int char_rank = seqan3::to_rank(c);
       valid_characters.insert(char_rank);
+      valid_character_chars.push_back(c.to_char());
     }
   }
 
@@ -118,6 +119,7 @@ public:
     for (auto &c : characters) {
       int char_rank = seqan3::to_rank(c);
       valid_characters.insert(char_rank);
+      valid_character_chars.push_back(c.to_char());
     }
 
     for (std::string line; std::getline(input, line, '\n');) {
@@ -130,11 +132,15 @@ public:
    */
   ProbabilisticSuffixTreeMap(std::string &tree) {
     auto characters = get_valid_characters();
+
     for (auto &c : characters) {
       int char_rank = seqan3::to_rank(c);
       valid_characters.insert(char_rank);
+      valid_character_chars.push_back(c.to_char());
     }
+
     std::stringstream tree_stream{tree};
+
     for (std::string line; std::getline(tree_stream, line, '\n');) {
       parse_line(line, characters);
     }
@@ -432,6 +438,7 @@ public:
       probabilities{};
 
   robin_hood::unordered_set<int> valid_characters{};
+  std::vector<char> valid_character_chars{};
   int max_order = -1;
 
 protected:
@@ -727,10 +734,11 @@ protected:
    * \return If all children are missing.
    */
   bool is_pst_leaf(const std::string &node_label) {
+    std::string child_label{' ' + node_label};
+
     for (auto char_rank : this->valid_characters) {
       alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
-
-      std::string child_label = c.to_char() + node_label;
+      child_label[0] = c.to_char();
 
       if (this->is_included(child_label)) {
         return false;
@@ -749,10 +757,9 @@ protected:
    * \return If the node is terminal (has any missing children).
    */
   bool is_terminal(const std::string &node_label) {
-    for (auto char_rank : this->valid_characters) {
-      alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
-
-      std::string child_label = c.to_char() + node_label;
+    std::string child_label = ' ' + node_label;
+    for (auto c : this->valid_character_chars) {
+      child_label[0] = c;
 
       if (this->is_excluded(child_label)) {
         return true;
@@ -773,10 +780,8 @@ protected:
    */
   bool became_terminal(const std::string &node_label,
                        const std::string &removed_label) {
-    for (auto char_rank : this->valid_characters) {
-      alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
-
-      std::string child_label = c.to_char() + node_label;
+    for (auto c : this->valid_character_chars) {
+      std::string child_label = c + node_label;
 
       if (this->is_excluded(child_label) && child_label != removed_label) {
         return false;
