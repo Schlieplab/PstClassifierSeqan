@@ -88,3 +88,4 @@ add_subdirectory(search/lazy_suffix_tree)
 
 benchmark_case(construction_benchmarks.cpp)
 benchmark_case(distances_benchmarks.cpp)
+benchmark_case(algorithm_steps_benchmarks.cpp)

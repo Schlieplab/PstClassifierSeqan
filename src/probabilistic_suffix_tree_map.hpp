@@ -429,41 +429,6 @@ public:
     return max_order_;
   }
 
-  std::string id;
-
-  robin_hood::unordered_set<std::string> status{};
-  robin_hood::unordered_map<std::string, int> counts{};
-  robin_hood::unordered_map<
-      std::string, std::array<float, seqan3::alphabet_size<alphabet_t>>>
-      probabilities{};
-
-  robin_hood::unordered_set<int> valid_characters{};
-  std::vector<char> valid_character_chars{};
-  int max_order = -1;
-
-protected:
-  friend class ProbabilisticSuffixTreeTest;
-  size_t freq;
-  size_t max_depth;
-  size_t number_of_parameters;
-
-  std::string pruning_method;
-
-  /**! \brief Set the characters that are considered valid.
-   * This needs to be modified to accept a custom set of valid characters.
-   * \return vector of valid characters.
-   */
-  std::vector<seqan3::gapped<alphabet_t>> get_valid_characters() const {
-    using seqan3::operator""_dna4;
-    seqan3::dna4_vector dna4{"ACGT"_dna4};
-
-    std::vector<seqan3::gapped<alphabet_t>> characters{
-        dna4 | seqan3::views::convert<seqan3::gapped<alphabet_t>> |
-        ranges::_to_::to<std::vector<seqan3::gapped<alphabet_t>>>};
-
-    return characters;
-  }
-
   /**! \brief Support pruning phase of the algorithm.
    * \details
    * Extends a lazy suffix tree as long as the counts of each node is above
@@ -494,6 +459,40 @@ protected:
     } else if (this->pruning_method == "parameters") {
       this->parameters_prune();
     }
+  }
+
+  std::string id;
+
+  robin_hood::unordered_set<std::string> status{};
+  robin_hood::unordered_map<std::string, int> counts{};
+  robin_hood::unordered_map<
+      std::string, std::array<float, seqan3::alphabet_size<alphabet_t>>>
+      probabilities{};
+
+  robin_hood::unordered_set<int> valid_characters{};
+  std::vector<char> valid_character_chars{};
+  int max_order = -1;
+
+  friend class ProbabilisticSuffixTreeTest;
+  size_t freq;
+  size_t max_depth;
+  size_t number_of_parameters;
+
+  std::string pruning_method;
+
+  /**! \brief Set the characters that are considered valid.
+   * This needs to be modified to accept a custom set of valid characters.
+   * \return vector of valid characters.
+   */
+  std::vector<seqan3::gapped<alphabet_t>> get_valid_characters() const {
+    using seqan3::operator""_dna4;
+    seqan3::dna4_vector dna4{"ACGT"_dna4};
+
+    std::vector<seqan3::gapped<alphabet_t>> characters{
+        dna4 | seqan3::views::convert<seqan3::gapped<alphabet_t>> |
+        ranges::_to_::to<std::vector<seqan3::gapped<alphabet_t>>>};
+
+    return characters;
   }
 
   /**! \brief Builds the tree top-down.
