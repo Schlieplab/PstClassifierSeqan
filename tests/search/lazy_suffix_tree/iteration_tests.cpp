@@ -67,11 +67,12 @@ TEST_F(IterationTests, IterateChildren) {
 
 TEST_F(IterationTests, BreadthFirstIteration) {
   std::vector<int> visited{};
-  breadth_first_iteration(sequence, suffixes, table, true,
-                          [&](int index, int lcp, int edge_lcp) -> bool {
-                            visited.push_back(index);
-                            return true;
-                          });
+  breadth_first_iteration(
+      sequence, suffixes, table, true,
+      [&](int index, int lcp, int edge_lcp, int node_count) -> bool {
+        visited.push_back(index);
+        return true;
+      });
 
   std::vector<int> expected_visited{2, 4, 6, 8, 10, 12, 14, 16, 18};
 
@@ -84,11 +85,11 @@ TEST_F(IterationTests, BreadthFirstIterationParallel) {
     std::set<int> visited{};
     breadth_first_iteration_parallel(
         sequence, suffixes, table, true,
-        [&](int index, int lcp, int edge_lcp) -> bool {
+        [&](int index, int lcp, int edge_lcp, int node_count) -> bool {
           visited.insert(index);
           return true;
         },
-        0);
+        []() {}, 0);
     EXPECT_EQ(visited, expected_visited);
   }
 }

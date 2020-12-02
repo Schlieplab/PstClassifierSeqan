@@ -7,7 +7,6 @@ include(CTest)
 find_package(Threads REQUIRED)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
 if (NOT SEQAN3_INCLUDED)
   set(SeqAn3_DIR "${CMAKE_SOURCE_DIR}/../seqan3/build_system")
@@ -79,6 +78,7 @@ macro(benchmark_case case)
   unset (target)
 endmacro(benchmark_case)
 
+test_case(probabilistic_suffix_tree_tests.cpp)
 test_case(probabilistic_suffix_tree_map_tests.cpp)
 test_case(distances_test.cpp)
 

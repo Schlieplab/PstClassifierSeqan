@@ -175,10 +175,10 @@ void breadth_first_iteration_table_less(
  * if we only want to visit nodes. \param f Callback for the visited nodes.
  */
 template <seqan3::alphabet alphabet_t>
-void breadth_first_iteration(const sequence_t<alphabet_t> &sequence,
-                             std::vector<int> &suffixes, Table<> &table,
-                             bool expand_nodes,
-                             const std::function<bool(int, int, int, int)> &f) {
+void breadth_first_iteration(
+    const sequence_t<alphabet_t> &sequence, std::vector<int> &suffixes,
+    Table<> &table, bool expand_nodes,
+    const std::function<bool(int, int, int &, int)> &f) {
   breadth_first_iteration(0, 0, sequence, suffixes, table, expand_nodes, f);
 }
 
@@ -195,11 +195,10 @@ void breadth_first_iteration(const sequence_t<alphabet_t> &sequence,
  * if we only want to visit nodes. \param f Callback for the visited nodes.
  */
 template <seqan3::alphabet alphabet_t>
-void breadth_first_iteration(int start_index, int start_lcp,
-                             const sequence_t<alphabet_t> &sequence,
-                             std::vector<int> &suffixes, Table<> &table,
-                             bool expand_nodes,
-                             const std::function<bool(int, int, int, int)> &f) {
+void breadth_first_iteration(
+    int start_index, int start_lcp, const sequence_t<alphabet_t> &sequence,
+    std::vector<int> &suffixes, Table<> &table, bool expand_nodes,
+    const std::function<bool(int, int, int &, int)> &f) {
   std::queue<std::tuple<int, int>> queue{};
   queue.emplace(start_index, start_lcp);
 
@@ -235,7 +234,7 @@ template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration_parallel(
     const sequence_t<alphabet_t> &sequence, std::vector<int> &suffixes,
     Table<> &table, bool expand_nodes,
-    const std::function<bool(int, int, int, int)> &f,
+    const std::function<bool(int, int, int &, int)> &f,
     const std::function<void()> &done, int parallel_depth) {
   breadth_first_iteration_parallel_(0, 0, 0, sequence, suffixes, table,
                                     expand_nodes, f, done, parallel_depth);
@@ -249,14 +248,15 @@ void breadth_first_iteration_parallel(
  * \param suffixes Suffix vector of the tree.
  * \param table Table vector of the tree.
  * \param expand_nodes Determines if nodes should be explored (construction) or
- * if we only want to visit nodes. \param f Callback for the visited nodes.
+ * if we only want to visit nodes.
+ * \param f Callback for the visited nodes.
  * \param parallel_depth Number of levels to spawn new processes for.
  */
 template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration_parallel(
     int start_index, int start_lcp, const sequence_t<alphabet_t> &sequence,
     std::vector<int> &suffixes, Table<> &table, bool expand_nodes,
-    const std::function<bool(int, int, int, int)> &f,
+    const std::function<bool(int, int, int &, int)> &f,
     const std::function<void()> &done, int parallel_depth) {
   breadth_first_iteration_parallel_(start_index, start_lcp, 0, sequence,
                                     suffixes, table, expand_nodes, f, done,
@@ -268,7 +268,7 @@ void breadth_first_iteration_parallel_(
     int start_index, int start_lcp, int start_depth,
     const sequence_t<alphabet_t> &sequence, std::vector<int> &suffixes,
     Table<> &table, bool expand_nodes,
-    const std::function<bool(int, int, int, int)> &f,
+    const std::function<bool(int, int, int &, int)> &f,
     const std::function<void()> &done, int parallel_depth) {
 
   std::vector<std::thread> threads{};
@@ -318,7 +318,7 @@ template <seqan3::alphabet alphabet_t>
 std::tuple<int, bool>
 visit_top_node(int node_index, int lcp, const sequence_t<alphabet_t> &sequence,
                std::vector<int> &suffixes, Table<> &table, bool expand_nodes,
-               const std::function<bool(int, int, int, int)> &f) {
+               const std::function<bool(int, int, int &, int)> &f) {
   if (node_index == 0) {
     return {get_edge_lcp(node_index, sequence, suffixes, table), true};
   }
@@ -352,7 +352,7 @@ template <seqan3::alphabet alphabet_t>
 std::thread spawn_iteration_thread(
     int node_index, int lcp, int depth, const sequence_t<alphabet_t> &sequence,
     std::vector<int> &suffixes, Table<> &table, bool expand_nodes,
-    const std::function<bool(int, int, int, int)> &f,
+    const std::function<bool(int, int, int &, int)> &f,
     const std::function<void()> &done, int parallel_depth) {
 
   return std::thread{breadth_first_iteration_parallel_<alphabet_t>,

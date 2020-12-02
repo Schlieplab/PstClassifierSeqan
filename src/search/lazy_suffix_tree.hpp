@@ -99,7 +99,8 @@ public:
           std::lock_guard labels_lock{labels_mutex};
           labels.emplace_back(label, occurrences);
           return true;
-        });
+        },
+        []() {});
 
     return labels;
   }
@@ -245,13 +246,15 @@ public:
     std::fill(suffix_links.begin(), suffix_links.end(), -1);
 
     lst::details::add_explicit_suffix_links(sequence, suffixes, table,
-                                            suffix_links);
+                                            suffix_links, this->multi_core,
+                                            this->parallel_depth);
 
-    lst::details::add_leaf_suffix_links(sequence, suffixes, table,
-                                        suffix_links);
+    lst::details::add_leaf_suffix_links(sequence, suffixes, table, suffix_links,
+                                        this->multi_core, this->parallel_depth);
 
     lst::details::add_implicit_suffix_links(sequence, suffixes, table,
-                                            suffix_links);
+                                            suffix_links, this->multi_core,
+                                            this->parallel_depth);
 
     suffix_links[0] = -1;
   }
@@ -547,9 +550,10 @@ protected:
                                       this->suffixes, this->table);
   }
 
-  void breadth_first_iteration(int node_index, int start_lcp, bool expand_nodes,
-                               const std::function<bool(int, int, int, int)> &f,
-                               const std::function<void()> &done) {
+  void
+  breadth_first_iteration(int node_index, int start_lcp, bool expand_nodes,
+                          const std::function<bool(int, int, int &, int)> &f,
+                          const std::function<void()> &done) {
     if (this->multi_core) {
       lst::details::breadth_first_iteration_parallel(
           node_index, start_lcp, this->sequence, this->suffixes, this->table,
@@ -564,7 +568,7 @@ protected:
 
   void breadth_first_iteration_sequential(
       int node_index, int start_lcp, bool expand_nodes,
-      const std::function<bool(int, int, int, int)> &f) {
+      const std::function<bool(int, int, int &, int)> &f) {
     lst::details::breadth_first_iteration(node_index, start_lcp, this->sequence,
                                           this->suffixes, this->table,
                                           expand_nodes, f);

@@ -11,6 +11,7 @@
 
 #include <seqan3/std/filesystem>
 
+#include "kl_tree.hpp"
 #include "kl_tree_map.hpp"
 #include "probabilistic_suffix_tree_map.hpp"
 
@@ -19,6 +20,7 @@ struct input_arguments {
   size_t min_count{100};
   float threshold{1.2};
   size_t number_of_parameters{192};
+  std::string algorithm_method{"hashmap"};
   std::string pruning_method{"cutoff"};
   std::string estimator{"KL"};
   std::vector<lst::details::sequence_t<seqan3::dna5>> sequences{};
@@ -69,6 +71,11 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
                     "the threshold is reached, or 'parameters' to prune until "
                     "a certain number of parameters have been reached.");
 
+  parser.add_option(arguments.algorithm_method, 'a', "algorithm-method",
+                    "Algorithm to use. Either 'hashmap', which stores the"
+                    "k-mers in a hashmap, or 'tree' which will store"
+                    "the k-mers in a tree and requires suffix links.");
+
   // Multiprocessing
   parser.add_flag(arguments.multi_core, 'm', "multi-core",
                   "Enable Multi-core utilisation.");
@@ -99,10 +106,10 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
 std::string train(lst::details::sequence_t<seqan3::dna5> sequence,
                   std::string id, size_t max_depth, size_t min_count,
                   float threshold, size_t number_of_parameters,
-                  std::string pruning_method, std::string estimator,
-                  bool multi_core, int parallel_depth) {
+                  std::string pruning_method, std::string algorithm,
+                  std::string estimator, bool multi_core, int parallel_depth) {
 
-  if (estimator == "KL") {
+  if (estimator == "KL" && algorithm == "hashmap") {
     pst::KullbackLieblerTreeMap<seqan3::dna5> pst{id,
                                                   sequence,
                                                   max_depth,
@@ -114,6 +121,18 @@ std::string train(lst::details::sequence_t<seqan3::dna5> sequence,
                                                   parallel_depth};
     pst.construct_tree();
     return pst.to_tree();
+  } else if (estimator == "KL") {
+    pst::KullbackLieblerTree<seqan3::dna5> pst{id,
+                                               sequence,
+                                               max_depth,
+                                               min_count,
+                                               threshold,
+                                               number_of_parameters,
+                                               pruning_method,
+                                               multi_core,
+                                               parallel_depth};
+    pst.construct_tree();
+    return pst.to_tree();
   } else {
     return "";
   }
@@ -123,11 +142,11 @@ int main(int argc, char *argv[]) {
   auto start = std::chrono::system_clock::now();
   input_arguments arguments = parse_cli_arguments(argc, argv);
 
-  std::string tree = train(arguments.sequences[0], arguments.ids[0],
-                           arguments.max_depth, arguments.min_count,
-                           arguments.threshold, arguments.number_of_parameters,
-                           arguments.pruning_method, arguments.estimator,
-                           arguments.multi_core, arguments.parallel_depth);
+  std::string tree = train(
+      arguments.sequences[0], arguments.ids[0], arguments.max_depth,
+      arguments.min_count, arguments.threshold, arguments.number_of_parameters,
+      arguments.algorithm_method, arguments.pruning_method, arguments.estimator,
+      arguments.multi_core, arguments.parallel_depth);
   std::cout << tree << std::endl;
 
   return EXIT_SUCCESS;
