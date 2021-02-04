@@ -2,7 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
-#include <execution>
+// #include <execution>
 #include <future>
 #include <mutex>
 #include <queue>
@@ -438,14 +438,12 @@ void prepare_leaf_suffix_links_parallel(
     std::vector<int> &leaf_indices, const std::vector<int> &suffixes,
     const Table<> &table, const std::vector<std::tuple<int, int>> &leaves) {
 
-  std::for_each(std::execution::par, leaves.begin(), leaves.end(),
-                [&](std::tuple<int, int> leaf) {
-                  auto &[node_index, lcp] = leaf;
-                  int leaf_index =
-                      get_leaf_index(node_index, lcp, suffixes, table);
+  std::for_each(leaves.begin(), leaves.end(), [&](std::tuple<int, int> leaf) {
+    auto &[node_index, lcp] = leaf;
+    int leaf_index = get_leaf_index(node_index, lcp, suffixes, table);
 
-                  leaf_indices[leaf_index] = node_index;
-                });
+    leaf_indices[leaf_index] = node_index;
+  });
 }
 
 /**! \brief Adds suffix links to all explicit nodes.
@@ -485,14 +483,12 @@ void compute_leaf_suffix_links_parallel(
     const Table<> &table, const std::vector<std::tuple<int, int>> &leaves,
     std::vector<int> &suffix_links) {
 
-  std::for_each(
-      std::execution::par, leaves.begin(), leaves.end(),
-      [&](std::tuple<int, int> leaf) {
-        auto &[node_index, lcp] = leaf;
-        int leaf_index = get_leaf_index(node_index, lcp, suffixes, table);
+  std::for_each(leaves.begin(), leaves.end(), [&](std::tuple<int, int> leaf) {
+    auto &[node_index, lcp] = leaf;
+    int leaf_index = get_leaf_index(node_index, lcp, suffixes, table);
 
-        assign_leaf_link(node_index, leaf_index, suffix_links, leaf_indices);
-      });
+    assign_leaf_link(node_index, leaf_index, suffix_links, leaf_indices);
+  });
 }
 
 /**! \brief Adds suffix links to all leaves nodes in the tree.
