@@ -93,7 +93,7 @@ int tree_height_parallel(const sequence_t<alphabet_t> &sequence,
         tree_height_found = std::max(tree_height_found, lcp + edge_lcp);
         return true;
       },
-      []() {}, parallel_depth);
+      []() {}, parallel_depth, [](int n, int l, int &e) {});
 
   return tree_height_found;
 }
@@ -555,7 +555,7 @@ get_leaves(const sequence_t<alphabet_t> &sequence,
 
           return true;
         },
-        []() {}, parallel_depth);
+        []() {}, parallel_depth, [](int n, int l, int& e) {});
 
   } else {
     std::queue<std::tuple<int, int>> queue{};

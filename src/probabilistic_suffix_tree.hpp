@@ -7,6 +7,7 @@
 #include <ctime>
 #include <functional>
 #include <mutex>
+#include <shared_mutex>
 #include <sstream>
 #include <stack>
 #include <string>
@@ -137,7 +138,7 @@ public:
    */
   void support_pruning() {
     this->build_tree();
-    entries[0] = {Status::INCLUDED, int(this->sequence.size())};
+    entries[0] = {Status::INCLUDED, int(this->sequence.size()), {}};
   }
 
   /**! \brief Similarity pruning phase of the algorithm
@@ -234,31 +235,26 @@ public:
     lcps[0] = 0;
     edge_lcps[0] = 0;
     this->breadth_first_iteration_sequential(
-        0, 0, false,
         [&](int node_index, int lcp, int edge_lcp, int node_count) -> bool {
-          if (this->is_included(node_index)) {
-            lcps[node_index] = lcp;
-            edge_lcps[node_index] = edge_lcp;
-          }
+          lcps[node_index] = lcp;
+          edge_lcps[node_index] = edge_lcp;
           return true;
         });
 
     std::unordered_map<int, int> iteration_order_indices{};
     int i = 0;
-    this->pst_breadth_first_iteration(0, 0,
-                                      [&](int node_index, int level) -> bool {
-                                        iteration_order_indices[node_index] = i;
-                                        i++;
-                                        return true;
-                                      });
+    this->pst_breadth_first_iteration([&](int node_index, int level) -> bool {
+      iteration_order_indices[node_index] = i;
+      i++;
+      return true;
+    });
 
-    this->pst_breadth_first_iteration(
-        0, 0, [&](int node_index, int level) -> bool {
-          this->append_node_string(node_index, lcps[node_index],
-                                   edge_lcps[node_index],
-                                   iteration_order_indices, tree_string);
-          return true;
-        });
+    this->pst_breadth_first_iteration([&](int node_index, int level) -> bool {
+      this->append_node_string(node_index, lcps[node_index],
+                               edge_lcps[node_index], iteration_order_indices,
+                               tree_string);
+      return true;
+    });
 
     return tree_string.str();
   }
@@ -295,9 +291,10 @@ public:
    *
    * \param start_index Index of the node to start iteration at.
    * \param start_level Starting level for the iteration (0 for root, 1 for
-   * ACGT) \param f Callback for each child of start_index in a breadth first
+   * ACGT)
+   * \param f Callback for each child of start_index in a breadth first
    * fashion.  Is given node_index and depth of the node and should return
-   * wether to iterate over the node's children.
+   * whether to iterate over the node's children.
    *
    */
   void pst_breadth_first_iteration(const int start_index, const int start_level,
@@ -344,6 +341,58 @@ public:
     return this->suffix_links[node_index / 2];
   }
 
+  /**! \brief Returns count of the node
+   * \details
+   * Finds the count of the node by iterating the tree.  Saves the result in
+   * a vector with the size of the tree / 2.
+   *
+   * \param[in] node_index
+   * \return count of the node
+   */
+  int get_counts(int node_index) {
+    if (node_index == -1) {
+      return 0;
+    }
+    if (node_index == 0) {
+      return this->sequence.size();
+    }
+
+    int c = this->entries[node_index / 2].count;
+    if (c == -1) {
+      c = lst::details::node_occurrences(node_index, this->table);
+      this->entries[node_index / 2].count = c;
+    }
+    return c;
+  }
+
+  /**! \brief Returns the next-symbol probabilities of the node
+   *
+   * \param[in] node_index
+   * \return next-symbol probabilities of the node.
+   */
+  std::array<float, seqan3::alphabet_size<alphabet_t>>
+  get_probabilities(int node_index) {
+    if (node_index == -1) {
+      return {};
+    }
+
+    auto probs = this->entries[node_index / 2].probabilities;
+    if (probs.size() == 0) {
+      this->assign_node_probabilities(node_index);
+    }
+    return this->entries[node_index / 2].probabilities;
+  }
+
+  bool is_included(int node_index) {
+    return (this->entries[node_index / 2].status & Status::INCLUDED) ==
+           Status::INCLUDED;
+  }
+
+  bool is_excluded(int node_index) {
+    return (this->entries[node_index / 2].status & Status::EXCLUDED) ==
+           Status::EXCLUDED;
+  }
+
   std::string id;
 
   std::unordered_set<int> valid_characters{};
@@ -366,31 +415,63 @@ protected:
    * Also saves the count of the node as well as if it is included or excluded.
    */
   void build_tree() {
+    static std::shared_mutex entries_reallocate_mutex{};
+
     this->breadth_first_iteration(
         0, 0, true,
         [&](int node_index, int lcp, int &edge_lcp, int count) -> bool {
-          if (edge_lcp > 1) {
-            int max_extension = edge_lcp;
-            if (lcp + edge_lcp > this->max_depth) {
+          if (this->is_leaf(node_index)) {
+            std::lock_guard lock{this->table.mutex};
+            expand_implicit_nodes(node_index, lcp, edge_lcp);
 
-              max_extension = this->max_depth - lcp;
+            auto new_size = this->table.size() / 2;
+
+            if (this->entries.capacity() < new_size) {
+              std::unique_lock entries_reallocate_lock{
+                  entries_reallocate_mutex};
+              this->resize_entries();
+            } else {
+              this->resize_entries();
             }
-
-            this->add_implicit_nodes(node_index, max_extension);
-            edge_lcp = 1;
           }
 
-          {
-            std::lock_guard counts_lock{counts_mutex};
-            if (this->entries.size() < this->table.size() / 2) {
-              this->entries.resize(this->table.size() / 2, {Status::NONE, -1});
-            }
-            this->entries[node_index / 2] = {Status::NONE, count};
-          }
+          std::shared_lock lock{entries_reallocate_mutex};
 
           return this->check_node(node_index, lcp, edge_lcp, count);
         },
-        []() {});
+        []() {},
+        [&](int node_index, int lcp, int &edge_lcp) {
+          expand_implicit_nodes(node_index, lcp, edge_lcp);
+
+          auto new_size = this->table.size() / 2;
+
+          if (this->entries.capacity() < new_size) {
+            std::unique_lock lock{entries_reallocate_mutex};
+            this->resize_entries();
+          } else {
+            this->resize_entries();
+          }
+        });
+  }
+
+  void expand_implicit_nodes(int node_index, int lcp, int &edge_lcp) {
+    if (edge_lcp > 1) {
+      int max_extension = edge_lcp;
+      if (lcp + edge_lcp > this->max_depth) {
+
+        max_extension = this->max_depth - lcp;
+      }
+
+      this->add_implicit_nodes(node_index, max_extension);
+      edge_lcp = 1;
+    }
+  }
+
+  void resize_entries() {
+    auto new_size = this->table.size() / 2;
+    if (this->entries.size() < new_size) {
+      this->entries.resize(new_size, {Status::NONE, -1, {}});
+    }
   }
 
   /**! Check if the node with node_index should be included.
@@ -401,12 +482,11 @@ protected:
    * \return if the node was included.
    */
   bool check_node(int node_index, int lcp, int edge_lcp, int count) {
-    //    std::lock_guard consider_lock{consider_mutex};
     int label_start = this->table[node_index].value - lcp;
     int label_end = this->table[node_index].value + edge_lcp;
 
     if (!this->is_leaf(node_index) &&
-        this->include_node(label_start, label_end, count)) {
+        this->include_node(label_start, label_end, edge_lcp, count)) {
       this->entries[node_index / 2].status = Status::INCLUDED;
       return true;
     } else {
@@ -443,8 +523,7 @@ protected:
 
           this->assign_node_probabilities(node_index);
           return true;
-        },
-        []() {});
+        });
   }
 
   /**! \brief Assigns probabilities for the node.
@@ -681,41 +760,6 @@ protected:
     return is_terminal(node_index);
   }
 
-  /**! \brief Returns count of the node
-   * \details
-   * Finds the count of the node by iterating the tree.  Saves the result in
-   * a vector with the size of the tree / 2.
-   *
-   * \param[in] node_index
-   * \return count of the node
-   */
-  int get_counts(int node_index) {
-    if (node_index == -1) {
-      return 0;
-    }
-    if (node_index == 0) {
-      return this->sequence.size();
-    }
-
-    int c = this->entries[node_index / 2].count;
-    if (c == -1) {
-      c = lst::details::node_occurrences(node_index, this->table);
-      std::lock_guard counts_lock{counts_mutex};
-      this->entries[node_index / 2].count = c;
-    }
-    return c;
-  }
-
-  bool is_included(int node_index) {
-    return (this->entries[node_index / 2].status & Status::INCLUDED) ==
-           Status::INCLUDED;
-  }
-
-  bool is_excluded(int node_index) {
-    return (this->entries[node_index / 2].status & Status::EXCLUDED) ==
-           Status::EXCLUDED;
-  }
-
   /**! \brief Append string for a node to the output stream.
    * \details
    * The format is Node: (index / 2) [ <reverse_children_count> ] count [
@@ -730,9 +774,7 @@ protected:
                           std::unordered_map<int, int> &iteration_order_indices,
                           std::ostringstream &tree_string) {
     auto label = this->node_label(node_index, lcp, edge_lcp);
-    if (this->is_leaf(node_index)) {
-      label = this->leaf_label(node_index, lcp);
-    }
+
     if (node_index == 0) {
       label = "#";
     }
@@ -856,13 +898,12 @@ protected:
    */
   int nodes_in_tree() {
     int n_nodes = 0;
-    this->pst_breadth_first_iteration(0, 0,
-                                      [&](int node_index, int level) -> bool {
-                                        if (is_included(node_index)) {
-                                          n_nodes += 1;
-                                        }
-                                        return true;
-                                      });
+    this->pst_breadth_first_iteration([&](int node_index, int level) -> bool {
+      if (is_included(node_index)) {
+        n_nodes += 1;
+      }
+      return true;
+    });
 
     return n_nodes;
   }
@@ -879,11 +920,12 @@ protected:
    * \param count number of times the label occurs in the sequence.
    * \return true if the node should be included.
    */
-  bool include_node(int label_start, int label_end, int count) {
+  bool include_node(int label_start, int label_end, int edge_lcp, int count) {
     int label_length = label_end - label_start;
 
+    // All characters before label_start + edge_lcp have already been checked.
     return label_length <= this->max_depth && count >= this->freq &&
-           label_valid(label_start, label_end);
+           label_valid(label_start + edge_lcp, label_end);
   }
 
   /**! \brief Checks if a label is valid.
@@ -893,8 +935,6 @@ protected:
    * \return true if the label is valid, false otherwise.
    */
   bool label_valid(int label_start, int label_end) {
-    // TODO this can be more efficient if we know the edge_lcp, everything
-    // before has already been checked...
     for (int i = label_start; i < label_end; i++) {
       auto character = this->get_character(i);
       auto char_rank = seqan3::to_rank(character);

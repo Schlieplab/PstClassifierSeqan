@@ -75,7 +75,7 @@ public:
     for (int i = 0; i < this->table.size(); i++) {
       if (this->is_unevaluated(i)) {
         lst::details::expand_node(i, this->sequence, this->suffixes,
-                                  this->table);
+                                  this->table, [](int n, int &e) {});
       }
     }
   }
@@ -93,14 +93,10 @@ public:
         [&](int node_index, int lcp, int edge_lcp, int occurrences) -> bool {
           auto label = node_label(node_index, lcp, edge_lcp);
 
-          if (is_leaf(node_index)) {
-            label = leaf_label(node_index, lcp);
-          }
           std::lock_guard labels_lock{labels_mutex};
           labels.emplace_back(label, occurrences);
           return true;
-        },
-        []() {});
+        });
 
     return labels;
   }
@@ -134,16 +130,46 @@ public:
 
   /**! \brief Breadth first traversal of the tree.
    * \details
-   * Accepts a callback function which for each node gives node index, lcp and
-   * edge lcp.
+   * Accepts a callback function which for each node gives node index, lcp,
+   * edge lcp, and node count.
+   *
+   * Does not expand the tree.
+   *
+   * \param f callback function which gives the start, end sequence index,
+   * edge length and occurrences of each node.  Should return if further
+   * iteration of the node is needed.
+   */
+  void
+  breadth_first_iteration(const std::function<bool(int, int, int, int)> &f) {
+    this->breadth_first_iteration(
+        0, 0, false,
+        [&](int node_index, int lcp, int edge_lcp, int node_count) -> bool {
+          if (this->skip_node(node_index)) {
+            return true;
+          } else {
+            return f(node_index, lcp, edge_lcp, node_count);
+          }
+        });
+  }
+
+  /**! \brief Breadth first traversal of the tree.
+   * \details
+   * Accepts a callback function which for each node gives node index, lcp,
+   * edge lcp, and node count.
+   *
+   * Does not expand the tree.
    *
    * \param f callback function which gives the start, end sequence index,
    * edge length and occurrences of each node.  Should return if further
    * iteration of the node is needed.
    * \param done callback function to signal that no more nodes can be iterated.
+   * Useful for synchronisation of accumulated results in e.g. threads.
+   * \param[in] locked_callback Callback for when the tree array has grown and a
+   * user wants to do something in a synchronisation lock.
    */
   void breadth_first_iteration(const std::function<bool(int, int, int, int)> &f,
-                               const std::function<void()> &done) {
+                               const std::function<void()> &done,
+                               const std::function<void()> &locked_callback) {
     this->breadth_first_iteration(
         0, 0, false,
         [&](int node_index, int lcp, int edge_lcp, int node_count) -> bool {
@@ -153,13 +179,15 @@ public:
             return f(node_index, lcp, edge_lcp, node_count);
           }
         },
-        done);
+        done, locked_callback);
   }
 
-  /**! \brief Breadth first traversal of the tree, sequentially
+  /**! \brief Sequential breadth first traversal of the tree.
    * \details
-   * Accepts a callback function which for each node gives node index, lcp and
-   * edge lcp.
+   * Accepts a callback function which for each node gives node index, lcp,
+   * edge lcp, and node count.
+   *
+   * Does not expand the tree.
    *
    * \param f callback function which gives the start, end sequence index,
    * edge length and occurrences of each node.  Should return if further
@@ -179,7 +207,9 @@ public:
   }
 
   /**! \brief Breadth first traversal of the tree, without constructing the
-   * table. \details Accepts a callback function which for each node gives node
+   * table (which contains the tree structure).
+   *
+   * \details Accepts a callback function which for each node gives node
    * index, lcp and edge lcp.
    *
    * \param f callback function which gives the start, end sequence index,
@@ -344,6 +374,9 @@ public:
   }
 
   std::string node_label(int node_index, int lcp, int edge_lcp) {
+    if (this->is_leaf(node_index)) {
+      return this->leaf_label(node_index, lcp);
+    }
     int sequence_index = this->get_sequence_index(node_index);
 
     int node_start = sequence_index - lcp;
@@ -364,17 +397,17 @@ public:
   }
 
   lst::details::sequence_t<alphabet_t> sequence;
-  std::vector<int> suffixes{};
+  std::vector<size_t> suffixes{};
   lst::details::Table<> table{{0, lst::details::Flag::RIGHT_MOST_CHILD},
                               {2, lst::details::Flag::NONE}};
-  std::vector<int> suffix_links{};
-  std::vector<lst::details::alphabet_array<int, alphabet_t>>
+  std::vector<size_t> suffix_links{};
+  std::vector<lst::details::alphabet_array<size_t, alphabet_t>>
       reverse_suffix_links{};
 
-protected:
   bool multi_core;
   int parallel_depth;
 
+protected:
   std::vector<int> suffix_indices(int node_index, int og_lcp) {
     if (node_index >= table.size()) {
       throw std::invalid_argument(
@@ -421,7 +454,8 @@ protected:
       int edge_lcp;
       if (is_unevaluated(node_index)) {
         auto [edge_lcp_, _] = lst::details::expand_node(
-            node_index, this->sequence, this->suffixes, this->table);
+            node_index, this->sequence, this->suffixes, this->table,
+            [](int n, int &e) {});
         edge_lcp = edge_lcp_;
       } else {
         edge_lcp = this->get_edge_lcp(node_index);
@@ -552,16 +586,25 @@ protected:
 
   void
   breadth_first_iteration(int node_index, int start_lcp, bool expand_nodes,
-                          const std::function<bool(int, int, int &, int)> &f,
-                          const std::function<void()> &done) {
+                          const std::function<bool(int, int, int &, int)> &f) {
+    breadth_first_iteration(
+        node_index, start_lcp, expand_nodes, f, []() {},
+        [](int n, int l, int &e) {});
+  }
+
+  void breadth_first_iteration(
+      int node_index, int start_lcp, bool expand_nodes,
+      const std::function<bool(int, int, int &, int)> &f,
+      const std::function<void()> &done,
+      const std::function<void(int, int, int &)> &locked_callback) {
     if (this->multi_core) {
       lst::details::breadth_first_iteration_parallel(
           node_index, start_lcp, this->sequence, this->suffixes, this->table,
-          expand_nodes, f, done, this->parallel_depth);
+          expand_nodes, f, done, this->parallel_depth, locked_callback);
     } else {
-      lst::details::breadth_first_iteration(node_index, start_lcp,
-                                            this->sequence, this->suffixes,
-                                            this->table, expand_nodes, f);
+      lst::details::breadth_first_iteration(
+          node_index, start_lcp, this->sequence, this->suffixes, this->table,
+          expand_nodes, f, locked_callback);
       done();
     }
   }
@@ -569,9 +612,9 @@ protected:
   void breadth_first_iteration_sequential(
       int node_index, int start_lcp, bool expand_nodes,
       const std::function<bool(int, int, int &, int)> &f) {
-    lst::details::breadth_first_iteration(node_index, start_lcp, this->sequence,
-                                          this->suffixes, this->table,
-                                          expand_nodes, f);
+    lst::details::breadth_first_iteration(
+        node_index, start_lcp, this->sequence, this->suffixes, this->table,
+        expand_nodes, f, [](int n, int l, int &e) {});
   }
 };
 } // namespace lst

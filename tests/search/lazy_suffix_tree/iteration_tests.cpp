@@ -72,7 +72,8 @@ TEST_F(IterationTests, BreadthFirstIteration) {
       [&](int index, int lcp, int edge_lcp, int node_count) -> bool {
         visited.push_back(index);
         return true;
-      });
+      },
+      [](int n, int l, int &e) {});
 
   std::vector<int> expected_visited{2, 4, 6, 8, 10, 12, 14, 16, 18};
 
@@ -89,7 +90,7 @@ TEST_F(IterationTests, BreadthFirstIterationParallel) {
           visited.insert(index);
           return true;
         },
-        []() {}, 0);
+        []() {}, 0, [](int n, int l, int &e) {});
     EXPECT_EQ(visited, expected_visited);
   }
 }

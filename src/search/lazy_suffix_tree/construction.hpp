@@ -318,10 +318,45 @@ expand_core(int lower_bound, int upper_bound,
   return {lcp, counts};
 }
 
+/**! \brief Expands the node at node_index in the tree.
+ * \details
+ * Involves counting the LCP, sorting suffixes and adding new children.
+ *
+ *
+ * \param[in] node_index Node to expand.
+ * \param[in] sequence The sequence the tree is built for.
+ * \param[in] suffixes Suffixes array, contains sorted suffixes.
+ * \param[in] table Table, contains the tree structure.
+ * \param[in] suffixes Suffixes array.
+ * \return tuple of lcp and node count.
+ */
 template <seqan3::alphabet alphabet_t>
 std::tuple<int, int> expand_node(int node_index,
                                  const sequence_t<alphabet_t> &sequence,
                                  std::vector<int> &suffixes, Table<> &table) {
+  return expand_node(node_index, sequence, suffixes, table,
+                     [](int n, int &e) {});
+}
+
+/**! \brief Expands the node at node_index in the tree.
+ * \details
+ * Involves counting the LCP, sorting suffixes and adding new children.
+ *
+ *
+ * \param[in] node_index Node to expand.
+ * \param[in] sequence The sequence the tree is built for.
+ * \param[in] suffixes Suffixes array, contains sorted suffixes.
+ * \param[in] table Table, contains the tree structure.
+ * \param[in] suffixes Suffixes array.
+ * \param[in] locked_callback Callback for when the tree array has grown and a
+ * user wants to do something in a synchronisation lock.
+ * \return tuple of lcp and node count.
+ */
+template <seqan3::alphabet alphabet_t>
+std::tuple<int, int>
+expand_node(int node_index, const sequence_t<alphabet_t> &sequence,
+            std::vector<int> &suffixes, Table<> &table,
+            const std::function<void(int, int &)> &locked_callback) {
   assert(is_unevaluated(node_index, table));
 
   int lower_bound = table[node_index].value;
@@ -338,6 +373,8 @@ std::tuple<int, int> expand_node(int node_index,
 
   add_children<alphabet_t>(counts, lower_bound, suffixes, table);
   table[node_index].flag = Flag(table[node_index].flag & ~Flag::UNEVALUATED);
+
+  locked_callback(node_index, lcp);
 
   int count = upper_bound - lower_bound;
   return {lcp, count};
@@ -362,8 +399,6 @@ evaluate_node(int lower_bound, int upper_bound,
 
 void add_implicit_nodes(int node_index, int edge_lcp, Table<> &table) {
   assert(!is_unevaluated(node_index, table));
-
-  std::lock_guard<std::mutex> expand_table_lock{table.mutex};
 
   int previous_child = table[node_index + 1].value;
   table[node_index + 1].value = table.size();

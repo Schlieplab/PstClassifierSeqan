@@ -116,31 +116,66 @@ protected:
    */
   void cutoff_prune() {
     auto pst_leaves = this->get_pst_leaves();
+    std::mutex status_mutex{};
 
-    std::queue<std::string> bottom_up{};
-    for (auto v : pst_leaves) {
-      bottom_up.push(v);
+    if (false) {
+      robin_hood::unordered_map<std::string, std::queue<std::string>>
+          map_queue{};
+
+      for (std::string &v : pst_leaves) {
+        auto key = v.substr(0, this->parallel_depth);
+        map_queue[key].push(std::move(v));
+      }
+
+      std::vector<std::thread> threads{};
+      for (auto &[key, queue] : map_queue) {
+        threads.emplace_back(&KullbackLieblerTreeMap::prune_queue, this,
+                             std::ref(queue), std::ref(status_mutex));
+      }
+
+      for (auto &thread : threads) {
+        if (thread.joinable()) {
+          thread.join();
+        }
+      }
+    } else {
+      std::queue<std::string> queue{};
+      for (std::string &v : pst_leaves) {
+        queue.push(std::move(v));
+      }
+      this->prune_queue(queue, status_mutex);
     }
+  }
 
-    while (!bottom_up.empty()) {
-      auto &node_label = bottom_up.front();
+  void prune_queue(std::queue<std::string> &queue, std::mutex &status_mutex) {
+    while (!queue.empty()) {
+      auto &node_label = queue.front();
 
       if (node_label.empty()) {
-        bottom_up.pop();
+        queue.pop();
         continue;
       }
 
       float delta = calculate_delta(node_label);
 
       if (delta < this->cutoff_value) {
+        if (node_label.size() <= this->parallel_depth) {
+          // These cases are the only ones where we could get conflicts.
+          status_mutex.lock();
+        }
+
         this->status.erase(node_label);
 
         auto parent_label = this->get_pst_parent(node_label);
         if (this->is_pst_leaf(parent_label)) {
-          bottom_up.push(parent_label);
+          queue.push(std::move(parent_label));
+        }
+
+        if (node_label.size() <= this->parallel_depth) {
+          status_mutex.unlock();
         }
       }
-      bottom_up.pop();
+      queue.pop();
     }
   }
 
