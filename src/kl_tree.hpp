@@ -106,7 +106,7 @@ protected:
   void cutoff_prune() {
     auto pst_leaves = this->get_pst_leaves();
 
-    std::queue<int> bottom_up{};
+    std::queue<size_t> bottom_up{};
     for (auto v : pst_leaves) {
       bottom_up.push(v);
     }
@@ -124,7 +124,7 @@ protected:
       if (delta < this->cutoff_value) {
         this->entries[node_index / 2].status = Status::EXCLUDED;
 
-        int parent_index = this->suffix_links[node_index / 2];
+        auto parent_index = this->suffix_links[node_index / 2];
         if (this->is_pst_leaf(parent_index)) {
           bottom_up.push(parent_index);
         }
@@ -140,12 +140,12 @@ protected:
    * \param node_index Index to get delta for.
    * \return Delta value.
    */
-  float calculate_delta(int node_index) {
+  float calculate_delta(size_t node_index) {
     if (node_index == 0) {
       return std::numeric_limits<float>::max();
     }
 
-    int parent_index = this->suffix_links[node_index / 2];
+    auto parent_index = this->suffix_links[node_index / 2];
     if (parent_index == -1) {
       throw std::invalid_argument(
           "[kl_delta] Given node does not have a parent.");

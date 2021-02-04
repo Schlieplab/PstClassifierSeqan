@@ -72,8 +72,8 @@ TEST_F(ProbabilisticSuffixTreeTest, ConstructorStatus) {
 }
 
 TEST_F(ProbabilisticSuffixTreeTest, ConstructorSuffixLinks) {
-  std::vector<int> expected_suffix_links{
-      -1, // root
+  std::vector<size_t> expected_suffix_links{
+      max_size, // root
       0,  // A
       0,  // G
       0,  // T
@@ -115,10 +115,10 @@ TEST_F(ProbabilisticSuffixTreeTest, ConstructorProbabilities) {
           {0, 0, 0, 0}                                      // TTATA
       };
 
-  for (int i = 0; i < probabilisticSuffixTree.entries.size() &&
-                  i < expected_probabilities.size();
+  for (size_t i = 0; i < probabilisticSuffixTree.entries.size() &&
+                     i < expected_probabilities.size();
        i++) {
-    for (int j = 0; j < 4; j++) {
+    for (size_t j = 0; j < 4; j++) {
       EXPECT_FLOAT_EQ(probabilisticSuffixTree.entries[i].probabilities[j],
                       expected_probabilities[i][j]);
     }
@@ -222,34 +222,34 @@ TEST_F(ProbabilisticSuffixTreeTest, CorrectNumberOfParameters) {
       "TEST", long_sequence, 15, 4, sought_n_parameters, "parameters", false};
   pst.construct_tree();
 
-  int n_terminal = pst.count_terminal_nodes();
+  size_t n_terminal = pst.count_terminal_nodes();
   EXPECT_EQ(n_terminal * 3, sought_n_parameters);
 }
 
 TEST_F(ProbabilisticSuffixTreeTest, PSTBreadthFirstIteration) {
-  std::vector<int> visited{};
+  std::vector<size_t> visited{};
 
   probabilisticSuffixTree.pst_breadth_first_iteration(
-      0, 0, [&](int index, int level) {
+      0, 0, [&](size_t index, size_t level) {
         visited.push_back(index);
         return true;
       });
 
-  std::vector<int> expected_visited{0, 2, 4, 6, 14, 18, 10, 20};
+  std::vector<size_t> expected_visited{0, 2, 4, 6, 14, 18, 10, 20};
 
   EXPECT_EQ(visited, expected_visited);
 }
 
 TEST_F(ProbabilisticSuffixTreeTest, PSTBreadthFirstIterationSubtree) {
-  std::vector<int> visited{};
+  std::vector<size_t> visited{};
 
   probabilisticSuffixTree.pst_breadth_first_iteration(
-      2, 1, [&](int index, int level) {
+      2, 1, [&](size_t index, size_t level) {
         visited.push_back(index);
         return true;
       });
 
-  std::vector<int> expected_visited{2, 14, 18};
+  std::vector<size_t> expected_visited{2, 14, 18};
 
   EXPECT_EQ(visited, expected_visited);
 }
@@ -257,15 +257,16 @@ TEST_F(ProbabilisticSuffixTreeTest, PSTBreadthFirstIterationSubtree) {
 void test_suffix_links(pst::ProbabilisticSuffixTree<seqan3::dna5> tree) {
   tree.construct_tree();
 
-  std::map<int, std::string> labels{};
+  std::map<size_t, std::string> labels{};
 
-  tree.breadth_first_iteration_sequential(
-      [&](int node_index, int lcp, int edge_lcp, int node_count) -> bool {
-        labels[node_index] = tree.node_label(node_index, lcp, edge_lcp);
-        return true;
-      });
+  tree.breadth_first_iteration_sequential([&](size_t node_index, size_t lcp,
+                                              size_t edge_lcp,
+                                              size_t node_count) -> bool {
+    labels[node_index] = tree.node_label(node_index, lcp, edge_lcp);
+    return true;
+  });
 
-  tree.pst_breadth_first_iteration([&](int node_index, int level) -> bool {
+  tree.pst_breadth_first_iteration([&](size_t node_index, size_t level) -> bool {
     if (node_index == 0) {
       return true;
     }
@@ -296,7 +297,7 @@ TEST_F(ProbabilisticSuffixTreeTest, SuffixLinksCorrectParallel) {
   size_t sought_n_parameters{30300};
 
   // If it succeeds 1000 times, we have no race conditions?
-  for (int i = 0; i < 1; i++) {
+  for (int i = 0; i < 10; i++) {
     pst::ProbabilisticSuffixTree<seqan3::dna5> tree{
         "TEST",       long_sequence, 15, 4, sought_n_parameters,
         "parameters", true,          1};
@@ -344,14 +345,14 @@ TEST(ProbabilisticSuffixTreeLiveTest, EColi) {
   test_benchmark(filename, true, 1);
 }
 
-std::unordered_map<std::string, int>
+std::unordered_map<std::string, size_t>
 get_label_index_map(pst::ProbabilisticSuffixTree<seqan3::dna5> &tree) {
-  std::unordered_map<std::string, int> map{};
+  std::unordered_map<std::string, size_t> map{};
 
   static std::mutex labels_mutex{};
 
   tree.breadth_first_iteration(
-      [&](int node_index, int lcp, int edge_lcp, int node_count) -> bool {
+      [&](size_t node_index, size_t lcp, size_t edge_lcp, size_t node_count) -> bool {
         std::lock_guard labels_lock{labels_mutex};
         auto label = tree.node_label(node_index, lcp, edge_lcp);
 
@@ -385,10 +386,10 @@ void compare_trees(pst::ProbabilisticSuffixTree<seqan3::dna5> &left,
 
   // Check that the counts are the same
   for (auto &[str, left_idx] : left_index_map) {
-    int right_idx = right_index_map[str];
+    auto right_idx = right_index_map[str];
 
-    int left_count = left.get_counts(left_idx);
-    int right_count = right.get_counts(right_idx);
+    auto left_count = left.get_counts(left_idx);
+    auto right_count = right.get_counts(right_idx);
 
     EXPECT_EQ(left_count, right_count) << str << " didn't match!" << std::endl;
   }
@@ -400,7 +401,7 @@ void compare_trees(pst::ProbabilisticSuffixTree<seqan3::dna5> &left,
     auto left_probabilities = left.get_probabilities(left_idx);
     auto right_probabilities = right.get_probabilities(right_idx);
 
-    for (int i = 0; i < right_probabilities.size(); i++) {
+    for (size_t i = 0; i < right_probabilities.size(); i++) {
       EXPECT_FLOAT_EQ(left_probabilities[i], right_probabilities[i]);
     }
   }
@@ -408,7 +409,7 @@ void compare_trees(pst::ProbabilisticSuffixTree<seqan3::dna5> &left,
 
 TEST_F(ProbabilisticSuffixTreeTest, ParallelAndSequentialSame) {
   // If parallel successfully runs 1000 times, is it correct?
-  for (int i = 0; i < 1000; i++) {
+  for (int i = 0; i < 10; i++) {
     pst::ProbabilisticSuffixTree<seqan3::dna5> tree{
         "TEST", long_sequence, 15, 4, 24601, "parameters", false, 1};
     tree.construct_tree();

@@ -16,7 +16,7 @@ protected:
   void SetUp() override {}
 
   sequence_t<seqan3::dna5> sequence{"CACAC"_dna5};
-  std::vector<int> suffixes{0, 1, 2, 3, 4, 5};
+  std::vector<size_t> suffixes{0, 1, 2, 3, 4, 5};
   Table<> table{{0, Flag::UNEVALUATED},
                 {2, Flag::NONE},
                 {2, Flag::UNEVALUATED},
@@ -25,52 +25,52 @@ protected:
 };
 
 TEST_F(ConstructionTests, CountSuffixes) {
-  std::array<int, 6> expected_counts{2, 3, 0, 0, 0, 1};
+  std::array<size_t, 6> expected_counts{2, 3, 0, 0, 0, 1};
   EXPECT_EQ(count_suffixes(0, 6, sequence, suffixes), expected_counts);
 
   EXPECT_DEBUG_DEATH(count_suffixes(0, 16, sequence, suffixes), "");
-  EXPECT_DEBUG_DEATH(count_suffixes(-1, 5, sequence, suffixes), "");
 }
 
 TEST_F(ConstructionTests, LongestCommonPrefix) {
-  suffixes = std::vector<int>{1, 3, 0, 2, 4, 5};
+  suffixes = std::vector<size_t>{1, 3, 0, 2, 4, 5};
   EXPECT_EQ(longest_common_prefix(1, 2, sequence, suffixes), 2);
   EXPECT_EQ(longest_common_prefix(2, 4, sequence, suffixes), 3);
   EXPECT_EQ(longest_common_prefix(3, 5, sequence, suffixes), 1);
 }
 
 TEST_F(ConstructionTests, SuffixPointers) {
-  std::array<int, 6> counts{2, 3, 0, 0, 0, 1};
+  std::array<size_t, 6> counts{2, 3, 0, 0, 0, 1};
   auto actual_pointers = suffix_pointers<seqan3::dna5>(counts);
 
-  std::array<int, 6> expected_pointers{0, 2, 5, 5, 5, 5};
+  std::array<size_t, 6> expected_pointers{0, 2, 5, 5, 5, 5};
   EXPECT_EQ(actual_pointers, expected_pointers);
 }
 
 TEST_F(ConstructionTests, SortSuffixes) {
-  int lower_bound = 0;
-  int upper_bound = 6;
-  std::array<int, 6> counts =
+  size_t lower_bound = 0;
+  size_t upper_bound = 6;
+  std::array<size_t, 6> counts =
       count_suffixes(lower_bound, upper_bound, sequence, suffixes);
   sort_suffixes(counts, lower_bound, upper_bound, sequence, suffixes);
 
-  std::vector<int> expected_suffixes{1, 3, 0, 2, 4, 5};
+  std::vector<size_t> expected_suffixes{1, 3, 0, 2, 4, 5};
   EXPECT_EQ(suffixes, expected_suffixes);
 }
 
 TEST_F(ConstructionTests, AddLcpToSuffixes) {
-  int lower_bound = 0;
-  int upper_bound = 6;
+  size_t lower_bound = 0;
+  size_t upper_bound = 6;
   auto counts = count_suffixes(lower_bound, upper_bound, sequence, suffixes);
   sort_suffixes(counts, lower_bound, upper_bound, sequence, suffixes);
 
-  int lcp = longest_common_prefix(lower_bound, upper_bound, sequence, suffixes);
+  size_t lcp =
+      longest_common_prefix(lower_bound, upper_bound, sequence, suffixes);
   add_lcp_to_suffixes(lower_bound, upper_bound, lcp, suffixes);
 
-  std::vector<int> expected_suffixes{1, 3, 0, 2, 4, 5};
+  std::vector<size_t> expected_suffixes{1, 3, 0, 2, 4, 5};
   EXPECT_EQ(suffixes, expected_suffixes);
 
-  int lcp_0_2 = longest_common_prefix(0, 2, sequence, suffixes);
+  size_t lcp_0_2 = longest_common_prefix(0, 2, sequence, suffixes);
   add_lcp_to_suffixes(0, 2, lcp_0_2, suffixes);
   expected_suffixes = {3, 5, 0, 2, 4, 5};
   EXPECT_EQ(suffixes, expected_suffixes);
@@ -78,10 +78,10 @@ TEST_F(ConstructionTests, AddLcpToSuffixes) {
 
 TEST_F(ConstructionTests, AddChildren) {
   table = Table{};
-  std::array<int, 6> counts = count_suffixes(0, 6, sequence, suffixes);
+  std::array<size_t, 6> counts = count_suffixes(0, 6, sequence, suffixes);
   add_children<seqan3::dna5>(counts, 0, suffixes, table);
 
-  std::vector<int> tree_values{};
+  std::vector<size_t> tree_values{};
   std::vector<Flag> tree_flags{};
   for (auto &e : table.table) {
     tree_values.push_back(e.value);
@@ -89,7 +89,7 @@ TEST_F(ConstructionTests, AddChildren) {
   }
 
   // Changed to allow for explicit labels in the tree
-  std::vector<int> expected_table{0, 2, 2, 5, 5, 0};
+  std::vector<size_t> expected_table{0, 2, 2, 5, 5, 0};
 
   EXPECT_EQ(tree_values, expected_table);
 
@@ -108,7 +108,7 @@ TEST_F(ConstructionTests, ExpandRoot) {
   table = Table{};
   expand_root(sequence, suffixes, table);
 
-  std::vector<int> tree_values{};
+  std::vector<size_t> tree_values{};
   std::vector<Flag> tree_flags{};
   for (auto &e : table.table) {
     tree_values.push_back(e.value);
@@ -116,7 +116,7 @@ TEST_F(ConstructionTests, ExpandRoot) {
   }
 
   // Changed to allow for explicit labels in the tree
-  std::vector<int> expected_table{0, 2, 2, 5, 5, 0};
+  std::vector<size_t> expected_table{0, 2, 2, 5, 5, 0};
   EXPECT_EQ(tree_values, expected_table);
 
   std::vector<Flag> expected_flags{
@@ -129,7 +129,7 @@ TEST_F(ConstructionTests, ExpandRoot) {
   };
   EXPECT_EQ(tree_flags, expected_flags);
 
-  std::vector<int> expected_suffixes{1, 3, 0, 2, 4, 5};
+  std::vector<size_t> expected_suffixes{1, 3, 0, 2, 4, 5};
   EXPECT_EQ(suffixes, expected_suffixes);
 }
 
@@ -139,7 +139,7 @@ TEST_F(ConstructionTests, ExpandTest) {
   expand_node(0, sequence, suffixes, table);
 
   // Changed to allow for explicit labels in the tree
-  std::vector<int> expected_table{1, 6, 2, 5, 5, 0, 3, 0, 5, 0};
+  std::vector<size_t> expected_table{1, 6, 2, 5, 5, 0, 3, 0, 5, 0};
 
   std::vector<Flag> expected_flags{
       Flag::NONE,
@@ -154,7 +154,7 @@ TEST_F(ConstructionTests, ExpandTest) {
       Flag::NONE, // Added to allow for explicit labels in the tree
   };
 
-  std::vector<int> tree_values{};
+  std::vector<size_t> tree_values{};
   std::vector<Flag> tree_flags{};
   for (auto &e : table.table) {
     tree_values.push_back(e.value);

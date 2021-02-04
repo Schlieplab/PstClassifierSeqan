@@ -69,7 +69,7 @@ static void GetTransitionProbability(benchmark::State &state) {
   pst::KullbackLieblerTreeMap<seqan3::dna5> first{first_path};
 
   std::string context{"GTGTGT"};
-  int char_rank = 4;
+  size_t char_rank = 4;
   for (auto _ : state) {
     benchmark::DoNotOptimize(
         first.get_transition_probability(context, char_rank));

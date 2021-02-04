@@ -27,7 +27,7 @@
 #include "search/lazy_suffix_tree.hpp"
 #include "search/lazy_suffix_tree/iteration.hpp"
 
-std::mutex counts_mutex;
+size_t max_size = (size_t)-1;
 
 namespace pst {
 
@@ -39,7 +39,7 @@ enum Status : unsigned char {
 
 template <seqan3::alphabet alphabet_t> struct PSTEntry {
   Status status;
-  int count;
+  size_t count;
   std::array<float, seqan3::alphabet_size<alphabet_t>> probabilities;
 };
 
@@ -138,7 +138,7 @@ public:
    */
   void support_pruning() {
     this->build_tree();
-    entries[0] = {Status::INCLUDED, int(this->sequence.size()), {}};
+    entries[0] = {Status::INCLUDED, this->sequence.size(), {}};
   }
 
   /**! \brief Similarity pruning phase of the algorithm
@@ -179,12 +179,12 @@ public:
         });
   }
 
-  void debug_print_node(int node_index, int lcp, int edge_lcp) {
+  void debug_print_node(size_t node_index, size_t lcp, size_t edge_lcp) {
     lst::LazySuffixTree<alphabet_t>::debug_print_node(node_index, lcp,
                                                       edge_lcp);
 
     if (this->suffix_links.size() > node_index / 2 &&
-        this->suffix_links[node_index / 2] != -1) {
+        this->suffix_links[node_index / 2] != max_size) {
       std::cout << "\tDelta: " << this->calculate_delta(node_index);
 
       std::cout << "\tPST Leaf: " << this->is_pst_leaf(node_index);
@@ -230,26 +230,29 @@ public:
         this->count_terminal_nodes() * (valid_characters.size() - 1);
     tree_string << "Number(parameters): " << n_parameters << std::endl;
 
-    std::unordered_map<int, int> lcps{};
-    std::unordered_map<int, int> edge_lcps{};
+    std::unordered_map<size_t, size_t> lcps{};
+    std::unordered_map<size_t, size_t> edge_lcps{};
     lcps[0] = 0;
     edge_lcps[0] = 0;
-    this->breadth_first_iteration_sequential(
-        [&](int node_index, int lcp, int edge_lcp, int node_count) -> bool {
-          lcps[node_index] = lcp;
-          edge_lcps[node_index] = edge_lcp;
-          return true;
-        });
-
-    std::unordered_map<int, int> iteration_order_indices{};
-    int i = 0;
-    this->pst_breadth_first_iteration([&](int node_index, int level) -> bool {
-      iteration_order_indices[node_index] = i;
-      i++;
+    this->breadth_first_iteration_sequential([&](size_t node_index, size_t lcp,
+                                                 size_t edge_lcp,
+                                                 size_t node_count) -> bool {
+      lcps[node_index] = lcp;
+      edge_lcps[node_index] = edge_lcp;
       return true;
     });
 
-    this->pst_breadth_first_iteration([&](int node_index, int level) -> bool {
+    std::unordered_map<size_t, size_t> iteration_order_indices{};
+    size_t i = 0;
+    this->pst_breadth_first_iteration(
+        [&](size_t node_index, size_t level) -> bool {
+          iteration_order_indices[node_index] = i;
+          i++;
+          return true;
+        });
+
+    this->pst_breadth_first_iteration([&](size_t node_index,
+                                          size_t level) -> bool {
       this->append_node_string(node_index, lcps[node_index],
                                edge_lcps[node_index], iteration_order_indices,
                                tree_string);
@@ -263,11 +266,11 @@ public:
    *
    * \return vector of indices to all terminal nodes.
    */
-  int count_terminal_nodes() {
-    int n_terminal_nodes = 0;
+  size_t count_terminal_nodes() {
+    size_t n_terminal_nodes = 0;
 
     this->pst_breadth_first_iteration(
-        0, 0, [&](int node_index, int level) -> bool {
+        0, 0, [&](size_t node_index, size_t level) -> bool {
           if (this->is_included(node_index) && this->is_terminal(node_index)) {
             n_terminal_nodes += 1;
           }
@@ -283,7 +286,8 @@ public:
    * \param start_index Index of the node to start iteration at.
    *
    */
-  void pst_breadth_first_iteration(const std::function<bool(int, int)> &f) {
+  void
+  pst_breadth_first_iteration(const std::function<bool(size_t, size_t)> &f) {
     pst_breadth_first_iteration(0, 0, f);
   }
 
@@ -297,9 +301,11 @@ public:
    * whether to iterate over the node's children.
    *
    */
-  void pst_breadth_first_iteration(const int start_index, const int start_level,
-                                   const std::function<bool(int, int)> &f) {
-    std::queue<std::tuple<int, int>> queue{};
+  void
+  pst_breadth_first_iteration(const size_t start_index,
+                              const size_t start_level,
+                              const std::function<bool(size_t, size_t)> &f) {
+    std::queue<std::tuple<size_t, size_t>> queue{};
 
     queue.emplace(start_index, start_level);
 
@@ -309,7 +315,7 @@ public:
 
       if (f(node_index, level)) {
         for (auto child : this->reverse_suffix_links[node_index / 2]) {
-          if (child != -1 && !this->skip_node(child)) {
+          if (child != max_size && !this->skip_node(child)) {
             queue.emplace(child, level + 1);
           }
         }
@@ -322,10 +328,10 @@ public:
    * \param node_index Node to retrieve children of.
    * \return A vector of the children.
    */
-  std::vector<int> get_pst_children(const int node_index) {
-    std::vector<int> children{};
+  std::vector<size_t> get_pst_children(const size_t node_index) {
+    std::vector<size_t> children{};
     for (auto child : this->reverse_suffix_links[node_index / 2]) {
-      if (child != -1 && !this->skip_node(child)) {
+      if (child != max_size && !this->skip_node(child)) {
         children.push_back(child);
       }
     }
@@ -337,7 +343,7 @@ public:
    * \param node_index Node to get parent of.
    * \return Parent index, or -1 if no parent.
    */
-  int get_pst_parent(const int node_index) {
+  size_t get_pst_parent(const size_t node_index) {
     return this->suffix_links[node_index / 2];
   }
 
@@ -349,16 +355,16 @@ public:
    * \param[in] node_index
    * \return count of the node
    */
-  int get_counts(int node_index) {
-    if (node_index == -1) {
+  size_t get_counts(size_t node_index) {
+    if (node_index == max_size) {
       return 0;
     }
     if (node_index == 0) {
       return this->sequence.size();
     }
 
-    int c = this->entries[node_index / 2].count;
-    if (c == -1) {
+    auto c = this->entries[node_index / 2].count;
+    if (c == max_size) {
       c = lst::details::node_occurrences(node_index, this->table);
       this->entries[node_index / 2].count = c;
     }
@@ -371,8 +377,8 @@ public:
    * \return next-symbol probabilities of the node.
    */
   std::array<float, seqan3::alphabet_size<alphabet_t>>
-  get_probabilities(int node_index) {
-    if (node_index == -1) {
+  get_probabilities(size_t node_index) {
+    if (node_index == max_size) {
       return {};
     }
 
@@ -383,12 +389,12 @@ public:
     return this->entries[node_index / 2].probabilities;
   }
 
-  bool is_included(int node_index) {
+  bool is_included(size_t node_index) {
     return (this->entries[node_index / 2].status & Status::INCLUDED) ==
            Status::INCLUDED;
   }
 
-  bool is_excluded(int node_index) {
+  bool is_excluded(size_t node_index) {
     return (this->entries[node_index / 2].status & Status::EXCLUDED) ==
            Status::EXCLUDED;
   }
@@ -419,7 +425,8 @@ protected:
 
     this->breadth_first_iteration(
         0, 0, true,
-        [&](int node_index, int lcp, int &edge_lcp, int count) -> bool {
+        [&](size_t node_index, size_t lcp, size_t &edge_lcp,
+            size_t count) -> bool {
           if (this->is_leaf(node_index)) {
             std::lock_guard lock{this->table.mutex};
             expand_implicit_nodes(node_index, lcp, edge_lcp);
@@ -440,7 +447,7 @@ protected:
           return this->check_node(node_index, lcp, edge_lcp, count);
         },
         []() {},
-        [&](int node_index, int lcp, int &edge_lcp) {
+        [&](size_t node_index, size_t lcp, size_t &edge_lcp) {
           expand_implicit_nodes(node_index, lcp, edge_lcp);
 
           auto new_size = this->table.size() / 2;
@@ -454,9 +461,9 @@ protected:
         });
   }
 
-  void expand_implicit_nodes(int node_index, int lcp, int &edge_lcp) {
+  void expand_implicit_nodes(size_t node_index, size_t lcp, size_t &edge_lcp) {
     if (edge_lcp > 1) {
-      int max_extension = edge_lcp;
+      auto max_extension = edge_lcp;
       if (lcp + edge_lcp > this->max_depth) {
 
         max_extension = this->max_depth - lcp;
@@ -470,7 +477,7 @@ protected:
   void resize_entries() {
     auto new_size = this->table.size() / 2;
     if (this->entries.size() < new_size) {
-      this->entries.resize(new_size, {Status::NONE, -1, {}});
+      this->entries.resize(new_size, {Status::NONE, max_size, {}});
     }
   }
 
@@ -481,9 +488,10 @@ protected:
    * \param edge_lcp The edge length (lcp) of the node.
    * \return if the node was included.
    */
-  bool check_node(int node_index, int lcp, int edge_lcp, int count) {
-    int label_start = this->table[node_index].value - lcp;
-    int label_end = this->table[node_index].value + edge_lcp;
+  bool check_node(size_t node_index, size_t lcp, size_t edge_lcp,
+                  size_t count) {
+    auto label_start = this->table[node_index].value - lcp;
+    auto label_end = this->table[node_index].value + edge_lcp;
 
     if (!this->is_leaf(node_index) &&
         this->include_node(label_start, label_end, edge_lcp, count)) {
@@ -496,7 +504,8 @@ protected:
       // the rest of the implicit nodes as well.
       this->breadth_first_iteration_sequential(
           node_index, lcp, false,
-          [&](int index, int lcp, int edge_lcp, int node_count) -> bool {
+          [&](size_t index, size_t lcp, size_t edge_lcp,
+              size_t node_count) -> bool {
             this->entries[index / 2].status = Status::EXCLUDED;
             return true;
           });
@@ -516,7 +525,7 @@ protected:
     this->assign_node_probabilities(0);
 
     this->breadth_first_iteration(
-        [&](int node_index, int lcp, int edge_lcp, int node_count) {
+        [&](size_t node_index, size_t lcp, size_t edge_lcp, size_t node_count) {
           if (this->is_leaf(node_index) || this->skip_node(node_index)) {
             return false;
           }
@@ -534,7 +543,7 @@ protected:
    *
    * \param[in] node_index
    */
-  void assign_node_probabilities(int node_index) {
+  void assign_node_probabilities(size_t node_index) {
     auto child_counts = this->get_child_counts(node_index, true);
 
     float child_sum = 0;
@@ -542,7 +551,7 @@ protected:
       child_sum += c;
     }
 
-    for (int i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
+    for (size_t i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
       this->entries[node_index / 2].probabilities[i] =
           float(child_counts[i]) / child_sum;
     }
@@ -558,10 +567,10 @@ protected:
    * \param[in] node_index node to check for pseudo counts for.
    * \return true if pseudo counts should be added.
    */
-  bool add_pseudo_counts(int node_index) {
-    int n_children = 0;
-    this->iterate_children(node_index, [&](int child_index) {
-      int sequence_index = this->get_sequence_index(child_index);
+  bool add_pseudo_counts(size_t node_index) {
+    size_t n_children = 0;
+    this->iterate_children(node_index, [&](size_t child_index) {
+      auto sequence_index = this->get_sequence_index(child_index);
       auto character = this->get_character(sequence_index);
 
       auto char_rank = seqan3::to_rank(character);
@@ -585,7 +594,7 @@ protected:
    * it now a leaf.
    */
   virtual void cutoff_prune() { parameters_prune(); }
-  virtual float calculate_delta(int node_index) { return 0.0; }
+  virtual float calculate_delta(size_t node_index) { return 0.0; }
 
   /**! \brief Removes all nodes until a specified number of parameters are left.
    *
@@ -599,7 +608,7 @@ protected:
   void parameters_prune() {
     auto pst_leaves = this->get_pst_leaves();
 
-    using q_t = std::tuple<int, float>;
+    using q_t = std::tuple<size_t, float>;
     auto cmp = [](q_t left, q_t right) -> bool {
       return std::get<1>(left) < std::get<1>(right);
     };
@@ -611,7 +620,7 @@ protected:
 
     auto n_terminal_nodes = this->count_terminal_nodes();
 
-    int alphabet_size = this->valid_characters.size() - 1;
+    auto alphabet_size = this->valid_characters.size() - 1;
     while (!queue.empty() &&
            n_terminal_nodes * alphabet_size > this->number_of_parameters) {
       auto [node_index, delta] = queue.top();
@@ -621,7 +630,7 @@ protected:
         continue;
       }
 
-      int parent_index = this->suffix_links[node_index / 2];
+      auto parent_index = this->suffix_links[node_index / 2];
 
       this->entries[node_index / 2].status = Status::EXCLUDED;
 
@@ -641,19 +650,19 @@ protected:
    * \param with_pseudo_counts Flag for if pseudo counts should be used.
    * \return Array of counts for each children.
    */
-  std::array<int, seqan3::alphabet_size<alphabet_t>>
-  get_child_counts(int node_index, bool with_pseudo_counts) {
-    std::array<int, seqan3::alphabet_size<alphabet_t>> child_counts{};
+  std::array<size_t, seqan3::alphabet_size<alphabet_t>>
+  get_child_counts(size_t node_index, bool with_pseudo_counts) {
+    std::array<size_t, seqan3::alphabet_size<alphabet_t>> child_counts{};
 
-    this->iterate_children(node_index, [&](int child_index) {
-      int sequence_index = this->get_sequence_index(child_index);
+    this->iterate_children(node_index, [&](size_t child_index) {
+      auto sequence_index = this->get_sequence_index(child_index);
       auto character = this->get_character(sequence_index);
 
       if (character == seqan3::gap{}) {
         return;
       }
 
-      int character_rank = seqan3::to_rank(character);
+      auto character_rank = seqan3::to_rank(character);
       child_counts[character_rank] = get_counts(child_index);
     });
 
@@ -671,11 +680,11 @@ protected:
    *
    * \return vector of indices to all pst leaves.
    */
-  std::vector<int> get_pst_leaves() {
-    std::vector<int> bottom_nodes{};
+  std::vector<size_t> get_pst_leaves() {
+    std::vector<size_t> bottom_nodes{};
 
     this->pst_breadth_first_iteration(
-        0, 0, [&](int node_index, int level) -> bool {
+        0, 0, [&](size_t node_index, size_t level) -> bool {
           if (this->is_included(node_index) && this->is_pst_leaf(node_index)) {
             bottom_nodes.emplace_back(node_index);
           }
@@ -694,11 +703,11 @@ protected:
    * \param[in] node_index Node to check.
    * \return If all children are missing.
    */
-  bool is_pst_leaf(int node_index) {
+  bool is_pst_leaf(size_t node_index) {
     for (auto char_rank : this->valid_characters) {
-      int child_index = this->reverse_suffix_links[node_index / 2][char_rank];
+      auto child_index = this->reverse_suffix_links[node_index / 2][char_rank];
 
-      if (child_index == 0 || child_index == -1) {
+      if (child_index == 0 || child_index == max_size) {
         continue;
       }
 
@@ -718,15 +727,15 @@ protected:
    * \param[in] node_index Node index to check.
    * \return If the node is terminal (has any missing children).
    */
-  bool is_terminal(int node_index) {
+  bool is_terminal(size_t node_index) {
     for (auto char_rank : this->valid_characters) {
-      int child_index = this->reverse_suffix_links[node_index / 2][char_rank];
+      auto child_index = this->reverse_suffix_links[node_index / 2][char_rank];
 
       if (child_index == 0) {
         continue;
       }
 
-      if (child_index == -1 || this->is_excluded(child_index)) {
+      if (child_index == max_size || this->is_excluded(child_index)) {
         return true;
       }
     }
@@ -743,15 +752,15 @@ protected:
    * \param[in] removed_index Index of child to node, recently excluded.
    * \return True if removed index is the only missing child of node_index
    */
-  bool became_terminal(int node_index, int removed_index) {
+  bool became_terminal(size_t node_index, size_t removed_index) {
     for (auto char_rank : this->valid_characters) {
-      int child_index = this->reverse_suffix_links[node_index / 2][char_rank];
+      auto child_index = this->reverse_suffix_links[node_index / 2][char_rank];
 
       if (child_index == 0) {
         continue;
       }
 
-      if (child_index == -1 ||
+      if (child_index == max_size ||
           (this->is_excluded(child_index) && child_index != removed_index)) {
         return false;
       }
@@ -770,9 +779,10 @@ protected:
    * \param[in] edge_lcp Length of edge.
    * \param tree_string The output stream to write to.
    */
-  void append_node_string(int node_index, int lcp, int edge_lcp,
-                          std::unordered_map<int, int> &iteration_order_indices,
-                          std::ostringstream &tree_string) {
+  void append_node_string(
+      size_t node_index, size_t lcp, size_t edge_lcp,
+      std::unordered_map<size_t, size_t> &iteration_order_indices,
+      std::ostringstream &tree_string) {
     auto label = this->node_label(node_index, lcp, edge_lcp);
 
     if (node_index == 0) {
@@ -802,11 +812,11 @@ protected:
    * \param[in] node_index The node index to operate on.
    * \param tree_string The output stream to write to.
    */
-  void append_child_counts(int node_index, std::ostringstream &tree_string) {
+  void append_child_counts(size_t node_index, std::ostringstream &tree_string) {
 
     auto child_counts = this->get_child_counts(node_index, true);
 
-    std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -1);
+    std::vector<size_t> output(seqan3::alphabet_size<alphabet_t>, max_size);
     for (auto char_rank : this->valid_characters) {
       output[char_rank] = child_counts[char_rank];
     };
@@ -814,7 +824,7 @@ protected:
     tree_string << "[ ";
 
     for (auto count : output) {
-      if (count == -1) {
+      if (count == max_size) {
         continue;
       }
       tree_string << count << " ";
@@ -830,23 +840,23 @@ protected:
    * \param[in] node_index The node index to operate on.
    * \param tree_string The output stream to write to.
    */
-  void append_reverse_child_counts(int node_index,
+  void append_reverse_child_counts(size_t node_index,
                                    std::ostringstream &tree_string) {
 
-    std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -1);
+    std::vector<size_t> output(seqan3::alphabet_size<alphabet_t>, max_size);
 
     auto reverse_children = this->reverse_suffix_links[node_index / 2];
     for (auto char_rank : this->valid_characters) {
 
-      int reverse_child = reverse_children[char_rank];
-      int count = get_counts(reverse_child);
+      auto reverse_child = reverse_children[char_rank];
+      auto count = get_counts(reverse_child);
 
       output[char_rank] = count;
     };
 
     tree_string << "[ ";
     for (auto count : output) {
-      if (count == -1) {
+      if (count == max_size) {
         continue;
       }
       tree_string << count << " ";
@@ -863,20 +873,20 @@ protected:
    * \param[in] node_index The node index to operate on.
    * \param tree_string The output stream to write to.
    */
-  void
-  append_reverse_children(int node_index,
-                          std::unordered_map<int, int> &iteration_order_indices,
-                          std::ostringstream &tree_string) {
+  void append_reverse_children(
+      size_t node_index,
+      std::unordered_map<size_t, size_t> &iteration_order_indices,
+      std::ostringstream &tree_string) {
 
-    std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -2);
+    std::vector<size_t> output(seqan3::alphabet_size<alphabet_t>, -2);
 
     auto reverse_children = this->reverse_suffix_links[node_index / 2];
     for (auto char_rank : this->valid_characters) {
-      int reverse_child = reverse_children[char_rank];
+      auto reverse_child = reverse_children[char_rank];
 
-      if (reverse_child == 0 || reverse_child == -1 ||
+      if (reverse_child == 0 || reverse_child == max_size ||
           this->is_excluded(reverse_child)) {
-        output[char_rank] = -1;
+        output[char_rank] = max_size;
       } else {
         output[char_rank] = iteration_order_indices[reverse_child];
       }
@@ -896,14 +906,15 @@ protected:
    *
    * \return The number of nodes in the tree.
    */
-  int nodes_in_tree() {
-    int n_nodes = 0;
-    this->pst_breadth_first_iteration([&](int node_index, int level) -> bool {
-      if (is_included(node_index)) {
-        n_nodes += 1;
-      }
-      return true;
-    });
+  size_t nodes_in_tree() {
+    size_t n_nodes = 0;
+    this->pst_breadth_first_iteration(
+        [&](size_t node_index, size_t level) -> bool {
+          if (is_included(node_index)) {
+            n_nodes += 1;
+          }
+          return true;
+        });
 
     return n_nodes;
   }
@@ -920,8 +931,9 @@ protected:
    * \param count number of times the label occurs in the sequence.
    * \return true if the node should be included.
    */
-  bool include_node(int label_start, int label_end, int edge_lcp, int count) {
-    int label_length = label_end - label_start;
+  bool include_node(size_t label_start, size_t label_end, size_t edge_lcp,
+                    size_t count) {
+    size_t label_length = label_end - label_start;
 
     // All characters before label_start + edge_lcp have already been checked.
     return label_length <= this->max_depth && count >= this->freq &&
@@ -934,8 +946,8 @@ protected:
    * \param[in] label_end ending index of the label in the sequence.
    * \return true if the label is valid, false otherwise.
    */
-  bool label_valid(int label_start, int label_end) {
-    for (int i = label_start; i < label_end; i++) {
+  bool label_valid(size_t label_start, size_t label_end) {
+    for (size_t i = label_start; i < label_end; i++) {
       auto character = this->get_character(i);
       auto char_rank = seqan3::to_rank(character);
       if (this->valid_characters.find(char_rank) ==
@@ -949,7 +961,7 @@ protected:
 
   /** \copydoc lst::LazySuffixTree.skip_node()
    */
-  bool skip_node(int node_index) {
+  bool skip_node(size_t node_index) {
     return this->is_unevaluated(node_index) || this->is_excluded(node_index);
   }
 };

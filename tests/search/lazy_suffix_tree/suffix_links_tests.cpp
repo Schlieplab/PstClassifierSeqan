@@ -41,9 +41,9 @@ protected:
 
   };
 
-  std::vector<int> suffixes{3, 5, 3, 5, 5, 5};
+  std::vector<size_t> suffixes{3, 5, 3, 5, 5, 5};
 
-  std::vector<int> unfinished_suffixes{1, 3, 0, 2, 4, 5};
+  std::vector<size_t> unfinished_suffixes{1, 3, 0, 2, 4, 5};
 
   Table<> unfinished_table{
       {0, Flag::UNEVALUATED},
@@ -56,25 +56,26 @@ protected:
 };
 
 TEST_F(SuffixLinksTests, TreeHeight) {
-  int height = tree_height<seqan3::dna5>(sequence, suffixes, table);
+  size_t height = tree_height<seqan3::dna5>(sequence, suffixes, table);
 
   EXPECT_EQ(3, height);
 }
 
 TEST_F(SuffixLinksTests, TreeHeightParallel) {
-  int height = tree_height_parallel<seqan3::dna5>(sequence, suffixes, table, 2);
+  size_t height =
+      tree_height_parallel<seqan3::dna5>(sequence, suffixes, table, 2);
 
   EXPECT_EQ(3, height);
 }
 
 TEST_F(SuffixLinksTests, LeafIndex) {
-  int leaf_index = get_leaf_index(6, 0, suffixes, table);
+  size_t leaf_index = get_leaf_index(6, 0, suffixes, table);
   EXPECT_EQ(leaf_index, 5);
 
-  int root_leaf_index = get_leaf_index(0, 0, suffixes, table);
+  size_t root_leaf_index = get_leaf_index(0, 0, suffixes, table);
   EXPECT_EQ(root_leaf_index, -1);
 
-  int unfinished_leaf_index =
+  size_t unfinished_leaf_index =
       get_leaf_index(0, 0, unfinished_suffixes, unfinished_table);
   EXPECT_EQ(unfinished_leaf_index, 1);
 }

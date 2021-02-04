@@ -68,7 +68,7 @@ TEST_F(ProbabilisticSuffixTreeTestMap, ConstructorProbabilities) {
   std::vector<std::string> labels{"", "A", "G", "T", "AT", "GA", "TA", "TT"};
 
   for (auto &label : labels) {
-    for (int j = 0; j < 4; j++) {
+    for (size_t j = 0; j < 4; j++) {
       EXPECT_FLOAT_EQ(probabilisticSuffixTree.probabilities[label][j],
                       expected_probabilities[label][j]);
     }
@@ -128,7 +128,7 @@ TEST_F(ProbabilisticSuffixTreeTestMap, CorrectNumberOfParameters) {
       "TEST", long_sequence, 15, 4, sought_n_parameters, "parameters", false};
   pst.construct_tree();
 
-  int n_terminal = pst.count_terminal_nodes();
+  size_t n_terminal = pst.count_terminal_nodes();
   EXPECT_EQ(n_terminal * 3, sought_n_parameters);
 }
 
@@ -138,7 +138,7 @@ TEST_F(ProbabilisticSuffixTreeTestMap, PSTBreadthFirstIteration) {
   tree.construct_tree();
   std::set<std::string> visited{};
 
-  tree.pst_breadth_first_iteration([&](const std::string &label, int level) {
+  tree.pst_breadth_first_iteration([&](const std::string &label, size_t level) {
     visited.insert(label);
     return true;
   });
@@ -154,7 +154,7 @@ TEST_F(ProbabilisticSuffixTreeTestMap, PSTBreadthFirstIterationSubtree) {
   probabilisticSuffixTree.construct_tree();
 
   probabilisticSuffixTree.pst_breadth_first_iteration(
-      "A", 1, [&](const std::string &label, int level) {
+      "A", 1, [&](const std::string &label, size_t level) {
         visited.insert(label);
         return true;
       });
@@ -168,7 +168,7 @@ void test_suffix_links(pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree) {
   tree.construct_tree();
 
   tree.pst_breadth_first_iteration(
-      [&](const std::string &label, int level) -> bool {
+      [&](const std::string &label, size_t level) -> bool {
         if (label.empty()) {
           return true;
         }
@@ -193,8 +193,8 @@ TEST_F(ProbabilisticSuffixTreeTestMap, CorrectTree) {
 TEST_F(ProbabilisticSuffixTreeTestMap, CorrectTreeParallel) {
   size_t sought_n_parameters{30300};
 
-  // If it succeeds 1000 times, we have no race conditions?
-  for (int i = 0; i < 1000; i++) {
+  // If parallel code succeeds 1000 times, it is correct?
+  for (size_t i = 0; i < 1000; i++) {
     pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree{
         "TEST",       long_sequence, 15, 4, sought_n_parameters,
         "parameters", true,          1};
@@ -256,7 +256,7 @@ void compare_trees(pst::ProbabilisticSuffixTreeMap<seqan3::dna5> left,
   }
 
   for (auto &[k, v] : right.probabilities) {
-    for (int i = 0; i < v.size(); i++) {
+    for (size_t i = 0; i < v.size(); i++) {
       EXPECT_FLOAT_EQ(left.probabilities[k][i], v[i]);
     }
   }

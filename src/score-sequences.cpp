@@ -22,7 +22,7 @@
 using tree_t = pst::ProbabilisticSuffixTreeMap<seqan3::dna5>;
 
 struct input_arguments {
-  int background_order{0};
+  size_t background_order{0};
   std::filesystem::path filepath{};
   std::filesystem::path outpath{};
   std::filesystem::path sequence_list{};
@@ -71,11 +71,11 @@ std::vector<tree_t> get_trees(HighFive::File &file) {
 }
 
 void score_slice(
-    int start_index, int stop_index, std::vector<double> &scores,
+    size_t start_index, size_t stop_index, std::vector<double> &scores,
     std::vector<tree_t> &trees, std::vector<seqan3::dna5> &sequence,
     const std::function<float(tree_t &, std::vector<seqan3::dna5> &)> &fun) {
 
-  for (int i = start_index; i < stop_index; i++) {
+  for (size_t i = start_index; i < stop_index; i++) {
     scores[i] = fun(trees[i], sequence);
   }
 }
@@ -83,10 +83,10 @@ void score_slice(
 std::vector<std::vector<double>>
 score_sequences_paths(std::vector<tree_t> &trees,
                       std::vector<std::string> &sequence_list,
-                      int background_order) {
+                      size_t background_order) {
   std::vector<std::vector<double>> scores{};
 
-  int sequence_idx = 0;
+  size_t sequence_idx = 0;
 
   for (auto &path : sequence_list) {
     seqan3::sequence_file_input file_in{std::ifstream{path},
@@ -94,7 +94,7 @@ score_sequences_paths(std::vector<tree_t> &trees,
     for (auto &[seq, id, qual] : file_in) {
       std::vector<double> scores_row(trees.size());
 
-      auto fun = [&](int start_index, int stop_index) {
+      auto fun = [&](size_t start_index, size_t stop_index) {
         score_slice(
             start_index, stop_index, std::ref(scores_row), std::ref(trees),
             std::ref(seq),

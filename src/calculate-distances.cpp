@@ -22,8 +22,8 @@ using matrix_t = Eigen::MatrixXd;
 
 struct input_arguments {
   std::string distance_name{"cv"};
-  int order{6};
-  int background_order{2};
+  size_t order{6};
+  size_t background_order{2};
   std::filesystem::path filepath{""};
 };
 
@@ -55,22 +55,22 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
 }
 
 void calculate_vector_slice(
-    int start_index, int stop_index, matrix_t &distances,
+    size_t start_index, size_t stop_index, matrix_t &distances,
     std::vector<Eigen::VectorXd> &vectors,
     const std::function<float(tree_t &, tree_t &)> &fun) {
-  for (int i = start_index; i < stop_index; i++) {
-    for (int j = 0; j < vectors.size(); j++) {
+  for (size_t i = start_index; i < stop_index; i++) {
+    for (size_t j = 0; j < vectors.size(); j++) {
       distances(i, j) =
           pst::distances::details::cosine_dissimilarity(vectors[i], vectors[j]);
     }
   }
 }
 
-void calculate_slice(int start_index, int stop_index, matrix_t &distances,
+void calculate_slice(size_t start_index, size_t stop_index, matrix_t &distances,
                      std::vector<tree_t> &trees,
                      const std::function<float(tree_t &, tree_t &)> &fun) {
-  for (int i = start_index; i < stop_index; i++) {
-    for (int j = 0; j < trees.size(); j++) {
+  for (size_t i = start_index; i < stop_index; i++) {
+    for (size_t j = 0; j < trees.size(); j++) {
       distances(i, j) = fun(trees[i], trees[j]);
     }
   }
@@ -97,15 +97,15 @@ parse_distance_function(input_arguments &arguments) {
 }
 
 std::vector<Eigen::VectorXd> get_composition_vectors(std::vector<tree_t> &trees,
-                                                     int order,
-                                                     int background_order) {
+                                                     size_t order,
+                                                     size_t background_order) {
   std::cout << "getting contexts..." << std::endl;
   auto contexts = pst::distances::details::get_all_contexts<seqan3::dna5>(
       order, trees[0].valid_characters);
 
   std::vector<Eigen::VectorXd> vectors{};
   std::cout << "calculating cvs..." << std::endl;
-  for (int i = 0; i < trees.size(); i++) {
+  for (size_t i = 0; i < trees.size(); i++) {
     vectors.push_back(pst::distances::composition_vector<seqan3::dna5>(
         trees[i], contexts, background_order));
   }
@@ -125,14 +125,14 @@ matrix_t calculate_distances(
     std::vector<Eigen::VectorXd> vectors{};
     vectors = get_composition_vectors(trees, arguments.order,
                                       arguments.background_order);
-    auto fun = [&](int start_index, int stop_index) {
+    auto fun = [&](size_t start_index, size_t stop_index) {
       calculate_vector_slice(start_index, stop_index, std::ref(distances),
                              std::ref(vectors), distance_fun);
     };
     pst::parallelize::parallelize(trees.size(), fun);
 
   } else {
-    auto fun = [&](int start_index, int stop_index) {
+    auto fun = [&](size_t start_index, size_t stop_index) {
       calculate_slice(start_index, stop_index, std::ref(distances),
                       std::ref(trees), distance_fun);
     };

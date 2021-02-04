@@ -7,14 +7,14 @@
 #include <vector>
 
 namespace pst::parallelize {
-void parallelize(int size, const std::function<void(int, int)> &fun) {
+void parallelize(size_t size, const std::function<void(size_t, size_t)> &fun) {
   const auto processor_count = std::thread::hardware_concurrency();
   std::vector<std::thread> threads{};
   float values_per_thread = float(size) / processor_count;
 
-  for (int i = 0; i < processor_count; i++) {
-    int start_index = std::floor(values_per_thread * i);
-    int stop_index = std::ceil(values_per_thread * (i + 1.0));
+  for (size_t i = 0; i < processor_count; i++) {
+    size_t start_index = std::floor(values_per_thread * i);
+    size_t stop_index = std::ceil(values_per_thread * (i + 1.0));
     if (i == (processor_count - 1)) {
       stop_index = size;
     }

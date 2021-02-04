@@ -7,8 +7,8 @@
 
 namespace pst::distances {
 
-std::string get_background_state(std::string &state, int background_order) {
-  int background = state.size() - background_order;
+std::string get_background_state(std::string &state, size_t background_order) {
+  size_t background = state.size() - background_order;
   if (background <= 0) {
     return state;
   } else {
@@ -19,12 +19,13 @@ std::string get_background_state(std::string &state, int background_order) {
 template <seqan3::alphabet alphabet_t>
 inline Eigen::VectorXd
 composition_vector(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                   std::vector<std::string> &contexts, int background_order) {
+                   std::vector<std::string> &contexts,
+                   size_t background_order) {
 
-  int number_of_entries = contexts.size() * tree.valid_characters.size();
+  size_t number_of_entries = contexts.size() * tree.valid_characters.size();
   Eigen::VectorXd components(number_of_entries);
 
-  int i = 0;
+  size_t i = 0;
   for (auto &context : contexts) {
     auto state = tree.get_closest_state(context);
 
@@ -48,12 +49,12 @@ composition_vector(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 template <seqan3::alphabet alphabet_t>
 inline Eigen::VectorXd composition_vector_state_probability_scaled(
     ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-    std::vector<std::string> &contexts, int background_order) {
+    std::vector<std::string> &contexts, size_t background_order) {
 
-  int number_of_entries = contexts.size() * tree.valid_characters.size();
+  size_t number_of_entries = contexts.size() * tree.valid_characters.size();
   Eigen::VectorXd components(number_of_entries);
 
-  int i = 0;
+  size_t i = 0;
   for (auto &context : contexts) {
     auto state = tree.get_closest_state(context);
 

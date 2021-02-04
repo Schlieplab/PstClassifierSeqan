@@ -17,8 +17,8 @@ using tree_t = pst::ProbabilisticSuffixTreeMap<seqan3::dna5>;
 
 struct input_arguments {
   std::string type{"cv"};
-  int order{6};
-  int background_order{0};
+  size_t order{6};
+  size_t background_order{0};
   std::filesystem::path filepath{""};
 };
 
@@ -67,8 +67,8 @@ std::vector<tree_t> get_trees(HighFive::File &file) {
 }
 
 std::vector<std::vector<double>>
-get_composition_vectors(std::vector<tree_t> &trees, int order,
-                        int background_order) {
+get_composition_vectors(std::vector<tree_t> &trees, size_t order,
+                        size_t background_order) {
   std::cout << "getting contexts..." << std::endl;
   auto contexts = pst::distances::details::get_all_contexts<seqan3::dna5>(
       order, trees[0].valid_characters);
@@ -84,7 +84,7 @@ get_composition_vectors(std::vector<tree_t> &trees, int order,
                 seqan3::dna5>(tree, contexts, background_order);
 
         std::vector<double> vec(vector.size());
-        for (int i = 0; i < vector.size(); i++) {
+        for (size_t i = 0; i < vector.size(); i++) {
           vec[i] = vector(i);
         }
         return vec;

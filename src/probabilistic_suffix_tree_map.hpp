@@ -99,7 +99,7 @@ public:
         pruning_method(std::move(pruning_method_)) {
     auto characters = get_valid_characters();
     for (auto &c : characters) {
-      int char_rank = seqan3::to_rank(c);
+      auto char_rank = seqan3::to_rank(c);
       valid_characters.insert(char_rank);
       valid_character_chars.push_back(c.to_char());
     }
@@ -117,7 +117,7 @@ public:
 
     auto characters = get_valid_characters();
     for (auto &c : characters) {
-      int char_rank = seqan3::to_rank(c);
+      auto char_rank = seqan3::to_rank(c);
       valid_characters.insert(char_rank);
       valid_character_chars.push_back(c.to_char());
     }
@@ -134,7 +134,7 @@ public:
     auto characters = get_valid_characters();
 
     for (auto &c : characters) {
-      int char_rank = seqan3::to_rank(c);
+      auto char_rank = seqan3::to_rank(c);
       valid_characters.insert(char_rank);
       valid_character_chars.push_back(c.to_char());
     }
@@ -168,7 +168,7 @@ public:
     std::cout << std::endl;
 
     this->breadth_first_iteration_label(
-        root, 0, [&](const std::string label, int level) -> bool {
+        root, 0, [&](const std::string label, size_t level) -> bool {
           if (this->is_excluded(label)) {
             return true;
           }
@@ -222,17 +222,17 @@ public:
         this->count_terminal_nodes() * (valid_characters.size() - 1);
     tree_string << "Number(parameters): " << n_parameters << std::endl;
 
-    robin_hood::unordered_map<std::string, int> iteration_order_indices{};
-    int i = 0;
+    robin_hood::unordered_map<std::string, size_t> iteration_order_indices{};
+    size_t i = 0;
     this->pst_breadth_first_iteration(
-        [&](const std::string child_label, int level) -> bool {
+        [&](const std::string child_label, size_t level) -> bool {
           iteration_order_indices[child_label] = i;
           i++;
           return true;
         });
 
     this->pst_breadth_first_iteration(
-        [&](const std::string child_label, int level) -> bool {
+        [&](const std::string child_label, size_t level) -> bool {
           this->append_node_string(child_label, iteration_order_indices,
                                    tree_string);
           return true;
@@ -245,11 +245,11 @@ public:
    *
    * \return vector of indices to all terminal nodes.
    */
-  int count_terminal_nodes() {
-    int n_terminal_nodes = 0;
+  size_t count_terminal_nodes() {
+    size_t n_terminal_nodes = 0;
 
     this->pst_breadth_first_iteration(
-        [&](const std::string child_label, int level) -> bool {
+        [&](const std::string child_label, size_t level) -> bool {
           if (this->is_terminal(child_label)) {
             n_terminal_nodes += 1;
           }
@@ -292,7 +292,7 @@ public:
    *
    */
   void pst_breadth_first_iteration(
-      const std::function<bool(const std::string, int)> &f) {
+      const std::function<bool(const std::string, size_t)> &f) {
     std::string root{""};
     pst_breadth_first_iteration(root, 0, f);
   }
@@ -307,9 +307,9 @@ public:
    *
    */
   void pst_breadth_first_iteration(
-      const std::string &start_label, const int start_level,
-      const std::function<bool(const std::string, int)> &f) {
-    std::queue<std::tuple<std::string, int>> queue{};
+      const std::string &start_label, const size_t start_level,
+      const std::function<bool(const std::string, size_t)> &f) {
+    std::queue<std::tuple<std::string, size_t>> queue{};
 
     queue.emplace(start_label, start_level);
 
@@ -331,15 +331,15 @@ public:
   }
 
   void breadth_first_iteration_label(
-      const std::function<bool(const std::string, int)> &f) {
+      const std::function<bool(const std::string, size_t)> &f) {
     std::string root{""};
     this->breadth_first_iteration_label(root, 0, f);
   }
 
   void breadth_first_iteration_label(
-      const std::string &start_label, const int start_level,
-      const std::function<bool(const std::string, int)> &f) {
-    std::queue<std::tuple<std::string, int>> queue{};
+      const std::string &start_label, const size_t start_level,
+      const std::function<bool(const std::string, size_t)> &f) {
+    std::queue<std::tuple<std::string, size_t>> queue{};
 
     queue.emplace(start_label, start_level);
 
@@ -389,7 +389,7 @@ public:
       return label;
     }
 
-    for (int i = 0; i < label.size(); i++) {
+    for (size_t i = 0; i < label.size(); i++) {
       auto sublabel = label.substr(i);
       if (this->status.find(sublabel) != this->status.end()) {
         return sublabel;
@@ -399,7 +399,7 @@ public:
     return "";
   }
 
-  float get_transition_probability(const std::string &label, int char_rank) {
+  float get_transition_probability(const std::string &label, size_t char_rank) {
     return this->probabilities[label][char_rank];
   }
 
@@ -415,13 +415,13 @@ public:
     }
   }
 
-  int get_max_order() {
+  size_t get_max_order() {
     if (this->max_order != -1) {
       return this->max_order;
     }
-    int max_order_ = 0;
+    size_t max_order_ = 0;
     for (const auto &label : this->status) {
-      max_order_ = std::max(int(label.size()), max_order_);
+      max_order_ = std::max(label.size(), max_order_);
     }
 
     this->max_order = max_order_;
@@ -464,14 +464,14 @@ public:
   std::string id;
 
   robin_hood::unordered_set<std::string> status{};
-  robin_hood::unordered_map<std::string, int> counts{};
+  robin_hood::unordered_map<std::string, size_t> counts{};
   robin_hood::unordered_map<
       std::string, std::array<float, seqan3::alphabet_size<alphabet_t>>>
       probabilities{};
 
-  robin_hood::unordered_set<int> valid_characters{};
+  robin_hood::unordered_set<size_t> valid_characters{};
   std::vector<char> valid_character_chars{};
-  int max_order = -1;
+  size_t max_order = -1;
 
   friend class ProbabilisticSuffixTreeTest;
   size_t freq;
@@ -509,22 +509,21 @@ public:
     thread_vec = vec_t{};
 
     this->breadth_first_iteration_table_less(
-        [&](int sequence_index, int lcp, int edge_lcp, int node_count,
-            bool is_leaf) -> bool {
+        [&](size_t sequence_index, size_t lcp, size_t edge_lcp,
+            size_t node_count, bool is_leaf) -> bool {
           if (is_leaf && edge_lcp == 1) {
             return false;
           }
 
           bool include_node = true;
 
-          for (int i = 1; i <= edge_lcp && include_node; i++) {
+          for (size_t i = 1; i <= edge_lcp && include_node; i++) {
 
             bool include_sub_node =
                 this->include_node(sequence_index, lcp, i, node_count);
 
-            int node_start = sequence_index - lcp;
-            int node_end =
-                std::min(sequence_index + i, int(this->sequence.size()));
+            auto node_start = sequence_index - lcp;
+            auto node_end = std::min(sequence_index + i, this->sequence.size());
 
             thread_vec.emplace_back(node_start, node_end, node_count,
                                     include_sub_node);
@@ -569,7 +568,7 @@ public:
     this->assign_node_probabilities("");
 
     this->breadth_first_iteration_label(
-        [&](const std::string label, int level) {
+        [&](const std::string label, size_t level) {
           this->assign_node_probabilities(label);
           return true;
         });
@@ -589,7 +588,7 @@ public:
     float child_sum =
         std::accumulate(child_counts.begin(), child_counts.end(), 0.0);
 
-    for (int i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
+    for (size_t i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
       this->probabilities[label][i] = float(child_counts[i]) / child_sum;
     }
   }
@@ -605,7 +604,7 @@ public:
    * \return true if pseudo counts should be added.
    */
   bool add_pseudo_counts(const std::string &label) {
-    int n_children = 0;
+    size_t n_children = 0;
 
     for (auto char_rank : this->valid_characters) {
       alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
@@ -656,7 +655,7 @@ public:
 
     auto n_terminal_nodes = this->count_terminal_nodes();
 
-    int alphabet_size = this->valid_characters.size() - 1;
+    auto alphabet_size = this->valid_characters.size() - 1;
     while (!queue.empty() &&
            n_terminal_nodes * alphabet_size > this->number_of_parameters) {
       auto &[node_label, delta] = queue.top();
@@ -686,9 +685,9 @@ public:
    * \param with_pseudo_counts Flag for if pseudo counts should be used.
    * \return Array of counts for each children.
    */
-  std::array<int, seqan3::alphabet_size<alphabet_t>>
+  std::array<size_t, seqan3::alphabet_size<alphabet_t>>
   get_child_counts(const std::string &label, bool with_pseudo_counts) {
-    std::array<int, seqan3::alphabet_size<alphabet_t>> child_counts{};
+    std::array<size_t, seqan3::alphabet_size<alphabet_t>> child_counts{};
 
     for (auto char_rank : this->valid_characters) {
       alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
@@ -808,7 +807,7 @@ public:
    */
   void append_node_string(
       const std::string &label,
-      robin_hood::unordered_map<std::string, int> &iteration_order_indices,
+      robin_hood::unordered_map<std::string, size_t> &iteration_order_indices,
       std::ostringstream &tree_string) {
 
     tree_string << "Node: " << iteration_order_indices[label];
@@ -843,7 +842,7 @@ public:
 
     auto child_counts = this->get_child_counts(label, true);
 
-    std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -1);
+    std::vector<size_t> output(seqan3::alphabet_size<alphabet_t>, -1);
     for (auto char_rank : this->valid_characters) {
       output[char_rank] = child_counts[char_rank];
     };
@@ -870,14 +869,14 @@ public:
   void append_reverse_child_counts(const std::string &node_label,
                                    std::ostringstream &tree_string) {
 
-    std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -1);
+    std::vector<size_t> output(seqan3::alphabet_size<alphabet_t>, -1);
 
     for (auto char_rank : this->valid_characters) {
       alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
 
       std::string child_label = c.to_char() + node_label;
 
-      int count = this->counts[child_label];
+      auto count = this->counts[child_label];
 
       output[char_rank] = count;
     };
@@ -903,9 +902,9 @@ public:
    */
   void append_reverse_children(
       const std::string &node_label,
-      robin_hood::unordered_map<std::string, int> &iteration_order_indices,
+      robin_hood::unordered_map<std::string, size_t> &iteration_order_indices,
       std::ostringstream &tree_string) {
-    std::vector<int> output(seqan3::alphabet_size<alphabet_t>, -2);
+    std::vector<size_t> output(seqan3::alphabet_size<alphabet_t>, -2);
 
     for (auto char_rank : this->valid_characters) {
       alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
@@ -933,7 +932,7 @@ public:
    *
    * \return The number of nodes in the tree.
    */
-  int nodes_in_tree() { return this->status.size(); }
+  size_t nodes_in_tree() { return this->status.size(); }
 
   /**! \brief Determine if a node should be included in the tree.
    * \details
@@ -947,10 +946,11 @@ public:
    * \param count number of times the label occurs in the sequence.
    * \return true if the node should be included.
    */
-  bool include_node(int sequence_index, int lcp, int edge_lcp, int count) {
-    int label_start = sequence_index - lcp;
-    int label_end = sequence_index + edge_lcp;
-    int label_length = label_end - label_start;
+  bool include_node(size_t sequence_index, size_t lcp, size_t edge_lcp,
+                    size_t count) {
+    auto label_start = sequence_index - lcp;
+    auto label_end = sequence_index + edge_lcp;
+    auto label_length = label_end - label_start;
 
     // All characters before sequence_index have already been checked.
     return label_length <= this->max_depth && count >= this->freq &&
@@ -963,8 +963,8 @@ public:
    * \param[in] label_end ending index of the label in the sequence.
    * \return true if the label is valid, false otherwise.
    */
-  bool label_valid(int label_start, int label_end) {
-    for (int i = label_start; i < label_end; i++) {
+  bool label_valid(size_t label_start, size_t label_end) {
+    for (auto i = label_start; i < label_end; i++) {
       auto character_rank = this->get_character_rank(i);
       if (this->valid_characters.find(character_rank) ==
           this->valid_characters.end()) {
@@ -1037,14 +1037,14 @@ public:
     std::stringstream line_stream{line};
 
     std::string node_label{"-1"};
-    int node_count;
+    size_t node_count;
 
     std::string word, prev_word;
 
     bool found_label = false;
     bool found_count = false;
     bool found_probs = false;
-    int prob_index = 0;
+    size_t prob_index = 0;
 
     while (line_stream >> word) {
       if (word == "[" && !found_label) {
@@ -1066,7 +1066,7 @@ public:
         } else if (word != "[") {
           float child_count = std::stof(word);
           auto c = characters[prob_index];
-          int char_rank = seqan3::to_rank(c);
+          auto char_rank = seqan3::to_rank(c);
           this->probabilities[node_label][char_rank] = child_count;
           prob_index++;
         }
@@ -1086,7 +1086,7 @@ public:
         std::accumulate(this->probabilities[node_label].begin(),
                         this->probabilities[node_label].end(), 0.0);
 
-    for (int i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
+    for (size_t i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
       this->probabilities[node_label][i] =
           float(this->probabilities[node_label][i]) / child_sum;
     }

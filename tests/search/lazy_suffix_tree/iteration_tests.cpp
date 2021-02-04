@@ -36,61 +36,63 @@ protected:
       {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
       {0, Flag::NONE}, // Added to allow for explicit labels in the tree
   };
-  std::vector<int> suffixes{3, 5, 3, 5, 5, 5};
+  std::vector<size_t> suffixes{3, 5, 3, 5, 5, 5};
 };
 
 TEST_F(IterationTests, GetEdgeLCP) {
-  int root_edge_lcp = get_edge_lcp(0, sequence, suffixes, table);
+  size_t root_edge_lcp = get_edge_lcp(0, sequence, suffixes, table);
   EXPECT_EQ(root_edge_lcp, 0);
 
-  int ac_edge_lcp = get_edge_lcp(2, sequence, suffixes, table);
+  size_t ac_edge_lcp = get_edge_lcp(2, sequence, suffixes, table);
   EXPECT_EQ(ac_edge_lcp, 2);
 }
 
 TEST_F(IterationTests, NodeOccurrences) {
-  int root_occurrences = node_occurrences(0, table);
+  size_t root_occurrences = node_occurrences(0, table);
   EXPECT_EQ(root_occurrences, 6);
 
-  int ac_occurrences = node_occurrences(2, table);
+  size_t ac_occurrences = node_occurrences(2, table);
   EXPECT_EQ(ac_occurrences, 2);
 }
 
 TEST_F(IterationTests, IterateChildren) {
-  std::vector<int> visited{};
+  std::vector<size_t> visited{};
 
-  iterate_children(0, table, [&](int index) { visited.push_back(index); });
+  iterate_children(0, table, [&](size_t index) { visited.push_back(index); });
 
-  std::vector<int> expected_visited{2, 4, 6};
+  std::vector<size_t> expected_visited{2, 4, 6};
 
   EXPECT_EQ(visited, expected_visited);
 }
 
 TEST_F(IterationTests, BreadthFirstIteration) {
-  std::vector<int> visited{};
+  std::vector<size_t> visited{};
   breadth_first_iteration(
       sequence, suffixes, table, true,
-      [&](int index, int lcp, int edge_lcp, int node_count) -> bool {
+      [&](size_t index, size_t lcp, size_t edge_lcp,
+          size_t node_count) -> bool {
         visited.push_back(index);
         return true;
       },
-      [](int n, int l, int &e) {});
+      [](size_t n, size_t l, size_t &e) {});
 
-  std::vector<int> expected_visited{2, 4, 6, 8, 10, 12, 14, 16, 18};
+  std::vector<size_t> expected_visited{2, 4, 6, 8, 10, 12, 14, 16, 18};
 
   EXPECT_EQ(visited, expected_visited);
 }
 
 TEST_F(IterationTests, BreadthFirstIterationParallel) {
-  std::set<int> expected_visited{2, 4, 6, 8, 10, 12, 14, 16, 18};
-  for (int i = 0; i < 6; i++) {
-    std::set<int> visited{};
+  std::set<size_t> expected_visited{2, 4, 6, 8, 10, 12, 14, 16, 18};
+  for (size_t i = 0; i < 6; i++) {
+    std::set<size_t> visited{};
     breadth_first_iteration_parallel(
         sequence, suffixes, table, true,
-        [&](int index, int lcp, int edge_lcp, int node_count) -> bool {
+        [&](size_t index, size_t lcp, size_t edge_lcp,
+            size_t node_count) -> bool {
           visited.insert(index);
           return true;
         },
-        []() {}, 0, [](int n, int l, int &e) {});
+        []() {}, 0, [](size_t n, size_t l, size_t &e) {});
     EXPECT_EQ(visited, expected_visited);
   }
 }

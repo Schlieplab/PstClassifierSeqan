@@ -18,15 +18,15 @@ float negative_log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
                               std::vector<alphabet_t> &sequence_dna) {
   float log_likelihood = 0.0;
 
-  int order_max = tree.get_max_order();
+  size_t order_max = tree.get_max_order();
 
   std::string sequence =
       sequence_dna | seqan3::views::to_char | seqan3::views::to<std::string>;
 
-  int length = 0;
-  for (int i = 0; i < sequence.size(); i++) {
-    std::string subsequence =
-        sequence.substr(std::max(0, i - order_max), std::min(i, order_max));
+  size_t length = 0;
+  for (size_t i = 0; i < sequence.size(); i++) {
+    std::string subsequence = sequence.substr(
+        std::max(size_t(0), i - order_max), std::min(i, order_max));
 
     char char_ = sequence[i];
 

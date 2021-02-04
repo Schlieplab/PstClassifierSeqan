@@ -13,7 +13,7 @@
 
 namespace lst::details {
 
-int next_child_index(int node_index, const Table<> &table) {
+int next_child_index(size_t node_index, const Table<> &table) {
   if (is_leaf(node_index, table)) {
     // Should be 1, but I've added a value to leaves to allow for
     // explicit nodes.
@@ -23,15 +23,15 @@ int next_child_index(int node_index, const Table<> &table) {
   }
 }
 
-void iterate_children(int node_index, const Table<> &table,
-                      const std::function<void(int)> &f) {
+void iterate_children(size_t node_index, const Table<> &table,
+                      const std::function<void(size_t)> &f) {
   if (is_leaf(node_index, table) || is_unevaluated(node_index, table)) {
     return;
   }
 
-  int first_child = table[node_index + 1].value;
+  auto first_child = table[node_index + 1].value;
 
-  for (int i = first_child; i <= table.size();) {
+  for (size_t i = first_child; i <= table.size();) {
     f(i);
 
     if (is_rightmostchild(i, table)) {
@@ -41,16 +41,16 @@ void iterate_children(int node_index, const Table<> &table,
   }
 }
 
-int node_occurrences(int node_index, const Table<> &table) {
+int node_occurrences(size_t node_index, const Table<> &table) {
   assert(node_index <= table.size());
 
   int occurrences = 0;
-  std::queue<int> queue{};
+  std::queue<size_t> queue{};
 
   queue.push(node_index);
 
   while (!queue.empty()) {
-    int index = queue.front();
+    size_t index = queue.front();
     queue.pop();
 
     if (is_leaf(index, table)) {
@@ -58,7 +58,7 @@ int node_occurrences(int node_index, const Table<> &table) {
     } else if (is_unevaluated(index, table)) {
       occurrences += table[index + 1].value - table[index].value;
     } else {
-      iterate_children(index, table, [&](int i) { queue.push(i); });
+      iterate_children(index, table, [&](size_t i) { queue.push(i); });
     }
   }
 
@@ -83,14 +83,14 @@ int node_occurrences(int node_index, const Table<> &table) {
  */
 template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration_table_less_(
-    int start_lower_bound, int start_upper_bound, int start_lcp,
+    size_t start_lower_bound, size_t start_upper_bound, size_t start_lcp,
     int start_level, int parallel_depth, const sequence_t<alphabet_t> &sequence,
-    std::vector<int> &suffixes,
-    const std::function<bool(int, int, int, int, bool)> &f,
+    std::vector<size_t> &suffixes,
+    const std::function<bool(size_t, size_t, size_t, size_t, bool)> &f,
     const std::function<void()> &done) {
   std::vector<std::thread> threads{};
 
-  std::queue<std::tuple<int, int, int, int>> queue{};
+  std::queue<std::tuple<size_t, size_t, size_t, size_t>> queue{};
   queue.emplace(start_lower_bound, start_upper_bound, start_lcp, start_level);
 
   while (!queue.empty()) {
@@ -156,9 +156,9 @@ void breadth_first_iteration_table_less_(
  */
 template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration_table_less(
-    int parallel_depth, const sequence_t<alphabet_t> &sequence,
-    std::vector<int> &suffixes,
-    const std::function<bool(int, int, int, int, bool)> &f,
+    size_t parallel_depth, const sequence_t<alphabet_t> &sequence,
+    std::vector<size_t> &suffixes,
+    const std::function<bool(size_t, size_t, size_t, size_t, bool)> &f,
     const std::function<void()> &done) {
   breadth_first_iteration_table_less_<alphabet_t>(
       0, suffixes.size(), 0, 0, parallel_depth, sequence, suffixes, f, done);
@@ -179,10 +179,10 @@ void breadth_first_iteration_table_less(
  */
 template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration(
-    const sequence_t<alphabet_t> &sequence, std::vector<int> &suffixes,
+    const sequence_t<alphabet_t> &sequence, std::vector<size_t> &suffixes,
     Table<> &table, bool expand_nodes,
-    const std::function<bool(int, int, int &, int)> &f,
-    const std::function<void(int, int, int &)> &locked_callback) {
+    const std::function<bool(size_t, size_t, size_t &, size_t)> &f,
+    const std::function<void(size_t, size_t, size_t &)> &locked_callback) {
   breadth_first_iteration(0, 0, sequence, suffixes, table, expand_nodes, f,
                           locked_callback);
 }
@@ -204,11 +204,12 @@ void breadth_first_iteration(
  */
 template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration(
-    int start_index, int start_lcp, const sequence_t<alphabet_t> &sequence,
-    std::vector<int> &suffixes, Table<> &table, bool expand_nodes,
-    const std::function<bool(int, int, int &, int)> &f,
-    const std::function<void(int, int, int &)> &locked_callback) {
-  std::queue<std::tuple<int, int>> queue{};
+    size_t start_index, size_t start_lcp,
+    const sequence_t<alphabet_t> &sequence, std::vector<size_t> &suffixes,
+    Table<> &table, bool expand_nodes,
+    const std::function<bool(size_t, size_t, size_t &, size_t)> &f,
+    const std::function<void(size_t, size_t, size_t &)> &locked_callback) {
+  std::queue<std::tuple<size_t, size_t>> queue{};
   queue.emplace(start_index, start_lcp);
 
   while (!queue.empty()) {
@@ -223,7 +224,7 @@ void breadth_first_iteration(
       continue;
     }
 
-    iterate_children(node_index, table, [&, new_lcp = new_lcp](int index) {
+    iterate_children(node_index, table, [&, new_lcp = new_lcp](size_t index) {
       queue.emplace(index, new_lcp);
     });
   }
@@ -244,11 +245,11 @@ void breadth_first_iteration(
  */
 template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration_parallel(
-    const sequence_t<alphabet_t> &sequence, std::vector<int> &suffixes,
+    const sequence_t<alphabet_t> &sequence, std::vector<size_t> &suffixes,
     Table<> &table, bool expand_nodes,
-    const std::function<bool(int, int, int &, int)> &f,
-    const std::function<void()> &done, int parallel_depth,
-    const std::function<void(int, int, int &)> &locked_callback) {
+    const std::function<bool(size_t, size_t, size_t &, size_t)> &f,
+    const std::function<void()> &done, size_t parallel_depth,
+    const std::function<void(size_t, size_t, size_t &)> &locked_callback) {
   breadth_first_iteration_parallel_(0, 0, 0, sequence, suffixes, table,
                                     expand_nodes, f, done, parallel_depth,
                                     locked_callback);
@@ -270,11 +271,12 @@ void breadth_first_iteration_parallel(
  */
 template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration_parallel(
-    int start_index, int start_lcp, const sequence_t<alphabet_t> &sequence,
-    std::vector<int> &suffixes, Table<> &table, bool expand_nodes,
-    const std::function<bool(int, int, int &, int)> &f,
-    const std::function<void()> &done, int parallel_depth,
-    const std::function<void(int, int, int &)> &locked_callback) {
+    size_t start_index, size_t start_lcp,
+    const sequence_t<alphabet_t> &sequence, std::vector<size_t> &suffixes,
+    Table<> &table, bool expand_nodes,
+    const std::function<bool(size_t, size_t, size_t &, size_t)> &f,
+    const std::function<void()> &done, size_t parallel_depth,
+    const std::function<void(size_t, size_t, size_t &)> &locked_callback) {
   breadth_first_iteration_parallel_(start_index, start_lcp, 0, sequence,
                                     suffixes, table, expand_nodes, f, done,
                                     parallel_depth, locked_callback);
@@ -282,16 +284,16 @@ void breadth_first_iteration_parallel(
 
 template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration_parallel_(
-    int start_index, int start_lcp, int start_depth,
-    const sequence_t<alphabet_t> &sequence, std::vector<int> &suffixes,
+    size_t start_index, size_t start_lcp, int start_depth,
+    const sequence_t<alphabet_t> &sequence, std::vector<size_t> &suffixes,
     Table<> &table, bool expand_nodes,
-    const std::function<bool(int, int, int &, int)> &f,
+    const std::function<bool(size_t, size_t, size_t &, size_t)> &f,
     const std::function<void()> &done, int parallel_depth,
-    const std::function<void(int, int, int &)> &locked_callback) {
+    const std::function<void(size_t, size_t, size_t &)> &locked_callback) {
 
   std::vector<std::thread> threads{};
 
-  std::queue<std::tuple<int, int, int>> queue{};
+  std::queue<std::tuple<size_t, size_t, size_t>> queue{};
   queue.emplace(start_index, start_lcp, start_depth);
 
   while (!queue.empty()) {
@@ -309,7 +311,8 @@ void breadth_first_iteration_parallel_(
     if (depth < parallel_depth) {
       // Spawn threads per children
       iterate_children(
-          node_index, table, [&, new_lcp = new_lcp, depth = depth](int index) {
+          node_index, table,
+          [&, new_lcp = new_lcp, depth = depth](size_t index) {
             threads.emplace_back(breadth_first_iteration_parallel_<alphabet_t>,
                                  index, new_lcp, depth + 1, std::ref(sequence),
                                  std::ref(suffixes), std::ref(table),
@@ -320,7 +323,7 @@ void breadth_first_iteration_parallel_(
     } else {
       // Continue working in this thread.
       iterate_children(node_index, table,
-                       [&, new_lcp = new_lcp, depth = depth](int index) {
+                       [&, new_lcp = new_lcp, depth = depth](size_t index) {
                          queue.emplace(index, new_lcp, depth + 1);
                        });
     }
@@ -338,11 +341,11 @@ void breadth_first_iteration_parallel_(
 using namespace std::placeholders;
 
 template <seqan3::alphabet alphabet_t>
-std::tuple<int, bool>
-visit_top_node(int node_index, int lcp, const sequence_t<alphabet_t> &sequence,
-               std::vector<int> &suffixes, Table<> &table, bool expand_nodes,
-               const std::function<bool(int, int, int &, int)> &f,
-               const std::function<void(int, int, int &)> &locked_callback) {
+std::tuple<size_t, bool> visit_top_node(
+    size_t node_index, size_t lcp, const sequence_t<alphabet_t> &sequence,
+    std::vector<size_t> &suffixes, Table<> &table, bool expand_nodes,
+    const std::function<bool(size_t, size_t, size_t &, size_t)> &f,
+    const std::function<void(size_t, size_t, size_t &)> &locked_callback) {
 
   if (node_index == 0) {
     return {get_edge_lcp(node_index, sequence, suffixes, table), true};
@@ -350,7 +353,7 @@ visit_top_node(int node_index, int lcp, const sequence_t<alphabet_t> &sequence,
 
   auto modified_locked_callback = std::bind(locked_callback, _1, lcp, _2);
 
-  int edge_lcp, node_count;
+  size_t edge_lcp, node_count;
   if (is_unevaluated(node_index, table) && expand_nodes) {
     auto [edge_lcp_, node_count_] = expand_node(
         node_index, sequence, suffixes, table, modified_locked_callback);
@@ -366,18 +369,13 @@ visit_top_node(int node_index, int lcp, const sequence_t<alphabet_t> &sequence,
     return {-1, false};
   }
 
-  // It is possible that the call to f expands implicit nodes, may need to
-  // recalculate the edge_lcp.
-  // int old_edge_lcp = edge_lcp;
-  //  edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table);
-
   int new_lcp = lcp + edge_lcp;
   return {new_lcp, true};
 }
 
 template <seqan3::alphabet alphabet_t>
-int get_edge_lcp(int node_index, const sequence_t<alphabet_t> &sequence,
-                 const std::vector<int> &suffixes, const Table<> &table) {
+int get_edge_lcp(size_t node_index, const sequence_t<alphabet_t> &sequence,
+                 const std::vector<size_t> &suffixes, const Table<> &table) {
   if (node_index == 0) {
     return 0;
   }
@@ -394,7 +392,7 @@ int get_edge_lcp(int node_index, const sequence_t<alphabet_t> &sequence,
 
   int smallest_child_index = suffixes.size();
 
-  iterate_children(node_index, table, [&](int index) {
+  iterate_children(node_index, table, [&](size_t index) {
     int sequence_index = get_sequence_index(index, suffixes, table);
     smallest_child_index = std::min(smallest_child_index, sequence_index);
   });
