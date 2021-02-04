@@ -33,7 +33,7 @@
 
 namespace pst {
 
-using vec_t = std::deque<std::tuple<int, int, int, bool>>;
+using vec_t = std::deque<std::tuple<std::string, int, bool>>;
 thread_local vec_t thread_vec{};
 
 /*!\brief The probabilistic suffix tree implementation.
@@ -102,6 +102,10 @@ public:
       auto char_rank = seqan3::to_rank(c);
       valid_characters.insert(char_rank);
       valid_character_chars.push_back(c.to_char());
+    }
+
+    if (multi_core_ == false) {
+      this->parallel_depth = 0;
     }
   }
 
@@ -339,6 +343,14 @@ public:
   void breadth_first_iteration_label(
       const std::string &start_label, const size_t start_level,
       const std::function<bool(const std::string, size_t)> &f) {
+    breadth_first_iteration_label_(start_label, start_level, f);
+  }
+
+  void breadth_first_iteration_label_(
+      const std::string start_label, const size_t start_level,
+      const std::function<bool(const std::string, size_t)> &f) {
+    std::vector<std::thread> threads{};
+
     std::queue<std::tuple<std::string, size_t>> queue{};
 
     queue.emplace(start_label, start_level);
@@ -354,11 +366,25 @@ public:
       });
 
       if (f(std::move(label), level)) {
-        for (auto &child : children) {
-          queue.emplace(std::move(child), level + 1);
+        if (this->multi_core && this->parallel_depth > level) {
+          for (auto &child : children) {
+            threads.emplace_back(
+                &ProbabilisticSuffixTreeMap::breadth_first_iteration_label_,
+                this, std::move(child), level + 1, f);
+          }
+        } else {
+          for (auto &child : children) {
+            queue.emplace(std::move(child), level + 1);
+          }
         }
       }
       queue.pop();
+    }
+
+    for (auto &thread : threads) {
+      if (thread.joinable()) {
+        thread.join();
+      }
     }
   }
 
@@ -525,7 +551,14 @@ public:
             auto node_start = sequence_index - lcp;
             auto node_end = std::min(sequence_index + i, this->sequence.size());
 
-            thread_vec.emplace_back(node_start, node_end, node_count,
+            lst::details::sequence_t<alphabet_t> label_dna(
+                this->sequence.begin() + node_start,
+                this->sequence.begin() + node_end);
+
+            std::string label = label_dna | seqan3::views::to_char |
+                                seqan3::views::to<std::string>;
+
+            thread_vec.emplace_back(std::move(label), node_count,
                                     include_sub_node);
 
             include_node = include_sub_node;
@@ -535,22 +568,16 @@ public:
         },
         [&]() {
           std::lock_guard lock{counts_mutex};
-          std::move(thread_vec.begin(), thread_vec.end(),
-                    std::back_inserter(global_vec));
+          store_thread_local_elements();
         });
+  }
 
-    this->suffixes.resize(0);
-
-    for (auto [node_start, node_end, node_count, include_node_] : global_vec) {
-      lst::details::sequence_t<alphabet_t> label_dna(
-          this->sequence.begin() + node_start,
-          this->sequence.begin() + node_end);
-
-      std::string label =
-          label_dna | seqan3::views::to_char | seqan3::views::to<std::string>;
+  void store_thread_local_elements() {
+    for (auto &[label, node_count, include_node_] : thread_vec) {
 
       this->counts[label] = node_count;
       if (include_node_) {
+        this->probabilities[label] = {};
         this->status.insert(label);
       }
     }
@@ -611,7 +638,7 @@ public:
 
       std::string child_label = label + c.to_char();
 
-      if (this->counts[child_label] != 0) {
+      if (this->get_count(child_label) != 0) {
         n_children += 1;
       }
     }
@@ -694,7 +721,7 @@ public:
 
       std::string child_label = label + c.to_char();
 
-      child_counts[char_rank] = this->counts[child_label];
+      child_counts[char_rank] = this->get_count(child_label);
     }
 
     bool add_pseudo_counts = this->add_pseudo_counts(label);
@@ -714,11 +741,15 @@ public:
   std::vector<std::string> get_pst_leaves() {
     std::vector<std::string> bottom_nodes{};
 
-    for (const auto &child_label : this->status) {
-      if (this->is_pst_leaf(child_label)) {
-        bottom_nodes.emplace_back(child_label);
-      }
-    }
+    static std::mutex leaves_mutex{};
+    this->breadth_first_iteration_label(
+        [&](const std::string label, size_t level) {
+          if (this->is_pst_leaf(label)) {
+            std::lock_guard lock{leaves_mutex};
+            bottom_nodes.emplace_back(std::move(label));
+          }
+          return true;
+        });
 
     return bottom_nodes;
   }
@@ -819,7 +850,7 @@ public:
 
     append_reverse_child_counts(label, tree_string);
 
-    tree_string << " " << this->counts[label] << " ";
+    tree_string << " " << this->get_count(label) << " ";
 
     append_child_counts(label, tree_string);
 
@@ -876,7 +907,7 @@ public:
 
       std::string child_label = c.to_char() + node_label;
 
-      auto count = this->counts[child_label];
+      auto count = this->get_count(child_label);
 
       output[char_rank] = count;
     };
@@ -912,7 +943,7 @@ public:
       std::string child_label = c.to_char() + node_label;
 
       if (child_label.empty() || this->is_excluded(child_label)) {
-        output[char_rank] = -1;
+        output[char_rank] = max_size;
       } else {
         output[char_rank] = iteration_order_indices[child_label];
       }
@@ -922,8 +953,11 @@ public:
     for (auto count : output) {
       if (count == -2) {
         continue;
+      } else if (count == max_size) {
+        tree_string << "-1 ";
+      } else {
+        tree_string << count << " ";
       }
-      tree_string << count << " ";
     }
     tree_string << "]";
   }
@@ -1089,6 +1123,16 @@ public:
     for (size_t i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
       this->probabilities[node_label][i] =
           float(this->probabilities[node_label][i]) / child_sum;
+    }
+  }
+
+  size_t get_count(const std::string &label) {
+    auto search = this->counts.find(label);
+
+    if (search == this->counts.end()) {
+      return 0;
+    } else {
+      return search->second;
     }
   }
 };

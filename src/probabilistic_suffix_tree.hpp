@@ -493,6 +493,8 @@ protected:
     auto label_start = this->table[node_index].value - lcp;
     auto label_end = this->table[node_index].value + edge_lcp;
 
+    this->entries[node_index / 2].count = count;
+
     if (!this->is_leaf(node_index) &&
         this->include_node(label_start, label_end, edge_lcp, count)) {
       this->entries[node_index / 2].status = Status::INCLUDED;
