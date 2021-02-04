@@ -118,7 +118,7 @@ protected:
     auto pst_leaves = this->get_pst_leaves();
     std::mutex status_mutex{};
 
-    if (false) {
+    if (this->multi_core) {
       robin_hood::unordered_map<std::string, std::queue<std::string>>
           map_queue{};
 

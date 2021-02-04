@@ -896,8 +896,11 @@ protected:
     for (auto count : output) {
       if (count == -2) {
         continue;
+      } else if (count == max_size) {
+        tree_string << "-1 ";
+      } else {
+        tree_string << count << " ";
       }
-      tree_string << count << " ";
     }
     tree_string << "]";
   }
