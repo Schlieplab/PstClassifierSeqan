@@ -145,7 +145,7 @@ int main(int argc, char *argv[]) {
   std::string tree = train(
       arguments.sequences[0], arguments.ids[0], arguments.max_depth,
       arguments.min_count, arguments.threshold, arguments.number_of_parameters,
-      arguments.algorithm_method, arguments.pruning_method, arguments.estimator,
+      arguments.pruning_method, arguments.algorithm_method, arguments.estimator,
       arguments.multi_core, arguments.parallel_depth);
   std::cout << tree << std::endl;
 
