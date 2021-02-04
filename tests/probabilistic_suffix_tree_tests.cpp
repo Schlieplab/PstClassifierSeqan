@@ -18,6 +18,8 @@
 #include <seqan3/range/views/to.hpp>
 #include <seqan3/range/views/to_char.hpp>
 
+#include "random_sequence.hpp"
+
 class ProbabilisticSuffixTreeTest : public ::testing::Test {
 protected:
   void SetUp() override {
@@ -420,4 +422,14 @@ TEST_F(ProbabilisticSuffixTreeTest, ParallelAndSequentialSame) {
 
     compare_trees(tree, parallel_tree);
   }
+}
+
+TEST_F(ProbabilisticSuffixTreeTest, ResourceTemporarilyUnavailableError) {
+  std::vector<seqan3::dna5> sequence = random_sequence(1000000);
+  pst::KullbackLieblerTree tree{"test", sequence, 15,    10, 1.2,
+                                0,      "cutoff", false, 0};
+  tree.support_pruning();
+  tree.add_suffix_links();
+  tree.add_reverse_suffix_links();
+  tree.similarity_pruning();
 }

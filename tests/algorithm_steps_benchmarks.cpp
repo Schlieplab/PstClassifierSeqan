@@ -8,30 +8,16 @@
 #include "../../src/kl_tree.hpp"
 #include "../../src/kl_tree_map.hpp"
 
+#include "random_sequence.hpp"
+
 using seqan3::operator""_dna5;
 
 class KLTreeixture : public benchmark::Fixture {
 public:
   void SetUp(const ::benchmark::State &state) override {
-    std::random_device rd;
-    gen = std::mt19937{rd()};
     sequence = random_sequence(1000000);
   }
   std::vector<seqan3::dna5> sequence;
-  std::mt19937 gen;
-
-  std::vector<seqan3::dna5> random_sequence(int length) {
-    std::vector<seqan3::dna5> local_sequence{"ACGT"_dna5};
-    std::uniform_int_distribution<> distrib(0, 3);
-    for (int i = 0; i < length; i++) {
-      auto rand = distrib(this->gen);
-      auto c_dna4 = seqan3::assign_rank_to(rand, seqan3::dna4{});
-      auto c_dna5 = seqan3::assign_char_to(c_dna4.to_char(), seqan3::dna5{});
-      local_sequence.push_back(c_dna5);
-    }
-
-    return local_sequence;
-  }
 };
 
 BENCHMARK_F(KLTreeixture, MapSupportPruning)(benchmark::State &state) {
