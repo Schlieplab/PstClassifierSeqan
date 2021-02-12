@@ -71,6 +71,7 @@ template <class size_t = size_t, class flag_t = Flag> struct Table {
 
   Entry<> operator[](size_type pos) const { return table[pos]; }
   size_type size() const { return table.size(); }
+  size_type capacity() const { return table.capacity(); }
 };
 
 bool is_leaf(size_t node_index, const Table<> &table) {
@@ -209,7 +210,7 @@ alphabet_array<size_t, alphabet_t>
 suffix_pointers(const alphabet_array<size_t, alphabet_t> &counts) {
   alphabet_array<size_t, alphabet_t> pointers{};
 
-  auto counter = 0;
+  size_t counter = 0;
   for (size_t i = 0; i < counts.size(); i++) {
     pointers[i] = counter;
     counter += counts[i];
@@ -250,11 +251,9 @@ void sort_suffixes_root(const alphabet_array<size_t, alphabet_t> &counts,
   for (size_t i = 0; i < suffixes.size(); i++) {
     auto character_rank = get_character_rank(sequence, i);
 
-    auto suffix_index = pointers[character_rank];
+    auto suffix_index = pointers[character_rank]++;
 
     suffixes[suffix_index] = i;
-
-    pointers[character_rank] += 1;
   }
 }
 

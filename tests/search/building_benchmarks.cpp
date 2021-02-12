@@ -183,7 +183,7 @@ BENCHMARK_F(LSTFixture, SuffixPointers)(benchmark::State &state) {
   auto lower_bound = tree.table[first_level_child].value;
   auto upper_bound = tree.table[first_level_child + 1].value;
   auto lcp = lst::details::longest_common_prefix(lower_bound, upper_bound,
-                                                tree.sequence, tree.suffixes);
+                                                 tree.sequence, tree.suffixes);
   lst::details::add_lcp_to_suffixes(lower_bound, upper_bound, lcp,
                                     tree.suffixes);
 

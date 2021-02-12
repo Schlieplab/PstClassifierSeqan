@@ -23,6 +23,8 @@
 #include "lazy_suffix_tree/iteration.hpp"
 #include "lazy_suffix_tree/suffix_links.hpp"
 
+size_t max_size = (size_t)-1;
+
 namespace lst {
 
 template <typename alph> std::string get_alphabet_name() {
@@ -92,6 +94,7 @@ public:
         0, 0, true,
         [&](size_t node_index, size_t lcp, size_t edge_lcp,
             size_t occurrences) -> bool {
+          occurrences = node_occurrences(node_index);
           auto label = node_label(node_index, lcp, edge_lcp);
 
           std::lock_guard labels_lock{labels_mutex};
@@ -278,6 +281,7 @@ public:
    */
   void add_suffix_links() {
     suffix_links.resize(table.size() / 2, (size_t)-1);
+    std::fill(suffix_links.begin(), suffix_links.end(), -1);
 
     lst::details::add_explicit_suffix_links(sequence, suffixes, table,
                                             suffix_links, this->multi_core,
@@ -309,7 +313,7 @@ public:
       reverses.fill(-1);
     }
 
-    this->breadth_first_iteration_sequential(
+    this->breadth_first_iteration(
         0, 0, false,
         [&](size_t node_index, size_t lcp, size_t edge_lcp,
             size_t node_count) -> bool {

@@ -10,7 +10,9 @@
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 
 #include "../src/distances/cv.hpp"
+#include "../src/distances/score.hpp"
 #include "../src/kl_tree_map.hpp"
+#include "../src/probabilistic_suffix_tree_map.hpp"
 
 class DistancesTest : public ::testing::Test {
 protected:

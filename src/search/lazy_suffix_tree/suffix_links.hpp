@@ -17,6 +17,8 @@
 
 namespace lst::details {
 
+thread_local size_t max_val = 0;
+
 /**! \brief Get number of children for node.
  *
  * \param[in] node_index  Index to get number of children for.
@@ -90,11 +92,14 @@ size_t tree_height_parallel(const sequence_t<alphabet_t> &sequence,
           return false;
         }
 
-        std::lock_guard<std::mutex> lock(height_lock);
-        tree_height_found = std::max(tree_height_found, lcp + edge_lcp);
+        max_val = std::max(max_val, lcp + edge_lcp);
         return true;
       },
-      []() {}, parallel_depth, [](size_t n, size_t l, size_t &e) {});
+      [&]() {
+        std::lock_guard lock{height_lock};
+        tree_height_found = std::max(max_val, tree_height_found);
+      },
+      parallel_depth, [](size_t n, size_t l, size_t &e) {});
 
   return tree_height_found;
 }
@@ -549,6 +554,7 @@ get_leaves(const sequence_t<alphabet_t> &sequence,
 
   if (multi_core) {
     std::mutex leaves_mutex{};
+    thread_local std::vector<std::tuple<size_t, size_t>> local_leaves{};
 
     breadth_first_iteration_parallel<alphabet_t>(
         sequence, const_cast<std::vector<size_t> &>(suffixes),
@@ -556,13 +562,17 @@ get_leaves(const sequence_t<alphabet_t> &sequence,
         [&](size_t node_index, size_t lcp, size_t edge_lcp,
             size_t node_count) -> bool {
           if (is_leaf(node_index, table)) {
-            std::lock_guard<std::mutex> lock(leaves_mutex);
-            leaves.emplace_back(node_index, lcp);
+            local_leaves.emplace_back(node_index, lcp);
           }
 
           return true;
         },
-        []() {}, parallel_depth, [](size_t n, size_t l, size_t &e) {});
+        [&]() {
+          std::lock_guard<std::mutex> lock(leaves_mutex);
+          std::move(local_leaves.begin(), local_leaves.end(),
+                    std::back_inserter(leaves));
+        },
+        parallel_depth, [](size_t n, size_t l, size_t &e) {});
 
   } else {
     std::queue<std::tuple<size_t, size_t>> queue{};
@@ -612,12 +622,12 @@ bool sequences_match(size_t node_index, size_t edge_lcp,
                      const std::vector<size_t> &suffixes,
                      const Table<> &table) {
   auto node_start = get_sequence_index(node_index, suffixes, table);
-  auto suffix_link_child_end =
+  size_t suffix_link_child_end =
       std::min(sequence.size(),
                get_sequence_index(suffix_link_child_index, suffixes, table) +
                    suffix_link_edge_lcp);
 
-  auto suffix_link_child_start = suffix_link_child_end - edge_lcp;
+  size_t suffix_link_child_start = suffix_link_child_end - edge_lcp;
 
   for (size_t i = 0; i < edge_lcp; i++) {
     if (sequence[node_start + i] != sequence[suffix_link_child_start + i]) {
@@ -631,7 +641,7 @@ bool sequences_match(size_t node_index, size_t edge_lcp,
 /** \brief Returns the correct suffix link for node_index if possible.
  *
  * Iterates through all of the children of parent_suffix_link up to a maximum
- * depth of edge_lcp.  For each child with we check if it is long enough and
+ * depth of edge_lcp.  For each child we check if it is long enough and
  * if it matches the sequence of node_index.  If so, return as the suffix link
  * destination of node_index.  Otherwise, return -1.
  *
@@ -654,14 +664,16 @@ find_suffix_match(size_t node_index, size_t edge_lcp, size_t parent_suffix_link,
                    [&](size_t index) { suffix_link_queue.emplace(index, 0); });
 
   while (!suffix_link_queue.empty()) {
-    auto &[suffix_link_child, suffix_link_parent_lcp] =
+    auto [suffix_link_child, suffix_link_parent_lcp] =
         suffix_link_queue.front();
     suffix_link_queue.pop();
 
-    auto suffix_link_edge_lcp =
-        get_edge_lcp(suffix_link_child, sequence, suffixes, table);
+    // If we're dealing with implicit nodes, all edges are 1 long.
+    //    size_t suffix_link_edge_lcp = get_edge_lcp(suffix_link_child,
+    //    sequence, suffixes, table);
+    size_t suffix_link_edge_lcp = 1;
 
-    auto suffix_link_lcp = suffix_link_parent_lcp + suffix_link_edge_lcp;
+    size_t suffix_link_lcp = suffix_link_parent_lcp + suffix_link_edge_lcp;
 
     if (suffix_link_lcp == edge_lcp) {
       bool match =
@@ -747,13 +759,15 @@ void visit_implicit_suffix_links_node(size_t node_index, size_t parent_index,
                                       const std::vector<size_t> &suffixes,
                                       const Table<> &table,
                                       std::vector<size_t> &suffix_links) {
-  auto edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table);
+  size_t max_size = (size_t)-1;
+  // If we're dealing with implicit nodes, all edges are 1 long.
+  //  size_t edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table);
+  size_t edge_lcp = 1;
 
-  if (suffix_links[node_index / 2] == -1 && parent_index == 0 &&
-      edge_lcp == 1) {
+  if (suffix_links[node_index / 2] == max_size && parent_index == 0) {
     suffix_links[node_index / 2] = 0;
-  } else if (suffix_links[node_index / 2] == -1 &&
-             suffix_links[parent_index / 2] != -1) {
+  } else if (suffix_links[node_index / 2] == max_size &&
+             suffix_links[parent_index / 2] != max_size) {
     auto parent_suffix_link = suffix_links[parent_index / 2];
 
     auto suffix_link_destination = find_suffix_match(

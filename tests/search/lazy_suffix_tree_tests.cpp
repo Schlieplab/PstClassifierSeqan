@@ -13,8 +13,6 @@ using namespace lst::details;
 using seqan3::operator""_dna5;
 using seqan3::operator""_dna4;
 
-size_t max_size = (size_t)-1;
-
 class LazySuffixTreeTest : public ::testing::Test {
 protected:
   void SetUp() override {

@@ -84,22 +84,22 @@ int node_occurrences(size_t node_index, const Table<> &table) {
 template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration_table_less_(
     size_t start_lower_bound, size_t start_upper_bound, size_t start_lcp,
-    int start_level, int parallel_depth, const sequence_t<alphabet_t> &sequence,
+    int level, int parallel_depth, const sequence_t<alphabet_t> &sequence,
     std::vector<size_t> &suffixes,
     const std::function<bool(size_t, size_t, size_t, size_t, bool)> &f,
     const std::function<void()> &done) {
   std::vector<std::thread> threads{};
 
-  std::queue<std::tuple<size_t, size_t, size_t, size_t>> queue{};
-  queue.emplace(start_lower_bound, start_upper_bound, start_lcp, start_level);
+  std::queue<std::tuple<size_t, size_t, size_t>> queue{};
+  queue.emplace(start_lower_bound, start_upper_bound, start_lcp);
 
   while (!queue.empty()) {
-    auto [lower, upper, lcp, level] = queue.front();
+    auto [lower, upper, lcp] = queue.front();
     queue.pop();
     if (lower == 0 && upper == suffixes.size()) {
     }
 
-    if (upper == -1) {
+    if (upper == (size_t)-1) {
       f(lower, lcp, sequence.size() - lower + 1, 1, true);
       continue;
     }
@@ -113,7 +113,7 @@ void breadth_first_iteration_table_less_(
     if (!consider_children) {
       continue;
     }
-    int new_lcp = lcp + edge_lcp;
+    size_t new_lcp = lcp + edge_lcp;
 
     if (level < parallel_depth) {
       for (auto &[child_lower, child_upper] : children) {
@@ -124,7 +124,7 @@ void breadth_first_iteration_table_less_(
       }
     } else {
       for (auto &[child_lower, child_upper] : children) {
-        queue.emplace(child_lower, child_upper, new_lcp, level + 1);
+        queue.emplace(child_lower, child_upper, new_lcp);
       }
     }
   }
@@ -156,7 +156,7 @@ void breadth_first_iteration_table_less_(
  */
 template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration_table_less(
-    size_t parallel_depth, const sequence_t<alphabet_t> &sequence,
+    int parallel_depth, const sequence_t<alphabet_t> &sequence,
     std::vector<size_t> &suffixes,
     const std::function<bool(size_t, size_t, size_t, size_t, bool)> &f,
     const std::function<void()> &done) {
@@ -284,7 +284,7 @@ void breadth_first_iteration_parallel(
 
 template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration_parallel_(
-    size_t start_index, size_t start_lcp, int start_depth,
+    size_t start_index, size_t start_lcp, int depth,
     const sequence_t<alphabet_t> &sequence, std::vector<size_t> &suffixes,
     Table<> &table, bool expand_nodes,
     const std::function<bool(size_t, size_t, size_t &, size_t)> &f,
@@ -293,11 +293,11 @@ void breadth_first_iteration_parallel_(
 
   std::vector<std::thread> threads{};
 
-  std::queue<std::tuple<size_t, size_t, size_t>> queue{};
-  queue.emplace(start_index, start_lcp, start_depth);
+  std::queue<std::tuple<size_t, size_t>> queue{};
+  queue.emplace(start_index, start_lcp);
 
   while (!queue.empty()) {
-    auto [node_index, lcp, depth] = queue.front();
+    auto [node_index, lcp] = queue.front();
     queue.pop();
 
     auto [new_lcp, consider_children] =
@@ -311,8 +311,7 @@ void breadth_first_iteration_parallel_(
     if (depth < parallel_depth) {
       // Spawn threads per children
       iterate_children(
-          node_index, table,
-          [&, new_lcp = new_lcp, depth = depth](size_t index) {
+          node_index, table, [&, new_lcp = new_lcp](size_t index) {
             threads.emplace_back(breadth_first_iteration_parallel_<alphabet_t>,
                                  index, new_lcp, depth + 1, std::ref(sequence),
                                  std::ref(suffixes), std::ref(table),
@@ -322,10 +321,9 @@ void breadth_first_iteration_parallel_(
 
     } else {
       // Continue working in this thread.
-      iterate_children(node_index, table,
-                       [&, new_lcp = new_lcp, depth = depth](size_t index) {
-                         queue.emplace(index, new_lcp, depth + 1);
-                       });
+      iterate_children(node_index, table, [&, new_lcp = new_lcp](size_t index) {
+        queue.emplace(index, new_lcp);
+      });
     }
   }
 
@@ -361,7 +359,7 @@ std::tuple<size_t, bool> visit_top_node(
     node_count = node_count_;
   } else {
     edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table);
-    node_count = node_occurrences(node_index, table);
+    node_count = (size_t)-1; // node_occurrences(node_index, table);
   }
 
   bool consider_children = f(node_index, lcp, edge_lcp, node_count);

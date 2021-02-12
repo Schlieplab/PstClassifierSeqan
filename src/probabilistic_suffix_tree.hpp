@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <ctime>
@@ -26,8 +27,6 @@
 
 #include "search/lazy_suffix_tree.hpp"
 #include "search/lazy_suffix_tree/iteration.hpp"
-
-size_t max_size = (size_t)-1;
 
 namespace pst {
 
@@ -230,6 +229,8 @@ public:
         this->count_terminal_nodes() * (valid_characters.size() - 1);
     tree_string << "Number(parameters): " << n_parameters << std::endl;
 
+    static std::mutex print_mutex{};
+
     std::unordered_map<size_t, size_t> lcps{};
     std::unordered_map<size_t, size_t> edge_lcps{};
     lcps[0] = 0;
@@ -237,6 +238,7 @@ public:
     this->breadth_first_iteration_sequential([&](size_t node_index, size_t lcp,
                                                  size_t edge_lcp,
                                                  size_t node_count) -> bool {
+      std::lock_guard lock{print_mutex};
       lcps[node_index] = lcp;
       edge_lcps[node_index] = edge_lcp;
       return true;
@@ -246,18 +248,20 @@ public:
     size_t i = 0;
     this->pst_breadth_first_iteration(
         [&](size_t node_index, size_t level) -> bool {
+          std::lock_guard lock{print_mutex};
           iteration_order_indices[node_index] = i;
           i++;
           return true;
         });
 
-    this->pst_breadth_first_iteration([&](size_t node_index,
-                                          size_t level) -> bool {
-      this->append_node_string(node_index, lcps[node_index],
-                               edge_lcps[node_index], iteration_order_indices,
-                               tree_string);
-      return true;
-    });
+    this->pst_breadth_first_iteration(
+        [&](size_t node_index, size_t level) -> bool {
+          std::lock_guard lock{print_mutex};
+          this->append_node_string(node_index, lcps[node_index],
+                                   edge_lcps[node_index],
+                                   iteration_order_indices, tree_string);
+          return true;
+        });
 
     return tree_string.str();
   }
@@ -305,6 +309,14 @@ public:
   pst_breadth_first_iteration(const size_t start_index,
                               const size_t start_level,
                               const std::function<bool(size_t, size_t)> &f) {
+    pst_breadth_first_iteration_(start_index, start_level, f);
+  }
+
+  void
+  pst_breadth_first_iteration_(const size_t start_index,
+                               const size_t start_level,
+                               const std::function<bool(size_t, size_t)> &f) {
+    std::vector<std::thread> threads{};
     std::queue<std::tuple<size_t, size_t>> queue{};
 
     queue.emplace(start_index, start_level);
@@ -314,11 +326,27 @@ public:
       queue.pop();
 
       if (f(node_index, level)) {
-        for (auto child : this->reverse_suffix_links[node_index / 2]) {
-          if (child != max_size && !this->skip_node(child)) {
-            queue.emplace(child, level + 1);
+        if (this->multi_core && this->parallel_depth > level) {
+          for (auto child : this->reverse_suffix_links[node_index / 2]) {
+            if (child != max_size && !this->skip_node(child)) {
+              threads.emplace_back(
+                  &ProbabilisticSuffixTree::pst_breadth_first_iteration_, this,
+                  child, level + 1, f);
+            }
+          }
+        } else {
+          for (auto child : this->reverse_suffix_links[node_index / 2]) {
+            if (child != max_size && !this->skip_node(child)) {
+              queue.emplace(child, level + 1);
+            }
           }
         }
+      }
+    }
+
+    for (auto &thread : threads) {
+      if (thread.joinable()) {
+        thread.join();
       }
     }
   }
@@ -418,10 +446,11 @@ protected:
    * are saved if the counts of each node is above `freq` and the length is at
    * most `max_depth`.
    *
-   * Also saves the count of the node as well as if it is included or excluded.
+   * Also saves the count of the node as well as if it is included or
+   * excluded.
    */
   void build_tree() {
-    static std::shared_mutex entries_reallocate_mutex{};
+    std::shared_mutex entries_reallocate_mutex{};
 
     this->breadth_first_iteration(
         0, 0, true,
@@ -430,16 +459,17 @@ protected:
           if (this->is_leaf(node_index)) {
             std::lock_guard lock{this->table.mutex};
             expand_implicit_nodes(node_index, lcp, edge_lcp);
+            // After adding implicit nodes, we may have to expand the entries
+          }
 
-            auto new_size = this->table.size() / 2;
-
-            if (this->entries.capacity() < new_size) {
-              std::unique_lock entries_reallocate_lock{
-                  entries_reallocate_mutex};
-              this->resize_entries();
-            } else {
-              this->resize_entries();
-            }
+          // If we reach the capacity of the entries vector, we will
+          // reallocate it. This can lead to a race condition when a
+          // different thread tries to set a value.  Therefore, we lock
+          // changes to entries here.
+          auto new_table_size = this->table.capacity() / 2;
+          if (this->entries.capacity() < new_table_size) {
+            std::unique_lock entries_reallocate_lock{entries_reallocate_mutex};
+            this->resize_entries();
           }
 
           std::shared_lock lock{entries_reallocate_mutex};
@@ -449,16 +479,9 @@ protected:
         []() {},
         [&](size_t node_index, size_t lcp, size_t &edge_lcp) {
           expand_implicit_nodes(node_index, lcp, edge_lcp);
-
-          auto new_size = this->table.size() / 2;
-
-          if (this->entries.capacity() < new_size) {
-            std::unique_lock lock{entries_reallocate_mutex};
-            this->resize_entries();
-          } else {
-            this->resize_entries();
-          }
         });
+
+    this->entries.resize(this->table.size() / 2);
   }
 
   void expand_implicit_nodes(size_t node_index, size_t lcp, size_t &edge_lcp) {
@@ -475,10 +498,9 @@ protected:
   }
 
   void resize_entries() {
-    auto new_size = this->table.size() / 2;
-    if (this->entries.size() < new_size) {
-      this->entries.resize(new_size, {Status::NONE, max_size, {}});
-    }
+    auto new_size = this->table.capacity() / 2;
+    this->entries.reserve(new_size);
+    this->entries.resize(new_size, {Status::NONE, max_size, {}});
   }
 
   /**! Check if the node with node_index should be included.
@@ -559,46 +581,20 @@ protected:
     }
   }
 
-  /**! \brief Determines if pseudo counts should be added.
-   * \details
-   * Checks if any of the children that correspond to valid_characters are
-   * missing.  If this is the case, 1 should be added to every child count,
-   * to account for the fact that even if we don't observe an event
-   * we would expect it to happen with some (small) probability.
-   *
-   * \param[in] node_index node to check for pseudo counts for.
-   * \return true if pseudo counts should be added.
-   */
-  bool add_pseudo_counts(size_t node_index) {
-    size_t n_children = 0;
-    this->iterate_children(node_index, [&](size_t child_index) {
-      auto sequence_index = this->get_sequence_index(child_index);
-      auto character = this->get_character(sequence_index);
-
-      auto char_rank = seqan3::to_rank(character);
-      if (this->valid_characters.find(char_rank) ==
-          this->valid_characters.end()) {
-        return;
-      }
-
-      n_children += 1;
-    });
-    return n_children != this->valid_characters.size();
-  }
-
   /**! \brief Removes all nodes from the tree with a delta value below
    * threshold.
    * \details
    * The full tree is iterated to find the leaves in the
    * PST.  These leaves are then iterated, for each leaf the delta value is
    * calculated, and the node is removed if the delta value is below a
-   * threshold.  For each removed node, the parent is added to be considered if
-   * it now a leaf.
+   * threshold.  For each removed node, the parent is added to be considered
+   * if it now a leaf.
    */
   virtual void cutoff_prune() { parameters_prune(); }
   virtual float calculate_delta(size_t node_index) { return 0.0; }
 
-  /**! \brief Removes all nodes until a specified number of parameters are left.
+  /**! \brief Removes all nodes until a specified number of parameters are
+   * left.
    *
    * \details The full tree is iterated to find the leaves in the
    * PST.  These leaves are then iterated, for each leaf the delta value is
@@ -656,6 +652,8 @@ protected:
   get_child_counts(size_t node_index, bool with_pseudo_counts) {
     std::array<size_t, seqan3::alphabet_size<alphabet_t>> child_counts{};
 
+    int valid_children = 0;
+
     this->iterate_children(node_index, [&](size_t child_index) {
       auto sequence_index = this->get_sequence_index(child_index);
       auto character = this->get_character(sequence_index);
@@ -666,9 +664,17 @@ protected:
 
       auto character_rank = seqan3::to_rank(character);
       child_counts[character_rank] = get_counts(child_index);
+
+      auto char_rank = seqan3::to_rank(character);
+      if (this->valid_characters.find(char_rank) ==
+          this->valid_characters.end()) {
+        return;
+      }
+
+      valid_children += 1;
     });
 
-    bool add_pseudo_counts = this->add_pseudo_counts(node_index);
+    bool add_pseudo_counts = valid_children != this->valid_characters.size();
     if (with_pseudo_counts && add_pseudo_counts) {
       for (auto char_rank : this->valid_characters) {
         child_counts[char_rank] += 1;
@@ -685,9 +691,12 @@ protected:
   std::vector<size_t> get_pst_leaves() {
     std::vector<size_t> bottom_nodes{};
 
+    static std::mutex leaves_mutex{};
+
     this->pst_breadth_first_iteration(
         0, 0, [&](size_t node_index, size_t level) -> bool {
           if (this->is_included(node_index) && this->is_pst_leaf(node_index)) {
+            std::lock_guard lock{leaves_mutex};
             bottom_nodes.emplace_back(node_index);
           }
 
@@ -912,7 +921,7 @@ protected:
    * \return The number of nodes in the tree.
    */
   size_t nodes_in_tree() {
-    size_t n_nodes = 0;
+    std::atomic_size_t n_nodes = 0;
     this->pst_breadth_first_iteration(
         [&](size_t node_index, size_t level) -> bool {
           if (is_included(node_index)) {

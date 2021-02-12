@@ -171,7 +171,7 @@ public:
     this->debug_print_node(root);
     std::cout << std::endl;
 
-    this->breadth_first_iteration_label(
+    this->pst_breadth_first_iteration(
         root, 0, [&](const std::string label, size_t level) -> bool {
           if (this->is_excluded(label)) {
             return true;
@@ -334,19 +334,19 @@ public:
     }
   }
 
-  void breadth_first_iteration_label(
+  void breadth_first_iteration_p(
       const std::function<bool(const std::string, size_t)> &f) {
     std::string root{""};
-    this->breadth_first_iteration_label(root, 0, f);
+    this->breadth_first_iteration_p(root, 0, f);
   }
 
-  void breadth_first_iteration_label(
+  void breadth_first_iteration_p(
       const std::string &start_label, const size_t start_level,
       const std::function<bool(const std::string, size_t)> &f) {
-    breadth_first_iteration_label_(start_label, start_level, f);
+    breadth_first_iteration_p_(start_label, start_level, f);
   }
 
-  void breadth_first_iteration_label_(
+  void breadth_first_iteration_p_(
       const std::string start_label, const size_t start_level,
       const std::function<bool(const std::string, size_t)> &f) {
     std::vector<std::thread> threads{};
@@ -369,8 +369,8 @@ public:
         if (this->multi_core && this->parallel_depth > level) {
           for (auto &child : children) {
             threads.emplace_back(
-                &ProbabilisticSuffixTreeMap::breadth_first_iteration_label_,
-                this, std::move(child), level + 1, f);
+                &ProbabilisticSuffixTreeMap::breadth_first_iteration_p_, this,
+                std::move(child), level + 1, f);
           }
         } else {
           for (auto &child : children) {
@@ -531,7 +531,10 @@ public:
    */
   void build_tree() {
     std::mutex counts_mutex{};
+    std::mutex probabilities_mutex{};
+    std::mutex status_mutex{};
     vec_t global_vec{};
+    // Reset main thread.
     thread_vec = vec_t{};
 
     this->breadth_first_iteration_table_less(
@@ -567,21 +570,37 @@ public:
           return include_node;
         },
         [&]() {
-          std::lock_guard lock{counts_mutex};
-          store_thread_local_elements();
+          {
+            std::lock_guard lock{counts_mutex};
+            for (auto &[label, node_count, include_node_] : thread_vec) {
+
+              this->counts[label] = node_count;
+            }
+          }
+
+          {
+            std::lock_guard status_lock{status_mutex};
+            for (auto &[label, node_count, include_node_] : thread_vec) {
+
+              if (include_node_) {
+                this->status.insert(label);
+              }
+            }
+          }
+
+          {
+            std::lock_guard probabilities_lock{probabilities_mutex};
+            for (auto &[label, node_count, include_node_] : thread_vec) {
+
+              if (include_node_) {
+                this->probabilities[label] = {};
+              }
+            }
+          }
         });
   }
 
-  void store_thread_local_elements() {
-    for (auto &[label, node_count, include_node_] : thread_vec) {
-
-      this->counts[label] = node_count;
-      if (include_node_) {
-        this->probabilities[label] = {};
-        this->status.insert(label);
-      }
-    }
-  }
+  void store_thread_local_elements() {}
 
   /**! \brief Computes and saves the forward probabilities of each node.
    * \details
@@ -594,11 +613,10 @@ public:
   void compute_probabilities() {
     this->assign_node_probabilities("");
 
-    this->breadth_first_iteration_label(
-        [&](const std::string label, size_t level) {
-          this->assign_node_probabilities(label);
-          return true;
-        });
+    this->breadth_first_iteration_p([&](const std::string label, size_t level) {
+      this->assign_node_probabilities(label);
+      return true;
+    });
   }
 
   /**! \brief Assigns probabilities for the node.
@@ -618,32 +636,6 @@ public:
     for (size_t i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
       this->probabilities[label][i] = float(child_counts[i]) / child_sum;
     }
-  }
-
-  /**! \brief Determines if pseudo counts should be added.
-   * \details
-   * Checks if any of the children that correspond to valid_characters are
-   * missing.  If this is the case, 1 should be added to every child count,
-   * to account for the fact that even if we don't observe an event
-   * we would expect it to happen with some (small) probability.
-   *
-   * \param[in] label node to check for pseudo counts for.
-   * \return true if pseudo counts should be added.
-   */
-  bool add_pseudo_counts(const std::string &label) {
-    size_t n_children = 0;
-
-    for (auto char_rank : this->valid_characters) {
-      alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
-
-      std::string child_label = label + c.to_char();
-
-      if (this->get_count(child_label) != 0) {
-        n_children += 1;
-      }
-    }
-
-    return n_children != this->valid_characters.size();
   }
 
   /**! \brief Removes all nodes from the tree with a delta value below
@@ -715,16 +707,23 @@ public:
   std::array<size_t, seqan3::alphabet_size<alphabet_t>>
   get_child_counts(const std::string &label, bool with_pseudo_counts) {
     std::array<size_t, seqan3::alphabet_size<alphabet_t>> child_counts{};
+    size_t n_children = 0;
 
+    std::string child_label = label + ' ';
+    alphabet_t c{};
     for (auto char_rank : this->valid_characters) {
-      alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
+      seqan3::assign_rank_to(char_rank, c);
+      child_label[child_label.size() - 1] = c.to_char();
 
-      std::string child_label = label + c.to_char();
+      auto c = this->get_count(child_label);
+      child_counts[char_rank] = c;
 
-      child_counts[char_rank] = this->get_count(child_label);
+      if (c != 0) {
+        n_children += 1;
+      }
     }
 
-    bool add_pseudo_counts = this->add_pseudo_counts(label);
+    bool add_pseudo_counts = n_children != this->valid_characters.size();
     if (with_pseudo_counts && add_pseudo_counts) {
       for (auto char_rank : this->valid_characters) {
         child_counts[char_rank] += 1;
@@ -742,14 +741,13 @@ public:
     std::vector<std::string> bottom_nodes{};
 
     static std::mutex leaves_mutex{};
-    this->breadth_first_iteration_label(
-        [&](const std::string label, size_t level) {
-          if (this->is_pst_leaf(label)) {
-            std::lock_guard lock{leaves_mutex};
-            bottom_nodes.emplace_back(std::move(label));
-          }
-          return true;
-        });
+    this->breadth_first_iteration_p([&](const std::string label, size_t level) {
+      if (this->is_pst_leaf(label)) {
+        std::lock_guard lock{leaves_mutex};
+        bottom_nodes.emplace_back(std::move(label));
+      }
+      return true;
+    });
 
     return bottom_nodes;
   }

@@ -76,21 +76,21 @@ TEST_F(ProbabilisticSuffixTreeTest, ConstructorStatus) {
 TEST_F(ProbabilisticSuffixTreeTest, ConstructorSuffixLinks) {
   std::vector<size_t> expected_suffix_links{
       max_size, // root
-      0,  // A
-      0,  // G
-      0,  // T
-      0,  // -
-      6,  // AT
-      8,  // A-
-      2,  // GA
-      24, // GATTATA-
-      2,  // TA
-      6,  // TT
-      28, // ATA
-      30, // ATTATA
-      22, // TATA
-      12, // TA
-      26  // TTATA
+      0,        // A
+      0,        // G
+      0,        // T
+      0,        // -
+      6,        // AT
+      8,        // A-
+      2,        // GA
+      24,       // GATTATA-
+      2,        // TA
+      6,        // TT
+      28,       // ATA
+      30,       // ATTATA
+      22,       // TATA
+      12,       // TA
+      26        // TTATA
   };
 
   EXPECT_EQ(probabilisticSuffixTree.suffix_links, expected_suffix_links);
@@ -268,23 +268,24 @@ void test_suffix_links(pst::ProbabilisticSuffixTree<seqan3::dna5> tree) {
     return true;
   });
 
-  tree.pst_breadth_first_iteration([&](size_t node_index, size_t level) -> bool {
-    if (node_index == 0) {
-      return true;
-    }
-    auto label = labels[node_index];
+  tree.pst_breadth_first_iteration(
+      [&](size_t node_index, size_t level) -> bool {
+        if (node_index == 0) {
+          return true;
+        }
+        auto label = labels[node_index];
 
-    auto parent = tree.get_pst_parent(node_index);
+        auto parent = tree.get_pst_parent(node_index);
 
-    EXPECT_NE(parent, -1);
+        EXPECT_NE(parent, -1);
 
-    auto parent_label = labels[parent];
-    auto expected_parent_label = label.substr(1);
+        auto parent_label = labels[parent];
+        auto expected_parent_label = label.substr(1);
 
-    EXPECT_EQ(expected_parent_label, parent_label);
+        EXPECT_EQ(expected_parent_label, parent_label);
 
-    return true;
-  });
+        return true;
+      });
 }
 
 TEST_F(ProbabilisticSuffixTreeTest, SuffixLinksCorrect) {
@@ -353,15 +354,15 @@ get_label_index_map(pst::ProbabilisticSuffixTree<seqan3::dna5> &tree) {
 
   static std::mutex labels_mutex{};
 
-  tree.breadth_first_iteration(
-      [&](size_t node_index, size_t lcp, size_t edge_lcp, size_t node_count) -> bool {
-        std::lock_guard labels_lock{labels_mutex};
-        auto label = tree.node_label(node_index, lcp, edge_lcp);
+  tree.breadth_first_iteration([&](size_t node_index, size_t lcp,
+                                   size_t edge_lcp, size_t node_count) -> bool {
+    std::lock_guard labels_lock{labels_mutex};
+    auto label = tree.node_label(node_index, lcp, edge_lcp);
 
-        map[label] = node_index;
+    map[label] = node_index;
 
-        return true;
-      });
+    return true;
+  });
 
   return map;
 }
@@ -410,14 +411,15 @@ void compare_trees(pst::ProbabilisticSuffixTree<seqan3::dna5> &left,
 }
 
 TEST_F(ProbabilisticSuffixTreeTest, ParallelAndSequentialSame) {
+  std::vector<seqan3::dna5> sequence = random_sequence(100000);
   // If parallel successfully runs 1000 times, is it correct?
   for (int i = 0; i < 10; i++) {
-    pst::ProbabilisticSuffixTree<seqan3::dna5> tree{
-        "TEST", long_sequence, 15, 4, 24601, "parameters", false, 1};
+    pst::KullbackLieblerTree<seqan3::dna5> tree{
+        "TEST", sequence, 15, 10, 1.2, 0, "cutoff", false, 1};
     tree.construct_tree();
 
-    pst::ProbabilisticSuffixTree<seqan3::dna5> parallel_tree{
-        "TEST", long_sequence, 15, 4, 24601, "parameters", true, 1};
+    pst::KullbackLieblerTree<seqan3::dna5> parallel_tree{
+        "TEST", sequence, 15, 10, 1.2, 0, "cutoff", true, 1};
     parallel_tree.construct_tree();
 
     compare_trees(tree, parallel_tree);
