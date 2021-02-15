@@ -336,8 +336,6 @@ void breadth_first_iteration_parallel_(
   }
 }
 
-using namespace std::placeholders;
-
 template <seqan3::alphabet alphabet_t>
 std::tuple<size_t, bool> visit_top_node(
     size_t node_index, size_t lcp, const sequence_t<alphabet_t> &sequence,
@@ -349,7 +347,9 @@ std::tuple<size_t, bool> visit_top_node(
     return {get_edge_lcp(node_index, sequence, suffixes, table), true};
   }
 
-  auto modified_locked_callback = std::bind(locked_callback, _1, lcp, _2);
+  auto modified_locked_callback = [&](size_t node_index, size_t &edge_lcp) {
+    return locked_callback(node_index, lcp, edge_lcp);
+  };
 
   size_t edge_lcp, node_count;
   if (is_unevaluated(node_index, table) && expand_nodes) {
