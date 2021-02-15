@@ -15,6 +15,8 @@
 #include "kl_tree_map.hpp"
 #include "probabilistic_suffix_tree_map.hpp"
 
+using seqan3::operator""_dna5;
+
 struct input_arguments {
   size_t max_depth{15};
   size_t min_count{100};
@@ -23,8 +25,8 @@ struct input_arguments {
   std::string algorithm_method{"hashmap"};
   std::string pruning_method{"cutoff"};
   std::string estimator{"KL"};
-  std::vector<lst::details::sequence_t<seqan3::dna5>> sequences{};
-  std::vector<std::string> ids{};
+  lst::details::sequence_t<seqan3::dna5> sequence{};
+  std::string id{};
   bool multi_core{false};
   int parallel_depth{1};
 };
@@ -60,7 +62,9 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
 
   parser.add_option(arguments.number_of_parameters, 'n', "number-of-parameters",
                     "For the 'parameters' puning-method, the number of "
-                    "parameters to prune the tree until.");
+                    "parameters to prune the tree until.  If there are "
+                    "multiple nodes with the same estimator value, "
+                    "which ones are returned is not defined.");
 
   parser.add_option(arguments.estimator, 'e', "estimator",
                     "estimator used to determine which states should be "
@@ -72,8 +76,8 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
                     "a certain number of parameters have been reached.");
 
   parser.add_option(arguments.algorithm_method, 'a', "algorithm-method",
-                    "Algorithm to use. Either 'hashmap', which stores the"
-                    "k-mers in a hashmap, or 'tree' which will store"
+                    "Algorithm to use. Either 'hashmap', which stores the "
+                    "k-mers in a hashmap, or 'tree' which will store "
                     "the k-mers in a tree and requires suffix links.");
 
   // Multiprocessing
@@ -83,7 +87,7 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
   parser.add_option(
       arguments.parallel_depth, 's', "parallel-depth",
       "If multi-core, will spawn a new thread per node up until the "
-      "parallel-depth."
+      "parallel-depth. "
       "Higher value increase the number of threads spawned. Default 1");
 
   try {
@@ -96,9 +100,14 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
   seqan3::sequence_file_input<my_traits> file_in{filename};
 
   for (auto &[seq, id, qual] : file_in) {
-    arguments.sequences.emplace_back(std::move(seq));
-    arguments.ids.emplace_back(std::move(id));
+    std::move(seq.begin(), seq.end(), std::back_inserter(arguments.sequence));
+    arguments.sequence.push_back('N'_dna5);
+
+    arguments.id += id;
+    arguments.id += "|";
   }
+  arguments.id.pop_back();
+  arguments.sequence.pop_back();
 
   return arguments;
 }
@@ -143,7 +152,7 @@ int main(int argc, char *argv[]) {
   input_arguments arguments = parse_cli_arguments(argc, argv);
 
   std::string tree = train(
-      arguments.sequences[0], arguments.ids[0], arguments.max_depth,
+      arguments.sequence, arguments.id, arguments.max_depth,
       arguments.min_count, arguments.threshold, arguments.number_of_parameters,
       arguments.pruning_method, arguments.algorithm_method, arguments.estimator,
       arguments.multi_core, arguments.parallel_depth);
