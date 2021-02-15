@@ -80,6 +80,7 @@ size_t tree_height_parallel(const sequence_t<alphabet_t> &sequence,
                             const std::vector<size_t> &suffixes,
                             const Table<> &table, int parallel_depth) {
   size_t tree_height_found = 0;
+  max_val = 0;
 
   std::mutex height_lock;
 
