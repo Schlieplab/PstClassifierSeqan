@@ -13,7 +13,7 @@
 
 namespace lst::details {
 
-int next_child_index(size_t node_index, const Table<> &table) {
+size_t next_child_index(size_t node_index, const Table<> &table) {
   if (is_leaf(node_index, table)) {
     // Should be 1, but I've added a value to leaves to allow for
     // explicit nodes.
@@ -41,10 +41,10 @@ void iterate_children(size_t node_index, const Table<> &table,
   }
 }
 
-int node_occurrences(size_t node_index, const Table<> &table) {
+size_t node_occurrences(size_t node_index, const Table<> &table) {
   assert(node_index <= table.size());
 
-  int occurrences = 0;
+  size_t occurrences = 0;
   std::queue<size_t> queue{};
 
   queue.push(node_index);
@@ -367,13 +367,13 @@ std::tuple<size_t, bool> visit_top_node(
     return {-1, false};
   }
 
-  int new_lcp = lcp + edge_lcp;
+  size_t new_lcp = lcp + edge_lcp;
   return {new_lcp, true};
 }
 
 template <seqan3::alphabet alphabet_t>
-int get_edge_lcp(size_t node_index, const sequence_t<alphabet_t> &sequence,
-                 const std::vector<size_t> &suffixes, const Table<> &table) {
+size_t get_edge_lcp(size_t node_index, const sequence_t<alphabet_t> &sequence,
+                    const std::vector<size_t> &suffixes, const Table<> &table) {
   if (node_index == 0) {
     return 0;
   }
@@ -388,16 +388,16 @@ int get_edge_lcp(size_t node_index, const sequence_t<alphabet_t> &sequence,
                                                sequence, suffixes);
   }
 
-  int smallest_child_index = suffixes.size();
+  auto smallest_child_index = suffixes.size();
 
   iterate_children(node_index, table, [&](size_t index) {
-    int sequence_index = get_sequence_index(index, suffixes, table);
+    auto sequence_index = get_sequence_index(index, suffixes, table);
     smallest_child_index = std::min(smallest_child_index, sequence_index);
   });
 
   assert(smallest_child_index > table[node_index].value);
 
-  int edge_lcp = smallest_child_index - table[node_index].value;
+  size_t edge_lcp = smallest_child_index - table[node_index].value;
 
   return edge_lcp;
 }
