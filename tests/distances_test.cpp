@@ -77,10 +77,24 @@ TEST_F(DistancesTest, BackgroudState) {
   std::string c3{"ACG"};
   std::string c4{"CG"};
   std::string c5{"G"};
-  EXPECT_EQ(pst::distances::details::get_background_state(c1, 2), "CG");
-  EXPECT_EQ(pst::distances::details::get_background_state(c2, 3), "ACG");
-  EXPECT_EQ(pst::distances::details::get_background_state(c2, 1), "G");
-  EXPECT_EQ(pst::distances::details::get_background_state(c3, 2), "CG");
-  EXPECT_EQ(pst::distances::details::get_background_state(c4, 2), "CG");
-  EXPECT_EQ(pst::distances::details::get_background_state(c5, 2), "G");
+  EXPECT_EQ(pst::distances::get_background_state(c1, 2), "CG");
+  EXPECT_EQ(pst::distances::get_background_state(c2, 3), "ACG");
+  EXPECT_EQ(pst::distances::get_background_state(c2, 1), "G");
+  EXPECT_EQ(pst::distances::get_background_state(c3, 2), "CG");
+  EXPECT_EQ(pst::distances::get_background_state(c4, 2), "CG");
+  EXPECT_EQ(pst::distances::get_background_state(c5, 2), "G");
+}
+
+TEST_F(DistancesTest, ScoringHangs) {
+  using seqan3::operator""_dna5;
+  std::filesystem::path first_path{"./../trees/CM008035.1.tree"};
+  pst::ProbabilisticSuffixTreeMap<seqan3::dna5> first{first_path};
+
+  std::string seq{"ACGATCGATCGATCGATCGACACTACCAGCACATAGTAGCTAGCATGATCGACTACTAGC"
+                  "ATCTACGGCTACGATCATCGATCGATCATATCAGCACTAGCACG"};
+  std::vector<std::string> sequences(2000, seq);
+
+  std::vector<pst::ProbabilisticSuffixTreeMap<seqan3::dna5>> trees(50, first);
+
+  EXPECT_NO_FATAL_FAILURE({ pst::score_sequences(trees, sequences, 0); });
 }
