@@ -20,3 +20,13 @@ target_link_libraries(pst-classifier Threads::Threads)
 add_library (vlmc SHARED vlmc.cpp)
 target_link_libraries (vlmc seqan3::seqan3)
 target_link_libraries(vlmc Threads::Threads)
+
+add_executable (batch-training batch-training.cpp)
+target_link_libraries (batch-training seqan3::seqan3)
+target_link_libraries(batch-training Threads::Threads)
+target_link_libraries(batch-training HighFive)
+
+add_executable (score-sequences score-sequences.cpp)
+target_link_libraries (score-sequences seqan3::seqan3)
+target_link_libraries(score-sequences Threads::Threads)
+target_link_libraries(score-sequences HighFive)
