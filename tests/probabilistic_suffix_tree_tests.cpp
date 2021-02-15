@@ -27,12 +27,12 @@ protected:
     using seqan3::operator""_dna5;
     sequence = lst::details::sequence_t<seqan3::dna4>{"GATTATA"_dna4};
     probabilisticSuffixTree = pst::ProbabilisticSuffixTree<seqan3::dna4>{
-        "TEST", sequence, 3, 1, 192, "parameters", false, 2};
+        "TEST", sequence, 2, 1, 192, "parameters", false, 2};
     probabilisticSuffixTree.construct_tree();
 
     probabilisticSuffixTreeParallel =
         pst::ProbabilisticSuffixTree<seqan3::dna4>{
-            "TEST", sequence, 3, 1, 192, "parameters", true, 2};
+            "TEST", sequence, 2, 1, 192, "parameters", true, 2};
     probabilisticSuffixTreeParallel.construct_tree();
 
     long_sequence = lst::details::sequence_t<seqan3::dna5>{
@@ -46,28 +46,29 @@ protected:
 };
 
 TEST_F(ProbabilisticSuffixTreeTest, ConstructorStatus) {
-  std::vector<pst::Status> expected_status{
-      pst::Status::INCLUDED, // root
-      pst::Status::INCLUDED, // A
-      pst::Status::INCLUDED, // G
-      pst::Status::INCLUDED, // T
-      pst::Status::EXCLUDED, // -
-      pst::Status::INCLUDED, // AT
-      pst::Status::EXCLUDED, // A-
-      pst::Status::INCLUDED, // GA
-      pst::Status::EXCLUDED, // GATTATA-
-      pst::Status::INCLUDED, // TA
-      pst::Status::INCLUDED, // TT
-      pst::Status::EXCLUDED, // ATA
-      pst::Status::EXCLUDED, // ATTATA
-      pst::Status::EXCLUDED, // TATA
-      pst::Status::EXCLUDED, // TA
-      pst::Status::EXCLUDED  // TTATA
+  std::vector<bool> expected_status{
+      true,  // root
+      true,  // A
+      true,  // G
+      true,  // T
+      false, // -
+      true,  // AT
+      false, // A-
+      true,  // GA
+      true,  // TA
+      true,  // TT
+      false, // ATA
+      false, // ATTATA
+      false, // GATTATA-
+      false, // TATA
+      false, // TA
+      false  // TTATA
   };
+  probabilisticSuffixTree.print();
 
-  std::vector<pst::Status> tree_status{};
+  std::vector<bool> tree_status{};
   for (auto &v : probabilisticSuffixTree.entries) {
-    tree_status.push_back(v.status);
+    tree_status.push_back(v.included);
   }
 
   EXPECT_EQ(tree_status, expected_status);
@@ -83,12 +84,12 @@ TEST_F(ProbabilisticSuffixTreeTest, ConstructorSuffixLinks) {
       6,        // AT
       8,        // A-
       2,        // GA
-      24,       // GATTATA-
       2,        // TA
       6,        // TT
       28,       // ATA
       30,       // ATTATA
-      22,       // TATA
+      22,       // GATTATA-
+      20,       // TATA
       12,       // TA
       26        // TTATA
   };
@@ -107,11 +108,11 @@ TEST_F(ProbabilisticSuffixTreeTest, ConstructorProbabilities) {
           {2.0 / 6.0, 1.0 / 6.0, 1.0 / 6.0, 2.0 / 6.0},     // AT
           {0, 0, 0, 0},                                     // A-
           {1.0 / 5.0, 1.0 / 5.0, 1.0 / 5.0, 2.0 / 5.0},     // GA
-          {0, 0, 0, 0},                                     // GATTATA-
           {1.0 / 5.0, 1.0 / 5.0, 1.0 / 5.0, 2.0 / 5.0},     // TA
           {2.0 / 5.0, 1.0 / 5.0, 1.0 / 5.0, 1.0 / 5.0},     // TT
           {0, 0, 0, 0},                                     // ATA
           {0, 0, 0, 0},                                     // ATTATA
+          {0, 0, 0, 0},                                     // GATTATA-
           {0, 0, 0, 0},                                     // TATA
           {0, 0, 0, 0},                                     // TA
           {0, 0, 0, 0}                                      // TTATA
@@ -132,28 +133,31 @@ TEST_F(ProbabilisticSuffixTreeTest, PrunedKL) {
       "TEST", sequence, 3, 2, 0.3, 192, "cutoff", false, 2};
   kl_tree.construct_tree();
 
-  std::vector<pst::Status> expected_status{
-      pst::Status::INCLUDED, // root
-      pst::Status::INCLUDED, // A
-      pst::Status::EXCLUDED, // G
-      pst::Status::EXCLUDED, // T
-      pst::Status::EXCLUDED, // -
-      pst::Status::EXCLUDED, // AT
-      pst::Status::EXCLUDED, // A-
-      pst::Status::EXCLUDED, // GA
-      pst::Status::EXCLUDED, // GATTATA-
-      pst::Status::EXCLUDED, // TA
-      pst::Status::EXCLUDED, // TT
-      pst::Status::EXCLUDED, // ATA
-      pst::Status::EXCLUDED, // ATTATA
-      pst::Status::EXCLUDED, // TATA
-      pst::Status::EXCLUDED, // TA
-      pst::Status::EXCLUDED  // TTATA
+  std::vector<bool> expected_status{
+      true,  // root
+      true,  // A
+      false, // G
+      false, // T
+      false, // -
+      false, // AT
+      false, // A-
+      false, // GA
+      false, // GATTATA-
+      false, // TA
+      false, // TT
+      false, // ATA
+      false, // ATT
+      false, // TAT
+      false, // TA
+      false, // TTATA
+      false, //  ATA
+      false, // ATTATA
+      false, // TATA
   };
 
-  std::vector<pst::Status> kl_status{};
+  std::vector<bool> kl_status{};
   for (auto &v : kl_tree.entries) {
-    kl_status.push_back(v.status);
+    kl_status.push_back(v.included);
   }
 
   EXPECT_EQ(kl_status, expected_status);
@@ -163,28 +167,31 @@ TEST_F(ProbabilisticSuffixTreeTest, PrunedParameters) {
   auto kl_tree = pst::KullbackLieblerTree<seqan3::dna4>{
       "TEST", sequence, 3, 2, 0.0, 6, "parameters", false, 2};
   kl_tree.construct_tree();
-  std::vector<pst::Status> expected_status{
-      pst::Status::INCLUDED, // root
-      pst::Status::INCLUDED, // A
-      pst::Status::EXCLUDED, // G
-      pst::Status::EXCLUDED, // T
-      pst::Status::EXCLUDED, // -
-      pst::Status::EXCLUDED, // AT
-      pst::Status::EXCLUDED, // A-
-      pst::Status::EXCLUDED, // GA
-      pst::Status::EXCLUDED, // GATTATA-
-      pst::Status::EXCLUDED, // TA
-      pst::Status::EXCLUDED, // TT
-      pst::Status::EXCLUDED, // ATA
-      pst::Status::EXCLUDED, // ATTATA
-      pst::Status::EXCLUDED, // TATA
-      pst::Status::EXCLUDED, // TA
-      pst::Status::EXCLUDED  // TTATA
+  std::vector<bool> expected_status{
+      true,  // root
+      true,  // A
+      false, // G
+      false, // T
+      false, // -
+      false, // AT
+      false, // A-
+      false, // GA
+      false, // GATTATA-
+      false, // TA
+      false, // TT
+      false, // ATA
+      false, // ATT
+      false, // TAT
+      false, // TA
+      false, // TTATA
+      false, //  ATA
+      false, // ATTATA
+      false, // TATA
   };
 
-  std::vector<pst::Status> kl_status{};
+  std::vector<bool> kl_status{};
   for (auto &v : kl_tree.entries) {
-    kl_status.push_back(v.status);
+    kl_status.push_back(v.included);
   }
 
   EXPECT_EQ(kl_status, expected_status);
@@ -237,7 +244,7 @@ TEST_F(ProbabilisticSuffixTreeTest, PSTBreadthFirstIteration) {
         return true;
       });
 
-  std::vector<size_t> expected_visited{0, 2, 4, 6, 14, 18, 10, 20};
+  std::vector<size_t> expected_visited{0, 2, 4, 6, 14, 16, 10, 18};
 
   EXPECT_EQ(visited, expected_visited);
 }
@@ -251,7 +258,7 @@ TEST_F(ProbabilisticSuffixTreeTest, PSTBreadthFirstIterationSubtree) {
         return true;
       });
 
-  std::vector<size_t> expected_visited{2, 14, 18};
+  std::vector<size_t> expected_visited{2, 14, 16};
 
   EXPECT_EQ(visited, expected_visited);
 }

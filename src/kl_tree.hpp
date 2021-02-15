@@ -122,7 +122,7 @@ protected:
       float delta = calculate_delta(node_index);
 
       if (delta < this->cutoff_value) {
-        this->entries[node_index / 2].status = Status::EXCLUDED;
+        this->entries[node_index / 2].included = false;
 
         auto parent_index = this->suffix_links[node_index / 2];
         if (this->is_pst_leaf(parent_index)) {

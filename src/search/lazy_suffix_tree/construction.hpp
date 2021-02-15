@@ -399,6 +399,9 @@ evaluate_node(size_t lower_bound, size_t upper_bound,
 
 void add_implicit_nodes(size_t node_index, size_t edge_lcp, Table<> &table) {
   assert(!is_unevaluated(node_index, table));
+  if (edge_lcp == 1) {
+    return;
+  }
 
   auto previous_child = table[node_index + 1].value;
   table[node_index + 1].value = table.size();

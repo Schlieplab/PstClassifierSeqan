@@ -37,7 +37,7 @@ enum Status : unsigned char {
 };
 
 template <seqan3::alphabet alphabet_t> struct PSTEntry {
-  Status status;
+  bool included;
   size_t count;
   std::array<float, seqan3::alphabet_size<alphabet_t>> probabilities;
 };
@@ -137,7 +137,7 @@ public:
    */
   void support_pruning() {
     this->build_tree();
-    entries[0] = {Status::INCLUDED, this->sequence.size(), {}};
+    entries[0] = {true, this->sequence.size(), {}};
   }
 
   /**! \brief Similarity pruning phase of the algorithm
@@ -192,7 +192,7 @@ public:
     }
 
     if (this->entries.size() > node_index / 2) {
-      std::cout << "\tStatus: " << this->entries[node_index / 2].status;
+      std::cout << "\tStatus: " << this->entries[node_index / 2].included;
     }
   }
 
@@ -418,13 +418,11 @@ public:
   }
 
   bool is_included(size_t node_index) {
-    return (this->entries[node_index / 2].status & Status::INCLUDED) ==
-           Status::INCLUDED;
+    return this->entries[node_index / 2].included;
   }
 
   bool is_excluded(size_t node_index) {
-    return (this->entries[node_index / 2].status & Status::EXCLUDED) ==
-           Status::EXCLUDED;
+    return !this->entries[node_index / 2].included;
   }
 
   std::string id;
@@ -474,6 +472,10 @@ protected:
 
           std::shared_lock lock{entries_reallocate_mutex};
 
+          if (count == max_size) {
+            count = get_counts(node_index);
+          }
+
           return this->check_node(node_index, lcp, edge_lcp, count);
         },
         []() {},
@@ -485,11 +487,17 @@ protected:
   }
 
   void expand_implicit_nodes(size_t node_index, size_t lcp, size_t &edge_lcp) {
+    if (lcp >= this->max_depth) {
+      return;
+    }
+
     if (edge_lcp > 1) {
       auto max_extension = edge_lcp;
-      if (lcp + edge_lcp > this->max_depth) {
 
-        max_extension = this->max_depth - lcp;
+      if (lcp + edge_lcp > this->max_depth) {
+        // If the next node is included, we also need the next-next node for
+        // probabilities
+        max_extension = this->max_depth - lcp + 1;
       }
 
       this->add_implicit_nodes(node_index, max_extension);
@@ -500,7 +508,7 @@ protected:
   void resize_entries() {
     auto new_size = this->table.capacity() / 2;
     this->entries.reserve(new_size);
-    this->entries.resize(new_size, {Status::NONE, max_size, {}});
+    this->entries.resize(new_size, {false, max_size, {}});
   }
 
   /**! Check if the node with node_index should be included.
@@ -519,20 +527,9 @@ protected:
 
     if (!this->is_leaf(node_index) &&
         this->include_node(label_start, label_end, edge_lcp, count)) {
-      this->entries[node_index / 2].status = Status::INCLUDED;
+      this->entries[node_index / 2].included = true;
       return true;
     } else {
-      this->entries[node_index / 2].status = Status::EXCLUDED;
-
-      // If this node is part of an expanded implicit node, we want to exclude
-      // the rest of the implicit nodes as well.
-      this->breadth_first_iteration_sequential(
-          node_index, lcp, false,
-          [&](size_t index, size_t lcp, size_t edge_lcp,
-              size_t node_count) -> bool {
-            this->entries[index / 2].status = Status::EXCLUDED;
-            return true;
-          });
       return false;
     }
   }
@@ -630,7 +627,7 @@ protected:
 
       auto parent_index = this->suffix_links[node_index / 2];
 
-      this->entries[node_index / 2].status = Status::EXCLUDED;
+      this->entries[node_index / 2].included = false;
 
       if (this->is_pst_leaf(parent_index) && parent_index != 0) {
         queue.emplace(parent_index, -this->calculate_delta(parent_index));
