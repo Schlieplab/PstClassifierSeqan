@@ -194,7 +194,7 @@ TEST_F(ProbabilisticSuffixTreeTestMap, CorrectTreeParallel) {
   size_t sought_n_parameters{30300};
 
   // If parallel code succeeds 1000 times, it is correct?
-  for (size_t i = 0; i < 1000; i++) {
+  for (size_t i = 0; i < 10; i++) {
     pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree{
         "TEST",       long_sequence, 15, 4, sought_n_parameters,
         "parameters", true,          1};
