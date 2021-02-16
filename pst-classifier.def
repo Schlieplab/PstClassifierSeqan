@@ -1,14 +1,17 @@
 Bootstrap: docker
-From: buildpack-deps:19.04
+From: debian:buster
 
 %files
 	src /PstClassifierSeqan/src
-        tests /PstClassifierSeqan/tests
+	tests /PstClassifierSeqan/tests
 	seqan3 /PstClassifierSeqan/seqan3
+	eigen /PstClassifierSeqan/eigen
+	HighFive /PstClassifierSeqan/HighFive
+	robin-hood-hashing /PstClassifierSeqan/robin-hood-hashing
 	CMakeLists.txt /PstClassifierSeqan/CMakeLists.txt
 
 %post
-	apt-get update -y && apt-get install -y cmake
+	apt-get update -y && apt-get install -y cmake build-essential g++ git gcc libhdf5-dev libeigen3-dev
 
 	mkdir /PstClassifierSeqan/build
 	cd /PstClassifierSeqan/build
