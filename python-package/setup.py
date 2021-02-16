@@ -1,5 +1,5 @@
-from skbuild import setup
 from setuptools import find_packages
+from skbuild import setup
 
 try:
     import numpy
@@ -15,12 +15,10 @@ except ImportError:
 
         return numpy.get_include()
 
-
-
 if __name__ == "__main__":
     setup(
         name="libvlmc",
-        version="0.1",
+        version="0.2",
         description="Genomic signatures and related distance measures for genomic sequences.",
         packages=find_packages(),
         install_requires=['cython', 'numpy'],
