@@ -6,3 +6,10 @@
 /build*/*
 /tests_build/
 **/cmake-build-*
+
+**/massif*
+**/vgcore*
+**/callgrind*
+
+.idea
+.vscode

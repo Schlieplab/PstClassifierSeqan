@@ -1,8 +1,4 @@
-**/*.fasta
-**/*.tree
-**/*.sif
-trees
-fasta
-build/
-build_tests/
-**/cmake-build-*
+python-package/_skbuild/
+fasta/
+build*
+*.sif
