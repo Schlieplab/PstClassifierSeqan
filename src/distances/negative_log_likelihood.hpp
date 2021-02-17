@@ -25,8 +25,12 @@ float negative_log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 
   size_t length = 0;
   for (size_t i = 0; i < sequence.size(); i++) {
-    std::string subsequence = sequence.substr(
-        std::max(size_t(0), i - order_max), std::min(i, order_max));
+    size_t start_index = i - order_max;
+    if (order_max > i) {
+      start_index = 0;
+    }
+    std::string subsequence =
+        sequence.substr(start_index, std::min(i, order_max));
 
     char char_ = sequence[i];
 
