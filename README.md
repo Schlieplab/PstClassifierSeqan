@@ -72,8 +72,8 @@ make
 This should yield three files in the `build/src` directory:
 
 * `pst-classifier` which provides a command line interface to the PST/VLMC training.
-* `batch-training` which trains a VLMC for every sequence in a multi-fasta file, and saves the output to a h5 file.
-* `score-sequences` which takes the signatures from the output of `batch-training` and computes the negative log-likelihood of as set of sequences, and saves the result to a (possibly) different h5 file.
+* `pst-batch-training` which trains a VLMC for every sequence in a multi-fasta file, and saves the output to a h5 file.
+* `pst-score-sequences` which takes the signatures from the output of `pst-batch-training` and computes the negative log-likelihood of as set of sequences, and saves the result to a (possibly) different h5 file.
 
 ## Python
 

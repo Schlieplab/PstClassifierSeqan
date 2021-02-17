@@ -66,7 +66,7 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
 
   parser.add_option(arguments.estimator, 'e', "estimator",
                     "estimator used to determine which states should be "
-                    "pruned. Either 'KL' or 'PS'.");
+                    "pruned. Only current option is 'KL'.");
 
   parser.add_option(arguments.pruning_method, 'p', "pruning-method",
                     "pruning method to use. Either 'cutoff' for pruning until "
