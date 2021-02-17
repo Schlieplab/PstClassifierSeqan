@@ -227,22 +227,22 @@ void test_benchmark(std::string filename, bool parallel, int parallel_depth) {
   EXPECT_NO_FATAL_FAILURE(pst.construct_tree());
 }
 
-TEST(ProbabilisticSuffixTreeLiveTest, HumanHerpesvirus5) {
-  std::string filename{"../../fasta/NC_006273.2.fa"};
-  test_benchmark(filename, true, 1);
-}
-
-TEST(ProbabilisticSuffixTreeLiveTest, SaccharomycesCerevisiae) {
-  std::string filename{"../../fasta/CM010781.1.fa"};
-  test_benchmark(filename, true, 2);
-}
-
-TEST(ProbabilisticSuffixTreeLiveTest, EColi) {
-  for (int i = 0; i < 5; i++) {
-    std::string filename{"../../fasta/CP007136.1.fa"};
-    test_benchmark(filename, true, 2);
-  }
-}
+// TEST(ProbabilisticSuffixTreeLiveTest, HumanHerpesvirus5) {
+//  std::string filename{"../../fasta/NC_006273.2.fa"};
+//  test_benchmark(filename, true, 1);
+//}
+//
+// TEST(ProbabilisticSuffixTreeLiveTest, SaccharomycesCerevisiae) {
+//  std::string filename{"../../fasta/CM010781.1.fa"};
+//  test_benchmark(filename, true, 2);
+//}
+//
+// TEST(ProbabilisticSuffixTreeLiveTest, EColi) {
+//  for (int i = 0; i < 5; i++) {
+//    std::string filename{"../../fasta/CP007136.1.fa"};
+//    test_benchmark(filename, true, 2);
+//  }
+//}
 
 void compare_trees(pst::ProbabilisticSuffixTreeMap<seqan3::dna5> left,
                    pst::ProbabilisticSuffixTreeMap<seqan3::dna5> right) {
