@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <filesystem>
 #include <functional>
 #include <iostream>
 #include <string>
@@ -12,6 +11,8 @@
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/argument_parser/argument_parser.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
+
+#include <seqan3/std/filesystem>
 
 #include "distances/composition_vectors.hpp"
 #include "distances/negative_log_likelihood.hpp"

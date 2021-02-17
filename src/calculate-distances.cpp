@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <cstdlib>
-#include <filesystem>
 #include <functional>
 #include <iostream>
 #include <string>
@@ -12,6 +11,8 @@
 
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/argument_parser/argument_parser.hpp>
+
+#include <seqan3/std/filesystem>
 
 #include "distances/cv.hpp"
 #include "distances/parallelize.hpp"

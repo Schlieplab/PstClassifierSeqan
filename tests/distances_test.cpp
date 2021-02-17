@@ -1,13 +1,13 @@
 #include <gtest/gtest.h>
 
 #include <array>
-#include <filesystem>
 #include <string>
 #include <tuple>
 
 #include <vector>
 
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
+#include <seqan3/std/filesystem>
 
 #include "../src/distances/cv.hpp"
 #include "../src/distances/score.hpp"

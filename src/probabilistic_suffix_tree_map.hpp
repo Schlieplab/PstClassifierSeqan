@@ -5,7 +5,6 @@
 #include <chrono>
 #include <cmath>
 #include <ctime>
-#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -24,6 +23,7 @@
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/range/views/convert.hpp>
 #include <seqan3/range/views/to_char.hpp>
+#include <seqan3/std/filesystem>
 
 #include <robin_hood.h>
 #include <seqan3/range/views/to.hpp>

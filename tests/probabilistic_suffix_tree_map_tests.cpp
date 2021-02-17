@@ -6,7 +6,6 @@
 #include <robin_hood.h>
 
 #include <array>
-#include <filesystem>
 #include <string>
 #include <tuple>
 
@@ -18,6 +17,7 @@
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/range/views/to.hpp>
 #include <seqan3/range/views/to_char.hpp>
+#include <seqan3/std/filesystem>
 
 class ProbabilisticSuffixTreeTestMap : public ::testing::Test {
 protected:

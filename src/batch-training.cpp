@@ -1,18 +1,22 @@
-#include "distances/cv.hpp"
-#include "kl_tree_map.hpp"
-#include "probabilistic_suffix_tree_map.hpp"
-#include <Eigen/Dense>
 #include <algorithm>
-#include <filesystem>
 #include <functional>
-#include <highfive/H5File.hpp>
 #include <iostream>
+#include <string>
+#include <thread>
+
+#include <Eigen/Dense>
+#include <highfive/H5File.hpp>
+
+#include <seqan3/std/filesystem>
+
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/argument_parser/argument_parser.hpp>
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
-#include <string>
-#include <thread>
+
+#include "distances/cv.hpp"
+#include "kl_tree_map.hpp"
+#include "probabilistic_suffix_tree_map.hpp"
 
 using tree_t = pst::ProbabilisticSuffixTreeMap<seqan3::dna5>;
 using matrix_t = Eigen::MatrixXd;

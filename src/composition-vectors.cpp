@@ -1,6 +1,5 @@
 #include <Eigen/Dense>
 #include <algorithm>
-#include <filesystem>
 #include <functional>
 #include <highfive/H5File.hpp>
 #include <iostream>
@@ -8,6 +7,8 @@
 #include <seqan3/argument_parser/argument_parser.hpp>
 #include <string>
 #include <thread>
+
+#include <seqan3/std/filesystem>
 
 #include "distances/composition_vectors.hpp"
 #include "distances/cv.hpp"

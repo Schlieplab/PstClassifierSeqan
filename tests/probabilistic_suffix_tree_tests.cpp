@@ -4,7 +4,6 @@
 #include "../src/probabilistic_suffix_tree.hpp"
 
 #include <array>
-#include <filesystem>
 #include <map>
 #include <string>
 #include <tuple>
