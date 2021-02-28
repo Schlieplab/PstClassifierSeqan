@@ -9,6 +9,7 @@
 #include <tuple>
 #include <vector>
 
+#include <robin_hood.h>
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/core/debug_stream.hpp>
@@ -440,4 +441,60 @@ TEST_F(ProbabilisticSuffixTreeTest, ResourceTemporarilyUnavailableError) {
   tree.add_suffix_links();
   tree.add_reverse_suffix_links();
   tree.similarity_pruning();
+}
+
+std::unordered_map<std::string, size_t>
+get_label_count_map(pst::ProbabilisticSuffixTree<seqan3::dna5> &tree) {
+  std::unordered_map<std::string, size_t> map{};
+
+  static std::mutex labels_mutex{};
+
+  tree.breadth_first_iteration([&](size_t node_index, size_t lcp,
+                                   size_t edge_lcp, size_t node_count) -> bool {
+    std::lock_guard labels_lock{labels_mutex};
+    auto label = tree.node_label(node_index, lcp, edge_lcp);
+
+    map[label] = tree.get_counts(node_index);
+
+    return true;
+  });
+
+  return map;
+}
+
+void correct_counts(pst::ProbabilisticSuffixTree<seqan3::dna5> tree,
+                    lst::details::sequence_t<seqan3::dna5> seq) {
+  auto tree_counts = get_label_count_map(tree);
+  robin_hood::unordered_map<std::string, int> counts{};
+
+  std::string sequence =
+      seq | seqan3::views::to_char | seqan3::views::to<std::string>;
+
+  for (size_t i = 0; i < sequence.size(); i++) {
+    for (int j = 0; j < 16 && j + i < sequence.size(); j++) {
+      auto kmer = sequence.substr(i, j);
+      if (counts.find(kmer) != counts.end()) {
+        counts[kmer] += 1;
+      } else {
+        counts[kmer] = 1;
+      }
+    }
+  }
+
+  for (auto &[k, v] : tree_counts) {
+    EXPECT_EQ(counts[k], v) << k;
+  }
+}
+
+TEST_F(ProbabilisticSuffixTreeTest, CorrectCounts) {
+  pst::ProbabilisticSuffixTree<seqan3::dna5> tree{
+      "TEST", long_sequence, 15, 100, 24601, "parameters", false, 1};
+  tree.construct_tree();
+
+  pst::ProbabilisticSuffixTree<seqan3::dna5> parallel_tree{
+      "TEST", long_sequence, 15, 100, 24601, "parameters", true, 1};
+  parallel_tree.construct_tree();
+
+  correct_counts(tree, long_sequence);
+  correct_counts(parallel_tree, long_sequence);
 }

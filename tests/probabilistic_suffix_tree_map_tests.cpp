@@ -302,3 +302,39 @@ TEST_F(ProbabilisticSuffixTreeTestMap, ParallelAndSequentialSame) {
 
   compare_trees(tree, parallel_tree);
 }
+
+void correct_counts(pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree,
+                    lst::details::sequence_t<seqan3::dna5> seq) {
+  robin_hood::unordered_map<std::string, int> counts{};
+
+  std::string sequence =
+      seq | seqan3::views::to_char | seqan3::views::to<std::string>;
+
+  for (size_t i = 0; i < sequence.size(); i++) {
+    for (int j = 0; j < 16 && j + i < sequence.size(); j++) {
+      auto kmer = sequence.substr(i, j);
+      if (counts.find(kmer) != counts.end()) {
+        counts[kmer] += 1;
+      } else {
+        counts[kmer] = 1;
+      }
+    }
+  }
+
+  for (auto &[k, v] : tree.counts) {
+    EXPECT_EQ(counts[k], v) << k;
+  }
+}
+
+TEST_F(ProbabilisticSuffixTreeTestMap, CorrectCounts) {
+  pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree{
+      "TEST", long_sequence, 15, 100, 24601, "parameters", false, 1};
+  tree.construct_tree();
+
+  pst::ProbabilisticSuffixTreeMap<seqan3::dna5> parallel_tree{
+      "TEST", long_sequence, 15, 100, 24601, "parameters", true, 1};
+  parallel_tree.construct_tree();
+
+  correct_counts(tree, long_sequence);
+  correct_counts(parallel_tree, long_sequence);
+}

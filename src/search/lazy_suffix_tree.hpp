@@ -403,7 +403,8 @@ public:
   }
 
   size_t node_occurrences(size_t node_index) {
-    return lst::details::node_occurrences(node_index, this->table);
+    return lst::details::node_occurrences(node_index, this->table,
+                                          this->sequence, this->suffixes);
   }
 
   lst::details::sequence_t<alphabet_t> sequence;

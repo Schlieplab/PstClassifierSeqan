@@ -365,6 +365,7 @@ expand_node(size_t node_index, const sequence_t<alphabet_t> &sequence,
 
   auto [lcp, counts] =
       expand_core(lower_bound, upper_bound, sequence, suffixes);
+  size_t count = std::accumulate(counts.begin(), counts.end() - 1, 0);
 
   std::lock_guard<std::mutex> unevaluated_lock{table.mutex};
 
@@ -376,7 +377,6 @@ expand_node(size_t node_index, const sequence_t<alphabet_t> &sequence,
 
   locked_callback(node_index, lcp);
 
-  size_t count = upper_bound - lower_bound;
   return {lcp, count};
 }
 
@@ -393,7 +393,7 @@ evaluate_node(size_t lower_bound, size_t upper_bound,
 
   auto children = get_children<alphabet_t>(counts, lower_bound, suffixes);
 
-  size_t count = upper_bound - lower_bound;
+  size_t count = std::accumulate(counts.begin(), counts.end() - 1, 0);
   return {sequence_index, lcp, count, children};
 }
 

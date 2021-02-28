@@ -41,7 +41,10 @@ void iterate_children(size_t node_index, const Table<> &table,
   }
 }
 
-size_t node_occurrences(size_t node_index, const Table<> &table) {
+template <seqan3::alphabet alphabet_t>
+size_t node_occurrences(size_t node_index, const Table<> &table,
+                        const sequence_t<alphabet_t> &sequence,
+                        std::vector<size_t> &suffixes) {
   assert(node_index <= table.size());
 
   size_t occurrences = 0;
@@ -56,7 +59,14 @@ size_t node_occurrences(size_t node_index, const Table<> &table) {
     if (is_leaf(index, table)) {
       occurrences += 1;
     } else if (is_unevaluated(index, table)) {
-      occurrences += table[index + 1].value - table[index].value;
+      auto lower_bound = table[node_index].value;
+      auto upper_bound = table[node_index + 1].value;
+
+      auto counts =
+          count_suffixes(lower_bound, upper_bound, sequence, suffixes);
+      size_t count = std::accumulate(counts.begin(), counts.end() - 1, 0);
+
+      occurrences += count;
     } else {
       iterate_children(index, table, [&](size_t i) { queue.push(i); });
     }
@@ -310,14 +320,12 @@ void breadth_first_iteration_parallel_(
 
     if (depth < parallel_depth) {
       // Spawn threads per children
-      iterate_children(
-          node_index, table, [&, new_lcp = new_lcp](size_t index) {
-            threads.emplace_back(breadth_first_iteration_parallel_<alphabet_t>,
-                                 index, new_lcp, depth + 1, std::ref(sequence),
-                                 std::ref(suffixes), std::ref(table),
-                                 expand_nodes, f, done, parallel_depth,
-                                 locked_callback);
-          });
+      iterate_children(node_index, table, [&, new_lcp = new_lcp](size_t index) {
+        threads.emplace_back(breadth_first_iteration_parallel_<alphabet_t>,
+                             index, new_lcp, depth + 1, std::ref(sequence),
+                             std::ref(suffixes), std::ref(table), expand_nodes,
+                             f, done, parallel_depth, locked_callback);
+      });
 
     } else {
       // Continue working in this thread.

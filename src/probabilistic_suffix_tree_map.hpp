@@ -707,7 +707,6 @@ public:
   std::array<size_t, seqan3::alphabet_size<alphabet_t>>
   get_child_counts(const std::string &label, bool with_pseudo_counts) {
     std::array<size_t, seqan3::alphabet_size<alphabet_t>> child_counts{};
-    size_t n_children = 0;
 
     std::string child_label = label + ' ';
     alphabet_t c{};
@@ -717,14 +716,9 @@ public:
 
       auto c = this->get_count(child_label);
       child_counts[char_rank] = c;
-
-      if (c != 0) {
-        n_children += 1;
-      }
     }
 
-    bool add_pseudo_counts = n_children != this->valid_characters.size();
-    if (with_pseudo_counts && add_pseudo_counts) {
+    if (with_pseudo_counts) {
       for (auto char_rank : this->valid_characters) {
         child_counts[char_rank] += 1;
       }

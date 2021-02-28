@@ -393,7 +393,8 @@ public:
 
     auto c = this->entries[node_index / 2].count;
     if (c == max_size) {
-      c = lst::details::node_occurrences(node_index, this->table);
+      c = lst::details::node_occurrences(node_index, this->table,
+                                         this->sequence, this->suffixes);
       this->entries[node_index / 2].count = c;
     }
     return c;
@@ -649,8 +650,6 @@ protected:
   get_child_counts(size_t node_index, bool with_pseudo_counts) {
     std::array<size_t, seqan3::alphabet_size<alphabet_t>> child_counts{};
 
-    int valid_children = 0;
-
     this->iterate_children(node_index, [&](size_t child_index) {
       auto sequence_index = this->get_sequence_index(child_index);
       auto character = this->get_character(sequence_index);
@@ -661,18 +660,9 @@ protected:
 
       auto character_rank = seqan3::to_rank(character);
       child_counts[character_rank] = get_counts(child_index);
-
-      auto char_rank = seqan3::to_rank(character);
-      if (this->valid_characters.find(char_rank) ==
-          this->valid_characters.end()) {
-        return;
-      }
-
-      valid_children += 1;
     });
 
-    bool add_pseudo_counts = valid_children != this->valid_characters.size();
-    if (with_pseudo_counts && add_pseudo_counts) {
+    if (with_pseudo_counts) {
       for (auto char_rank : this->valid_characters) {
         child_counts[char_rank] += 1;
       }
