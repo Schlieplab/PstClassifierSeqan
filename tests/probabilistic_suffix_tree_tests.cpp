@@ -47,24 +47,23 @@ protected:
 
 TEST_F(ProbabilisticSuffixTreeTest, ConstructorStatus) {
   std::vector<bool> expected_status{
-      true,  // root
-      true,  // A
-      true,  // G
-      true,  // T
-      false, // -
-      true,  // AT
-      false, // A-
-      true,  // GA
-      true,  // TA
-      true,  // TT
-      false, // ATA
-      false, // ATTATA
-      false, // GATTATA-
-      false, // TATA
-      false, // TA
-      false  // TTATA
+      true,  // root 0
+      true,  // A 2
+      true,  // G 4
+      true,  // T 6
+      false, // - 8
+      true,  // AT 10
+      false, // A- 12
+      true,  // GA 14
+      false, // GATTATA- 16
+      true,  // TA 18
+      true,  // TT 20
+      false, // ATA 22
+      false, // ATTATA 24
+      false, // TATA 26
+      false, // TA 28
+      false  // TTATA 30
   };
-  probabilisticSuffixTree.print();
 
   std::vector<bool> tree_status{};
   for (auto &v : probabilisticSuffixTree.entries) {
@@ -84,12 +83,12 @@ TEST_F(ProbabilisticSuffixTreeTest, ConstructorSuffixLinks) {
       6,        // AT
       8,        // A-
       2,        // GA
+      24,       // GATTATA-
       2,        // TA
       6,        // TT
       28,       // ATA
       30,       // ATTATA
-      22,       // GATTATA-
-      20,       // TATA
+      22,       // TATA
       12,       // TA
       26        // TTATA
   };
@@ -98,24 +97,25 @@ TEST_F(ProbabilisticSuffixTreeTest, ConstructorSuffixLinks) {
 }
 
 TEST_F(ProbabilisticSuffixTreeTest, ConstructorProbabilities) {
+  float def = float(1) / 4;
   std::vector<std::array<float, seqan3::alphabet_size<seqan3::dna4>>>
       expected_probabilities{
           {4.0 / 11.0, 1.0 / 11.0, 2.0 / 11.0, 4.0 / 11.0}, // root
           {1.0 / 6.0, 1.0 / 6.0, 1.0 / 6.0, 3.0 / 6.0},     // A
           {2.0 / 5.0, 1.0 / 5.0, 1.0 / 5.0, 1.0 / 5.0},     // G
           {3.0 / 7.0, 1.0 / 7.0, 1.0 / 7.0, 2.0 / 7.0},     // T
-          {0, 0, 0, 0},                                     // -
+          {def, def, def, def},                             // -
           {2.0 / 6.0, 1.0 / 6.0, 1.0 / 6.0, 2.0 / 6.0},     // AT
-          {0, 0, 0, 0},                                     // A-
+          {def, def, def, def},                             // A-
           {1.0 / 5.0, 1.0 / 5.0, 1.0 / 5.0, 2.0 / 5.0},     // GA
+          {def, def, def, def},                             // GATTATA-
           {1.0 / 5.0, 1.0 / 5.0, 1.0 / 5.0, 2.0 / 5.0},     // TA
           {2.0 / 5.0, 1.0 / 5.0, 1.0 / 5.0, 1.0 / 5.0},     // TT
-          {0, 0, 0, 0},                                     // ATA
-          {0, 0, 0, 0},                                     // ATTATA
-          {0, 0, 0, 0},                                     // GATTATA-
-          {0, 0, 0, 0},                                     // TATA
-          {0, 0, 0, 0},                                     // TA
-          {0, 0, 0, 0}                                      // TTATA
+          {def, def, def, def},                             // ATA
+          {def, def, def, def},                             // ATTATA
+          {def, def, def, def},                             // TATA
+          {def, def, def, def},                             // TA
+          {def, def, def, def}                              // TTATA
       };
 
   for (size_t i = 0; i < probabilisticSuffixTree.entries.size() &&
@@ -123,15 +123,17 @@ TEST_F(ProbabilisticSuffixTreeTest, ConstructorProbabilities) {
        i++) {
     for (size_t j = 0; j < 4; j++) {
       EXPECT_FLOAT_EQ(probabilisticSuffixTree.entries[i].probabilities[j],
-                      expected_probabilities[i][j]);
+                      expected_probabilities[i][j])
+          << i << " " << probabilisticSuffixTree.entries[i].count << " " << j;
     }
   }
 }
 
 TEST_F(ProbabilisticSuffixTreeTest, PrunedKL) {
   auto kl_tree = pst::KullbackLieblerTree<seqan3::dna4>{
-      "TEST", sequence, 3, 2, 0.3, 192, "cutoff", false, 2};
+      "TEST", sequence, 3, 2, 0.2, 192, "cutoff", false, 2};
   kl_tree.construct_tree();
+  kl_tree.print();
 
   std::vector<bool> expected_status{
       true,  // root
@@ -142,17 +144,19 @@ TEST_F(ProbabilisticSuffixTreeTest, PrunedKL) {
       false, // AT
       false, // A-
       false, // GA
+      false, // GAT
       false, // GATTATA-
       false, // TA
       false, // TT
       false, // ATA
       false, // ATT
-      false, // TAT
-      false, // TA
-      false, // TTATA
-      false, //  ATA
-      false, // ATTATA
       false, // TATA
+      false, // TA-
+      false, // TTA
+      false, // TTATA-
+      false, // ATA-
+      false, // ATTATA-
+      false, // TATA-
   };
 
   std::vector<bool> kl_status{};
@@ -167,6 +171,7 @@ TEST_F(ProbabilisticSuffixTreeTest, PrunedParameters) {
   auto kl_tree = pst::KullbackLieblerTree<seqan3::dna4>{
       "TEST", sequence, 3, 2, 0.0, 6, "parameters", false, 2};
   kl_tree.construct_tree();
+
   std::vector<bool> expected_status{
       true,  // root
       true,  // A
@@ -176,17 +181,19 @@ TEST_F(ProbabilisticSuffixTreeTest, PrunedParameters) {
       false, // AT
       false, // A-
       false, // GA
+      false, // GAT
       false, // GATTATA-
       false, // TA
       false, // TT
       false, // ATA
       false, // ATT
-      false, // TAT
-      false, // TA
-      false, // TTATA
-      false, //  ATA
-      false, // ATTATA
       false, // TATA
+      false, // TA-
+      false, // TTA
+      false, // TTATA-
+      false, // ATA-
+      false, // ATTATA-
+      false, // TATA-
   };
 
   std::vector<bool> kl_status{};
@@ -244,7 +251,7 @@ TEST_F(ProbabilisticSuffixTreeTest, PSTBreadthFirstIteration) {
         return true;
       });
 
-  std::vector<size_t> expected_visited{0, 2, 4, 6, 14, 16, 10, 18};
+  std::vector<size_t> expected_visited{0, 2, 4, 6, 14, 18, 10, 20};
 
   EXPECT_EQ(visited, expected_visited);
 }
@@ -258,7 +265,7 @@ TEST_F(ProbabilisticSuffixTreeTest, PSTBreadthFirstIterationSubtree) {
         return true;
       });
 
-  std::vector<size_t> expected_visited{2, 14, 16};
+  std::vector<size_t> expected_visited{2, 14, 18};
 
   EXPECT_EQ(visited, expected_visited);
 }
@@ -268,12 +275,13 @@ void test_suffix_links(pst::ProbabilisticSuffixTree<seqan3::dna5> tree) {
 
   std::map<size_t, std::string> labels{};
 
-  tree.breadth_first_iteration_sequential([&](size_t node_index, size_t lcp,
-                                              size_t edge_lcp,
-                                              size_t node_count) -> bool {
-    labels[node_index] = tree.node_label(node_index, lcp, edge_lcp);
-    return true;
-  });
+  tree.breadth_first_iteration_sequential(
+      [&](size_t node_index, size_t lcp, size_t edge_lcp, size_t node_count,
+          lst::details::alphabet_array<size_t, seqan3::dna5> &child_counts)
+          -> bool {
+        labels[node_index] = tree.node_label(node_index, lcp, edge_lcp);
+        return true;
+      });
 
   tree.pst_breadth_first_iteration(
       [&](size_t node_index, size_t level) -> bool {
@@ -361,15 +369,17 @@ get_label_index_map(pst::ProbabilisticSuffixTree<seqan3::dna5> &tree) {
 
   static std::mutex labels_mutex{};
 
-  tree.breadth_first_iteration([&](size_t node_index, size_t lcp,
-                                   size_t edge_lcp, size_t node_count) -> bool {
-    std::lock_guard labels_lock{labels_mutex};
-    auto label = tree.node_label(node_index, lcp, edge_lcp);
+  tree.breadth_first_iteration(
+      [&](size_t node_index, size_t lcp, size_t edge_lcp, size_t node_count,
+          lst::details::alphabet_array<size_t, seqan3::dna5> &child_counts)
+          -> bool {
+        std::lock_guard labels_lock{labels_mutex};
+        auto label = tree.node_label(node_index, lcp, edge_lcp);
 
-    map[label] = node_index;
+        map[label] = node_index;
 
-    return true;
-  });
+        return true;
+      });
 
   return map;
 }
@@ -449,29 +459,31 @@ get_label_count_map(pst::ProbabilisticSuffixTree<seqan3::dna5> &tree) {
 
   static std::mutex labels_mutex{};
 
-  tree.breadth_first_iteration([&](size_t node_index, size_t lcp,
-                                   size_t edge_lcp, size_t node_count) -> bool {
-    std::lock_guard labels_lock{labels_mutex};
-    auto label = tree.node_label(node_index, lcp, edge_lcp);
+  tree.breadth_first_iteration(
+      [&](size_t node_index, size_t lcp, size_t edge_lcp, size_t node_count,
+          lst::details::alphabet_array<size_t, seqan3::dna5> &child_counts)
+          -> bool {
+        std::lock_guard labels_lock{labels_mutex};
+        auto label = tree.node_label(node_index, lcp, edge_lcp);
 
-    map[label] = tree.get_counts(node_index);
+        map[label] = tree.get_counts(node_index);
 
-    return true;
-  });
+        return true;
+      });
 
   return map;
 }
 
-void correct_counts(pst::ProbabilisticSuffixTree<seqan3::dna5> tree,
-                    lst::details::sequence_t<seqan3::dna5> seq) {
+void correct_counts(pst::ProbabilisticSuffixTree<seqan3::dna5> &tree,
+                    lst::details::sequence_t<seqan3::dna5> &seq) {
   auto tree_counts = get_label_count_map(tree);
   robin_hood::unordered_map<std::string, int> counts{};
 
   std::string sequence =
       seq | seqan3::views::to_char | seqan3::views::to<std::string>;
 
-  for (size_t i = 0; i < sequence.size(); i++) {
-    for (int j = 0; j < 16 && j + i < sequence.size(); j++) {
+  for (size_t i = 0; i <= sequence.size(); i++) {
+    for (int j = 0; j < 16 && j + i <= sequence.size(); j++) {
       auto kmer = sequence.substr(i, j);
       if (counts.find(kmer) != counts.end()) {
         counts[kmer] += 1;
@@ -488,11 +500,11 @@ void correct_counts(pst::ProbabilisticSuffixTree<seqan3::dna5> tree,
 
 TEST_F(ProbabilisticSuffixTreeTest, CorrectCounts) {
   pst::ProbabilisticSuffixTree<seqan3::dna5> tree{
-      "TEST", long_sequence, 15, 100, 24601, "parameters", false, 1};
+      "TEST", long_sequence, 15, 4, 24601, "parameters", false, 1};
   tree.construct_tree();
 
   pst::ProbabilisticSuffixTree<seqan3::dna5> parallel_tree{
-      "TEST", long_sequence, 15, 100, 24601, "parameters", true, 1};
+      "TEST", long_sequence, 15, 4, 24601, "parameters", true, 1};
   parallel_tree.construct_tree();
 
   correct_counts(tree, long_sequence);

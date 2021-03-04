@@ -70,15 +70,17 @@ TEST_F(ProbabilisticSuffixTreeTestMap, ConstructorProbabilities) {
   for (auto &label : labels) {
     for (size_t j = 0; j < 4; j++) {
       EXPECT_FLOAT_EQ(probabilisticSuffixTree.probabilities[label][j],
-                      expected_probabilities[label][j]);
+                      expected_probabilities[label][j])
+          << label << " " << j;
     }
   }
 }
 
 TEST_F(ProbabilisticSuffixTreeTestMap, PrunedKL) {
   auto kl_tree = pst::KullbackLieblerTreeMap<seqan3::dna4>{
-      "TEST", sequence, 3, 2, 0.3, 192, "cutoff", false, 2};
+      "TEST", sequence, 3, 2, 0.2, 192, "cutoff", false, 2};
   kl_tree.construct_tree();
+  kl_tree.print();
 
   robin_hood::unordered_set<std::string> expected_status{"", "A"};
 
@@ -227,23 +229,6 @@ void test_benchmark(std::string filename, bool parallel, int parallel_depth) {
   EXPECT_NO_FATAL_FAILURE(pst.construct_tree());
 }
 
-// TEST(ProbabilisticSuffixTreeLiveTest, HumanHerpesvirus5) {
-//  std::string filename{"../../fasta/NC_006273.2.fa"};
-//  test_benchmark(filename, true, 1);
-//}
-//
-// TEST(ProbabilisticSuffixTreeLiveTest, SaccharomycesCerevisiae) {
-//  std::string filename{"../../fasta/CM010781.1.fa"};
-//  test_benchmark(filename, true, 2);
-//}
-//
-// TEST(ProbabilisticSuffixTreeLiveTest, EColi) {
-//  for (int i = 0; i < 5; i++) {
-//    std::string filename{"../../fasta/CP007136.1.fa"};
-//    test_benchmark(filename, true, 2);
-//  }
-//}
-
 void compare_trees(pst::ProbabilisticSuffixTreeMap<seqan3::dna5> left,
                    pst::ProbabilisticSuffixTreeMap<seqan3::dna5> right) {
   // Left can contain other, non-essential counts.
@@ -257,7 +242,7 @@ void compare_trees(pst::ProbabilisticSuffixTreeMap<seqan3::dna5> left,
 
   for (auto &[k, v] : right.probabilities) {
     for (size_t i = 0; i < v.size(); i++) {
-      EXPECT_FLOAT_EQ(left.probabilities[k][i], v[i]);
+      EXPECT_FLOAT_EQ(left.probabilities[k][i], v[i]) << k << " " << i;
     }
   }
 }
@@ -303,15 +288,15 @@ TEST_F(ProbabilisticSuffixTreeTestMap, ParallelAndSequentialSame) {
   compare_trees(tree, parallel_tree);
 }
 
-void correct_counts(pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree,
-                    lst::details::sequence_t<seqan3::dna5> seq) {
+void correct_counts(pst::ProbabilisticSuffixTreeMap<seqan3::dna5> &tree,
+                    lst::details::sequence_t<seqan3::dna5> &seq) {
   robin_hood::unordered_map<std::string, int> counts{};
 
   std::string sequence =
       seq | seqan3::views::to_char | seqan3::views::to<std::string>;
 
   for (size_t i = 0; i < sequence.size(); i++) {
-    for (int j = 0; j < 16 && j + i < sequence.size(); j++) {
+    for (int j = 0; j < 16 && j + i <= sequence.size(); j++) {
       auto kmer = sequence.substr(i, j);
       if (counts.find(kmer) != counts.end()) {
         counts[kmer] += 1;
@@ -328,11 +313,11 @@ void correct_counts(pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree,
 
 TEST_F(ProbabilisticSuffixTreeTestMap, CorrectCounts) {
   pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree{
-      "TEST", long_sequence, 15, 100, 24601, "parameters", false, 1};
+      "TEST", long_sequence, 15, 4, 24601, "parameters", false, 1};
   tree.construct_tree();
 
   pst::ProbabilisticSuffixTreeMap<seqan3::dna5> parallel_tree{
-      "TEST", long_sequence, 15, 100, 24601, "parameters", true, 1};
+      "TEST", long_sequence, 15, 4, 24601, "parameters", true, 1};
   parallel_tree.construct_tree();
 
   correct_counts(tree, long_sequence);

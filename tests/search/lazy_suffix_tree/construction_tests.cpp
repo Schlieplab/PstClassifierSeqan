@@ -26,7 +26,8 @@ protected:
 
 TEST_F(ConstructionTests, CountSuffixes) {
   std::array<size_t, 6> expected_counts{2, 3, 0, 0, 0, 1};
-  EXPECT_EQ(count_suffixes(0, 6, sequence, suffixes), expected_counts);
+  auto [counts, _] = count_suffixes(0, 6, sequence, suffixes);
+  EXPECT_EQ(counts, expected_counts);
 
   EXPECT_DEBUG_DEATH(count_suffixes(0, 16, sequence, suffixes), "");
 }
@@ -49,7 +50,7 @@ TEST_F(ConstructionTests, SuffixPointers) {
 TEST_F(ConstructionTests, SortSuffixes) {
   size_t lower_bound = 0;
   size_t upper_bound = 6;
-  std::array<size_t, 6> counts =
+  auto [counts, _] =
       count_suffixes(lower_bound, upper_bound, sequence, suffixes);
   sort_suffixes(counts, lower_bound, upper_bound, sequence, suffixes);
 
@@ -60,7 +61,8 @@ TEST_F(ConstructionTests, SortSuffixes) {
 TEST_F(ConstructionTests, AddLcpToSuffixes) {
   size_t lower_bound = 0;
   size_t upper_bound = 6;
-  auto counts = count_suffixes(lower_bound, upper_bound, sequence, suffixes);
+  auto [counts, _] =
+      count_suffixes(lower_bound, upper_bound, sequence, suffixes);
   sort_suffixes(counts, lower_bound, upper_bound, sequence, suffixes);
 
   size_t lcp =
@@ -78,7 +80,7 @@ TEST_F(ConstructionTests, AddLcpToSuffixes) {
 
 TEST_F(ConstructionTests, AddChildren) {
   table = Table{};
-  std::array<size_t, 6> counts = count_suffixes(0, 6, sequence, suffixes);
+  auto [counts, _] = count_suffixes(0, 6, sequence, suffixes);
   add_children<seqan3::dna5>(counts, 0, suffixes, table);
 
   std::vector<size_t> tree_values{};

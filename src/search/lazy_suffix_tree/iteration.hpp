@@ -59,12 +59,11 @@ size_t node_occurrences(size_t node_index, const Table<> &table,
     if (is_leaf(index, table)) {
       occurrences += 1;
     } else if (is_unevaluated(index, table)) {
-      auto lower_bound = table[node_index].value;
-      auto upper_bound = table[node_index + 1].value;
+      auto lower_bound = table[index].value;
+      auto upper_bound = table[index + 1].value;
 
-      auto counts =
+      auto [counts, count] =
           count_suffixes(lower_bound, upper_bound, sequence, suffixes);
-      size_t count = std::accumulate(counts.begin(), counts.end() - 1, 0);
 
       occurrences += count;
     } else {
@@ -96,7 +95,8 @@ void breadth_first_iteration_table_less_(
     size_t start_lower_bound, size_t start_upper_bound, size_t start_lcp,
     int level, int parallel_depth, const sequence_t<alphabet_t> &sequence,
     std::vector<size_t> &suffixes,
-    const std::function<bool(size_t, size_t, size_t, size_t, bool)> &f,
+    const std::function<bool(size_t, size_t, size_t, size_t,
+                             alphabet_array<size_t, alphabet_t> &, bool)> &f,
     const std::function<void()> &done) {
   std::vector<std::thread> threads{};
 
@@ -110,15 +110,16 @@ void breadth_first_iteration_table_less_(
     }
 
     if (upper == (size_t)-1) {
-      f(lower, lcp, sequence.size() - lower + 1, 1, true);
+      alphabet_array<size_t, alphabet_t> no_counts{};
+      f(lower, lcp, sequence.size() - lower + 1, 1, no_counts, true);
       continue;
     }
 
-    auto [sequence_index, edge_lcp, node_count, children] =
+    auto [sequence_index, edge_lcp, node_count, child_counts, children] =
         evaluate_node(lower, upper, sequence, suffixes);
 
     bool consider_children =
-        f(sequence_index, lcp, edge_lcp, node_count, false);
+        f(sequence_index, lcp, edge_lcp, node_count, child_counts, false);
 
     if (!consider_children) {
       continue;
@@ -168,7 +169,8 @@ template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration_table_less(
     int parallel_depth, const sequence_t<alphabet_t> &sequence,
     std::vector<size_t> &suffixes,
-    const std::function<bool(size_t, size_t, size_t, size_t, bool)> &f,
+    const std::function<bool(size_t, size_t, size_t, size_t,
+                             alphabet_array<size_t, alphabet_t> &, bool)> &f,
     const std::function<void()> &done) {
   breadth_first_iteration_table_less_<alphabet_t>(
       0, suffixes.size(), 0, 0, parallel_depth, sequence, suffixes, f, done);
@@ -191,7 +193,8 @@ template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration(
     const sequence_t<alphabet_t> &sequence, std::vector<size_t> &suffixes,
     Table<> &table, bool expand_nodes,
-    const std::function<bool(size_t, size_t, size_t &, size_t)> &f,
+    const std::function<bool(size_t, size_t, size_t &, size_t,
+                             alphabet_array<size_t, alphabet_t> &)> &f,
     const std::function<void(size_t, size_t, size_t &)> &locked_callback) {
   breadth_first_iteration(0, 0, sequence, suffixes, table, expand_nodes, f,
                           locked_callback);
@@ -217,7 +220,8 @@ void breadth_first_iteration(
     size_t start_index, size_t start_lcp,
     const sequence_t<alphabet_t> &sequence, std::vector<size_t> &suffixes,
     Table<> &table, bool expand_nodes,
-    const std::function<bool(size_t, size_t, size_t &, size_t)> &f,
+    const std::function<bool(size_t, size_t, size_t &, size_t,
+                             alphabet_array<size_t, alphabet_t> &)> &f,
     const std::function<void(size_t, size_t, size_t &)> &locked_callback) {
   std::queue<std::tuple<size_t, size_t>> queue{};
   queue.emplace(start_index, start_lcp);
@@ -257,7 +261,8 @@ template <seqan3::alphabet alphabet_t>
 void breadth_first_iteration_parallel(
     const sequence_t<alphabet_t> &sequence, std::vector<size_t> &suffixes,
     Table<> &table, bool expand_nodes,
-    const std::function<bool(size_t, size_t, size_t &, size_t)> &f,
+    const std::function<bool(size_t, size_t, size_t &, size_t,
+                             alphabet_array<size_t, alphabet_t> &)> &f,
     const std::function<void()> &done, size_t parallel_depth,
     const std::function<void(size_t, size_t, size_t &)> &locked_callback) {
   breadth_first_iteration_parallel_(0, 0, 0, sequence, suffixes, table,
@@ -284,7 +289,8 @@ void breadth_first_iteration_parallel(
     size_t start_index, size_t start_lcp,
     const sequence_t<alphabet_t> &sequence, std::vector<size_t> &suffixes,
     Table<> &table, bool expand_nodes,
-    const std::function<bool(size_t, size_t, size_t &, size_t)> &f,
+    const std::function<bool(size_t, size_t, size_t &, size_t,
+                             alphabet_array<size_t, alphabet_t> &)> &f,
     const std::function<void()> &done, size_t parallel_depth,
     const std::function<void(size_t, size_t, size_t &)> &locked_callback) {
   breadth_first_iteration_parallel_(start_index, start_lcp, 0, sequence,
@@ -297,7 +303,8 @@ void breadth_first_iteration_parallel_(
     size_t start_index, size_t start_lcp, int depth,
     const sequence_t<alphabet_t> &sequence, std::vector<size_t> &suffixes,
     Table<> &table, bool expand_nodes,
-    const std::function<bool(size_t, size_t, size_t &, size_t)> &f,
+    const std::function<bool(size_t, size_t, size_t &, size_t,
+                             alphabet_array<size_t, alphabet_t> &)> &f,
     const std::function<void()> &done, int parallel_depth,
     const std::function<void(size_t, size_t, size_t &)> &locked_callback) {
 
@@ -348,7 +355,8 @@ template <seqan3::alphabet alphabet_t>
 std::tuple<size_t, bool> visit_top_node(
     size_t node_index, size_t lcp, const sequence_t<alphabet_t> &sequence,
     std::vector<size_t> &suffixes, Table<> &table, bool expand_nodes,
-    const std::function<bool(size_t, size_t, size_t &, size_t)> &f,
+    const std::function<bool(size_t, size_t, size_t &, size_t,
+                             alphabet_array<size_t, alphabet_t> &)> &f,
     const std::function<void(size_t, size_t, size_t &)> &locked_callback) {
 
   if (node_index == 0) {
@@ -360,17 +368,21 @@ std::tuple<size_t, bool> visit_top_node(
   };
 
   size_t edge_lcp, node_count;
+  alphabet_array<size_t, alphabet_t> child_counts;
   if (is_unevaluated(node_index, table) && expand_nodes) {
-    auto [edge_lcp_, node_count_] = expand_node(
+    auto [edge_lcp_, node_count_, child_counts_] = expand_node(
         node_index, sequence, suffixes, table, modified_locked_callback);
     edge_lcp = edge_lcp_;
     node_count = node_count_;
+    child_counts = child_counts_;
   } else {
     edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table);
     node_count = (size_t)-1; // node_occurrences(node_index, table);
+    child_counts = {};
   }
 
-  bool consider_children = f(node_index, lcp, edge_lcp, node_count);
+  bool consider_children =
+      f(node_index, lcp, edge_lcp, node_count, child_counts);
   if (!consider_children) {
     return {-1, false};
   }

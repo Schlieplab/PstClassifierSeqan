@@ -48,10 +48,10 @@ TEST_F(IterationTests, GetEdgeLCP) {
 }
 
 TEST_F(IterationTests, NodeOccurrences) {
-  size_t root_occurrences = node_occurrences(0, table);
+  size_t root_occurrences = node_occurrences(0, table, sequence, suffixes);
   EXPECT_EQ(root_occurrences, 6);
 
-  size_t ac_occurrences = node_occurrences(2, table);
+  size_t ac_occurrences = node_occurrences(2, table, sequence, suffixes);
   EXPECT_EQ(ac_occurrences, 2);
 }
 
@@ -69,8 +69,9 @@ TEST_F(IterationTests, BreadthFirstIteration) {
   std::vector<size_t> visited{};
   breadth_first_iteration(
       sequence, suffixes, table, true,
-      [&](size_t index, size_t lcp, size_t edge_lcp,
-          size_t node_count) -> bool {
+      [&](size_t index, size_t lcp, size_t edge_lcp, size_t node_count,
+          lst::details::alphabet_array<size_t, seqan3::dna5> &child_counts)
+          -> bool {
         visited.push_back(index);
         return true;
       },
@@ -87,8 +88,9 @@ TEST_F(IterationTests, BreadthFirstIterationParallel) {
     std::set<size_t> visited{};
     breadth_first_iteration_parallel(
         sequence, suffixes, table, true,
-        [&](size_t index, size_t lcp, size_t edge_lcp,
-            size_t node_count) -> bool {
+        [&](size_t index, size_t lcp, size_t edge_lcp, size_t node_count,
+            lst::details::alphabet_array<size_t, seqan3::dna5> &child_counts)
+            -> bool {
           visited.insert(index);
           return true;
         },

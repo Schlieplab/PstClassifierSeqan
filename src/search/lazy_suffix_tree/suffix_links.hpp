@@ -87,8 +87,9 @@ size_t tree_height_parallel(const sequence_t<alphabet_t> &sequence,
   breadth_first_iteration_parallel<alphabet_t>(
       sequence, const_cast<std::vector<size_t> &>(suffixes),
       const_cast<Table<> &>(table), false,
-      [&](size_t node_index, size_t lcp, size_t edge_lcp,
-          size_t node_count) -> bool {
+      [&](size_t node_index, size_t lcp, size_t edge_lcp, size_t node_count,
+          lst::details::alphabet_array<size_t, alphabet_t> &child_counts)
+          -> bool {
         if (is_leaf(node_index, table)) {
           return false;
         }
@@ -560,8 +561,9 @@ get_leaves(const sequence_t<alphabet_t> &sequence,
     breadth_first_iteration_parallel<alphabet_t>(
         sequence, const_cast<std::vector<size_t> &>(suffixes),
         const_cast<Table<> &>(table), false,
-        [&](size_t node_index, size_t lcp, size_t edge_lcp,
-            size_t node_count) -> bool {
+        [&](size_t node_index, size_t lcp, size_t edge_lcp, size_t node_count,
+            lst::details::alphabet_array<size_t, alphabet_t> &child_counts)
+            -> bool {
           if (is_leaf(node_index, table)) {
             local_leaves.emplace_back(node_index, lcp);
           }

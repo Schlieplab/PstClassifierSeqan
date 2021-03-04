@@ -49,7 +49,8 @@ BENCHMARK_F(LSTFixture, ExpandNodeLevel1)(benchmark::State &state) {
   for (auto _ : state) {
     state.PauseTiming();
 
-    std::vector<size_t> suffixes_copy(tree.suffixes.begin(), tree.suffixes.end());
+    std::vector<size_t> suffixes_copy(tree.suffixes.begin(),
+                                      tree.suffixes.end());
     lst::details::Table<> table_copy = tree.table;
 
     state.ResumeTiming();
@@ -70,7 +71,8 @@ BENCHMARK_F(LSTFixture, ExpandNodeLevel2)(benchmark::State &state) {
   for (auto _ : state) {
     state.PauseTiming();
 
-    std::vector<size_t> suffixes_copy(tree.suffixes.begin(), tree.suffixes.end());
+    std::vector<size_t> suffixes_copy(tree.suffixes.begin(),
+                                      tree.suffixes.end());
     lst::details::Table<> table_copy = tree.table;
 
     state.ResumeTiming();
@@ -94,7 +96,8 @@ BENCHMARK_F(LSTFixture, ExpandNodeLevel3)(benchmark::State &state) {
   for (auto _ : state) {
     state.PauseTiming();
 
-    std::vector<size_t> suffixes_copy(tree.suffixes.begin(), tree.suffixes.end());
+    std::vector<size_t> suffixes_copy(tree.suffixes.begin(),
+                                      tree.suffixes.end());
     lst::details::Table<> table_copy = tree.table;
 
     state.ResumeTiming();
@@ -125,7 +128,8 @@ BENCHMARK_F(LSTFixture, AddLCPToSuffixes)(benchmark::State &state) {
   for (auto _ : state) {
     state.PauseTiming();
 
-    std::vector<size_t> suffixes_copy(tree.suffixes.begin(), tree.suffixes.end());
+    std::vector<size_t> suffixes_copy(tree.suffixes.begin(),
+                                      tree.suffixes.end());
 
     state.ResumeTiming();
 
@@ -141,13 +145,30 @@ BENCHMARK_F(LSTFixture, CountSuffixes)(benchmark::State &state) {
   auto lower_bound = tree.table[first_level_child].value;
   auto upper_bound = tree.table[first_level_child + 1].value;
   auto lcp = lst::details::longest_common_prefix(lower_bound, upper_bound,
-                                                tree.sequence, tree.suffixes);
+                                                 tree.sequence, tree.suffixes);
   lst::details::add_lcp_to_suffixes(lower_bound, upper_bound, lcp,
                                     tree.suffixes);
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(lst::details::count_suffixes(
         lower_bound, upper_bound, tree.sequence, tree.suffixes));
+  }
+}
+
+BENCHMARK_F(LSTFixture, AddLcpAndCountSuffixes)(benchmark::State &state) {
+  lst::LazySuffixTree tree{sequence, false};
+  auto first_level_child = tree.table[1].value;
+
+  auto lower_bound = tree.table[first_level_child].value;
+  auto upper_bound = tree.table[first_level_child + 1].value;
+  auto lcp = lst::details::longest_common_prefix(lower_bound, upper_bound,
+                                                 tree.sequence, tree.suffixes);
+  lst::details::add_lcp_to_suffixes(lower_bound, upper_bound, lcp,
+                                    tree.suffixes);
+
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(lst::details::add_lcp_and_count_suffixes(
+        lower_bound, upper_bound, lcp, tree.sequence, tree.suffixes));
   }
 }
 
@@ -159,11 +180,9 @@ BENCHMARK_F(LSTFixture, SortSuffixes)(benchmark::State &state) {
   auto upper_bound = tree.table[first_level_child + 1].value;
   auto lcp = lst::details::longest_common_prefix(lower_bound, upper_bound,
                                                  tree.sequence, tree.suffixes);
-  lst::details::add_lcp_to_suffixes(lower_bound, upper_bound, lcp,
-                                    tree.suffixes);
 
-  auto counts = lst::details::count_suffixes(lower_bound, upper_bound,
-                                             tree.sequence, tree.suffixes);
+  auto [counts, count] = lst::details::add_lcp_and_count_suffixes(
+      lower_bound, upper_bound, lcp, tree.sequence, tree.suffixes);
 
   for (auto _ : state) {
     state.PauseTiming();
@@ -187,8 +206,8 @@ BENCHMARK_F(LSTFixture, SuffixPointers)(benchmark::State &state) {
   lst::details::add_lcp_to_suffixes(lower_bound, upper_bound, lcp,
                                     tree.suffixes);
 
-  auto counts = lst::details::count_suffixes(lower_bound, upper_bound,
-                                             tree.sequence, tree.suffixes);
+  auto [counts, count] = lst::details::count_suffixes(
+      lower_bound, upper_bound, tree.sequence, tree.suffixes);
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(
@@ -206,7 +225,7 @@ BENCHMARK_F(LSTFixture, CopySuffixes)(benchmark::State &state) {
   for (auto _ : state) {
     benchmark::DoNotOptimize(
         std::vector<size_t>(tree.suffixes.begin() + lower_bound,
-                         tree.suffixes.begin() + upper_bound));
+                            tree.suffixes.begin() + upper_bound));
   }
 }
 
@@ -217,12 +236,12 @@ BENCHMARK_F(LSTFixture, AddChildren)(benchmark::State &state) {
   auto lower_bound = tree.table[first_level_child].value;
   auto upper_bound = tree.table[first_level_child + 1].value;
   auto lcp = lst::details::longest_common_prefix(lower_bound, upper_bound,
-                                                tree.sequence, tree.suffixes);
+                                                 tree.sequence, tree.suffixes);
   lst::details::add_lcp_to_suffixes(lower_bound, upper_bound, lcp,
                                     tree.suffixes);
 
-  auto counts = lst::details::count_suffixes(lower_bound, upper_bound,
-                                             tree.sequence, tree.suffixes);
+  auto [counts, count] = lst::details::count_suffixes(
+      lower_bound, upper_bound, tree.sequence, tree.suffixes);
 
   lst::details::sort_suffixes(counts, lower_bound, upper_bound, tree.sequence,
                               tree.suffixes);
@@ -285,7 +304,8 @@ BENCHMARK_F(LSTFixture, NodeOccurrences)(benchmark::State &state) {
                             tree.table);
 
   for (auto _ : state) {
-    benchmark::DoNotOptimize(node_occurrences(first_level_child, tree.table));
+    benchmark::DoNotOptimize(node_occurrences(first_level_child, tree.table,
+                                              tree.sequence, tree.suffixes));
   }
 }
 

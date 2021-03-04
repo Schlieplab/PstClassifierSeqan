@@ -10,6 +10,7 @@
 #include <iostream>
 #include <mutex>
 #include <queue>
+#include <shared_mutex>
 #include <sstream>
 #include <stack>
 #include <string>
@@ -33,8 +34,10 @@
 
 namespace pst {
 
-using vec_t = std::deque<std::tuple<std::string, int, bool>>;
-thread_local vec_t thread_vec{};
+template <seqan3::alphabet alphabet_t>
+using vec_t =
+    std::deque<std::tuple<std::string, size_t, bool,
+                          lst::details::alphabet_array<size_t, alphabet_t>>>;
 
 /*!\brief The probabilistic suffix tree implementation.
  * \tparam alphabet_t   Alphabet type from Seqan3.
@@ -478,7 +481,8 @@ public:
    * are reached, or until a specified threshold value.
    */
   void similarity_pruning() {
-    this->compute_probabilities();
+    // Probabilities are computed during construction.
+    //    this->compute_probabilities();
 
     if (this->pruning_method == "cutoff") {
       this->cutoff_prune();
@@ -506,6 +510,8 @@ public:
 
   std::string pruning_method;
 
+  thread_local static inline vec_t<alphabet_t> thread_vec{};
+
   /**! \brief Set the characters that are considered valid.
    * This needs to be modified to accept a custom set of valid characters.
    * \return vector of valid characters.
@@ -530,18 +536,24 @@ public:
    * Also saves the count of the node as well as if it is included or excluded.
    */
   void build_tree() {
-    std::mutex counts_mutex{};
+    std::shared_mutex counts_mutex{};
     std::mutex probabilities_mutex{};
     std::mutex status_mutex{};
-    vec_t global_vec{};
+    vec_t<alphabet_t> global_vec{};
     // Reset main thread.
-    thread_vec = vec_t{};
+    thread_vec = vec_t<alphabet_t>{};
 
     this->breadth_first_iteration_table_less(
         [&](size_t sequence_index, size_t lcp, size_t edge_lcp,
-            size_t node_count, bool is_leaf) -> bool {
+            size_t node_count,
+            lst::details::alphabet_array<size_t, alphabet_t> &child_counts,
+            bool is_leaf) -> bool {
           if (is_leaf && edge_lcp == 1) {
             return false;
+          }
+
+          if (edge_lcp == 0) {
+            return true;
           }
 
           bool include_node = true;
@@ -561,10 +573,15 @@ public:
             std::string label = label_dna | seqan3::views::to_char |
                                 seqan3::views::to<std::string>;
 
-            thread_vec.emplace_back(std::move(label), node_count,
-                                    include_sub_node);
+            thread_vec.emplace_back(
+                std::move(label), node_count, include_sub_node,
+                lst::details::alphabet_array<size_t, alphabet_t>{});
 
             include_node = include_sub_node;
+          }
+
+          if (include_node) {
+            std::get<3>(thread_vec.back()) = std::move(child_counts);
           }
 
           return include_node;
@@ -572,15 +589,14 @@ public:
         [&]() {
           {
             std::lock_guard lock{counts_mutex};
-            for (auto &[label, node_count, include_node_] : thread_vec) {
-
+            for (auto &[label, node_count, _i, _cc] : thread_vec) {
               this->counts[label] = node_count;
             }
           }
 
           {
             std::lock_guard status_lock{status_mutex};
-            for (auto &[label, node_count, include_node_] : thread_vec) {
+            for (auto &[label, _nc, include_node_, _cc] : thread_vec) {
 
               if (include_node_) {
                 this->status.insert(label);
@@ -590,25 +606,35 @@ public:
 
           {
             std::lock_guard probabilities_lock{probabilities_mutex};
-            for (auto &[label, node_count, include_node_] : thread_vec) {
-
+            for (auto &[label, _nc, include_node_, child_counts] : thread_vec) {
               if (include_node_) {
                 this->probabilities[label] = {};
               }
             }
           }
+          {
+            for (auto &[label, _nc, include_node_, child_counts] : thread_vec) {
+              if (include_node_) {
+                size_t child_sum = std::accumulate(child_counts.begin(),
+                                                   child_counts.end() - 1, 0);
+                if (child_sum == 0) {
+                  std::shared_lock{counts_mutex};
+                  this->assign_node_probabilities(label);
+                } else {
+                  this->assign_node_probabilities(label, child_counts);
+                }
+              }
+            }
+          }
         });
+    this->assign_node_probabilities("");
   }
-
-  void store_thread_local_elements() {}
 
   /**! \brief Computes and saves the forward probabilities of each node.
    * \details
    * Probabilities for each node are calculated over the sum of the counts
-   * of each (forward) child node.  Pseudo counts are added whenever any of
-   * the children have a count of 0.
+   * of each (forward) child node.  Pseudo counts are added to all counts.
    *
-   * Will allocate memory O(number of nodes after support pruning).
    */
   void compute_probabilities() {
     this->assign_node_probabilities("");
@@ -629,6 +655,30 @@ public:
    */
   void assign_node_probabilities(const std::string &label) {
     auto child_counts = this->get_child_counts(label, true);
+
+    float child_sum =
+        std::accumulate(child_counts.begin(), child_counts.end(), 0.0);
+
+    for (size_t i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
+      this->probabilities[label][i] = float(child_counts[i]) / child_sum;
+    }
+  }
+
+  /**! \brief Assigns probabilities for the node.
+   * \details
+   * Sums the counts of all children, with pseudo counts, and assigns the
+   * corresponding probabilities.  Iterates over all children to find counts,
+   * to sum those counts, and to assign those counts.
+   *
+   * \param[in] label
+   */
+  void assign_node_probabilities(
+      const std::string &label,
+      lst::details::alphabet_array<size_t, alphabet_t> &child_counts) {
+    for (auto char_rank : this->valid_characters) {
+      child_counts[char_rank] += 1;
+    }
+    child_counts[child_counts.size() - 1] = 0;
 
     float child_sum =
         std::accumulate(child_counts.begin(), child_counts.end(), 0.0);
@@ -714,8 +764,8 @@ public:
       seqan3::assign_rank_to(char_rank, c);
       child_label[child_label.size() - 1] = c.to_char();
 
-      auto c = this->get_count(child_label);
-      child_counts[char_rank] = c;
+      auto count = this->get_count(child_label);
+      child_counts[char_rank] = count;
     }
 
     if (with_pseudo_counts) {

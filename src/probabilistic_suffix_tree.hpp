@@ -136,8 +136,10 @@ public:
    *
    */
   void support_pruning() {
-    this->build_tree();
+    this->resize_entries();
     entries[0] = {true, this->sequence.size(), {}};
+
+    this->build_tree();
   }
 
   /**! \brief Similarity pruning phase of the algorithm
@@ -148,7 +150,8 @@ public:
    * are reached, or until a specified threshold value.
    */
   void similarity_pruning() {
-    this->compute_probabilities();
+    // Probabilities are calculated during building.
+    //    this->compute_probabilities();
 
     if (this->pruning_method == "cutoff") {
       this->cutoff_prune();
@@ -167,7 +170,9 @@ public:
 
     this->breadth_first_iteration_sequential(
         0, 0, false,
-        [&](int node_index, int lcp, int edge_lcp, int node_count) -> bool {
+        [&](int node_index, int lcp, int edge_lcp, int node_count,
+            lst::details::alphabet_array<size_t, alphabet_t> &child_counts)
+            -> bool {
           if (this->is_excluded(node_index)) {
             return true;
           }
@@ -235,14 +240,14 @@ public:
     std::unordered_map<size_t, size_t> edge_lcps{};
     lcps[0] = 0;
     edge_lcps[0] = 0;
-    this->breadth_first_iteration_sequential([&](size_t node_index, size_t lcp,
-                                                 size_t edge_lcp,
-                                                 size_t node_count) -> bool {
-      std::lock_guard lock{print_mutex};
-      lcps[node_index] = lcp;
-      edge_lcps[node_index] = edge_lcp;
-      return true;
-    });
+    this->breadth_first_iteration_sequential(
+        [&](size_t node_index, size_t lcp, size_t edge_lcp, size_t node_count,
+            lst::details::alphabet_array<size_t, alphabet_t> &child_counts)
+            -> bool {
+          lcps[node_index] = lcp;
+          edge_lcps[node_index] = edge_lcp;
+          return true;
+        });
 
     std::unordered_map<size_t, size_t> iteration_order_indices{};
     size_t i = 0;
@@ -393,8 +398,7 @@ public:
 
     auto c = this->entries[node_index / 2].count;
     if (c == max_size) {
-      c = lst::details::node_occurrences(node_index, this->table,
-                                         this->sequence, this->suffixes);
+      c = this->node_occurrences(node_index);
       this->entries[node_index / 2].count = c;
     }
     return c;
@@ -450,12 +454,14 @@ protected:
    */
   void build_tree() {
     std::shared_mutex entries_reallocate_mutex{};
+    this->assign_node_probabilities(0);
 
     this->breadth_first_iteration(
         0, 0, true,
-        [&](size_t node_index, size_t lcp, size_t &edge_lcp,
-            size_t count) -> bool {
-          if (this->is_leaf(node_index)) {
+        [&](size_t node_index, size_t lcp, size_t &edge_lcp, size_t count,
+            lst::details::alphabet_array<size_t, alphabet_t> &child_counts)
+            -> bool {
+          if (this->is_leaf(node_index) && lcp <= this->max_depth) {
             std::lock_guard lock{this->table.mutex};
             expand_implicit_nodes(node_index, lcp, edge_lcp);
             // After adding implicit nodes, we may have to expand the entries
@@ -475,6 +481,14 @@ protected:
 
           if (count == max_size) {
             count = get_counts(node_index);
+          }
+
+          size_t child_count_sum =
+              std::accumulate(child_counts.begin(), child_counts.end() - 1, 0);
+          if (child_count_sum == 0) {
+            this->assign_node_probabilities(node_index);
+          } else {
+            this->assign_node_probabilities(node_index, child_counts);
           }
 
           return this->check_node(node_index, lcp, edge_lcp, count);
@@ -567,6 +581,33 @@ protected:
    */
   void assign_node_probabilities(size_t node_index) {
     auto child_counts = this->get_child_counts(node_index, true);
+
+    float child_sum = 0;
+    for (auto c : child_counts) {
+      child_sum += c;
+    }
+
+    for (size_t i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
+      this->entries[node_index / 2].probabilities[i] =
+          float(child_counts[i]) / child_sum;
+    }
+  }
+
+  /**! \brief Assigns probabilities for the node.
+   * \details
+   * Sums the counts of all children, with pseudo counts, and assigns the
+   * corresponding probabilities.  Iterates over all children to find counts,
+   * to sum those counts, and to assign those counts.
+   *
+   * \param[in] node_index
+   */
+  void assign_node_probabilities(
+      size_t node_index,
+      lst::details::alphabet_array<size_t, alphabet_t> &child_counts) {
+    for (auto char_rank : this->valid_characters) {
+      child_counts[char_rank] += 1;
+    }
+    child_counts[child_counts.size() - 1] = 0;
 
     float child_sum = 0;
     for (auto c : child_counts) {

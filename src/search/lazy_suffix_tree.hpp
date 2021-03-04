@@ -92,8 +92,9 @@ public:
 
     this->breadth_first_iteration(
         0, 0, true,
-        [&](size_t node_index, size_t lcp, size_t edge_lcp,
-            size_t occurrences) -> bool {
+        [&](size_t node_index, size_t lcp, size_t edge_lcp, size_t occurrences,
+            lst::details::alphabet_array<size_t, alphabet_t> &child_counts)
+            -> bool {
           occurrences = node_occurrences(node_index);
           auto label = node_label(node_index, lcp, edge_lcp);
 
@@ -144,15 +145,18 @@ public:
    * iteration of the node is needed.
    */
   void breadth_first_iteration(
-      const std::function<bool(size_t, size_t, size_t, size_t)> &f) {
+      const std::function<
+          bool(size_t, size_t, size_t, size_t,
+               lst::details::alphabet_array<size_t, alphabet_t> &)> &f) {
     this->breadth_first_iteration(
         0, 0, false,
-        [&](size_t node_index, size_t lcp, size_t edge_lcp,
-            size_t node_count) -> bool {
+        [&](size_t node_index, size_t lcp, size_t edge_lcp, size_t node_count,
+            lst::details::alphabet_array<size_t, alphabet_t> &child_counts)
+            -> bool {
           if (this->skip_node(node_index)) {
             return true;
           } else {
-            return f(node_index, lcp, edge_lcp, node_count);
+            return f(node_index, lcp, edge_lcp, node_count, child_counts);
           }
         });
   }
@@ -173,13 +177,16 @@ public:
    * user wants to do something in a synchronisation lock.
    */
   void breadth_first_iteration(
-      const std::function<bool(size_t, size_t, size_t, size_t)> &f,
+      const std::function<
+          bool(size_t, size_t, size_t, size_t,
+               lst::details::alphabet_array<size_t, alphabet_t> &)> &f,
       const std::function<void()> &done,
       const std::function<void()> &locked_callback) {
     this->breadth_first_iteration(
         0, 0, false,
-        [&](size_t node_index, size_t lcp, size_t edge_lcp,
-            size_t node_count) -> bool {
+        [&](size_t node_index, size_t lcp, size_t edge_lcp, size_t node_count,
+            lst::details::alphabet_array<size_t, alphabet_t> &child_counts)
+            -> bool {
           if (this->skip_node(node_index)) {
             return true;
           } else {
@@ -201,15 +208,18 @@ public:
    * iteration of the node is needed.
    */
   void breadth_first_iteration_sequential(
-      const std::function<bool(size_t, size_t, size_t, size_t)> &f) {
+      const std::function<
+          bool(size_t, size_t, size_t, size_t,
+               lst::details::alphabet_array<size_t, alphabet_t> &)> &f) {
     this->breadth_first_iteration_sequential(
         0, 0, false,
-        [&](size_t node_index, size_t lcp, size_t edge_lcp,
-            size_t node_count) -> bool {
+        [&](size_t node_index, size_t lcp, size_t edge_lcp, size_t node_count,
+            lst::details::alphabet_array<size_t, alphabet_t> &child_counts)
+            -> bool {
           if (this->skip_node(node_index)) {
             return true;
           } else {
-            return f(node_index, lcp, edge_lcp, node_count);
+            return f(node_index, lcp, edge_lcp, node_count, child_counts);
           }
         });
   }
@@ -226,7 +236,9 @@ public:
    * \param done callback function to signal that no more nodes can be iterated.
    */
   void breadth_first_iteration_table_less(
-      const std::function<bool(size_t, size_t, size_t, size_t, bool)> &f,
+      const std::function<
+          bool(size_t, size_t, size_t, size_t,
+               lst::details::alphabet_array<size_t, alphabet_t> &, bool)> &f,
       const std::function<void()> &done) {
     lst::details::breadth_first_iteration_table_less(
         this->parallel_depth, sequence, suffixes, f, done);
@@ -315,8 +327,9 @@ public:
 
     this->breadth_first_iteration(
         0, 0, false,
-        [&](size_t node_index, size_t lcp, size_t edge_lcp,
-            size_t node_count) -> bool {
+        [&](size_t node_index, size_t lcp, size_t edge_lcp, size_t node_count,
+            lst::details::alphabet_array<size_t, alphabet_t> &child_counts)
+            -> bool {
           if (this->skip_node(node_index)) {
             return true;
           }
@@ -349,8 +362,9 @@ public:
 
     this->breadth_first_iteration_sequential(
         0, 0, false,
-        [&](size_t node_index, size_t lcp, size_t edge_lcp,
-            size_t node_count) -> bool {
+        [&](size_t node_index, size_t lcp, size_t edge_lcp, size_t node_count,
+            lst::details::alphabet_array<size_t, alphabet_t> &child_counts)
+            -> bool {
           this->debug_print_node(node_index, lcp, edge_lcp);
           std::cout << std::endl;
           return true;
@@ -464,7 +478,7 @@ protected:
 
       size_t edge_lcp;
       if (is_unevaluated(node_index)) {
-        auto [edge_lcp_, _] = lst::details::expand_node(
+        auto [edge_lcp_, _1, _2] = lst::details::expand_node(
             node_index, this->sequence, this->suffixes, this->table,
             [](size_t n, size_t &e) {});
         edge_lcp = edge_lcp_;
@@ -599,7 +613,9 @@ protected:
 
   void breadth_first_iteration(
       size_t node_index, size_t start_lcp, bool expand_nodes,
-      const std::function<bool(size_t, size_t, size_t &, size_t)> &f) {
+      const std::function<
+          bool(size_t, size_t, size_t &, size_t,
+               lst::details::alphabet_array<size_t, alphabet_t> &)> &f) {
     breadth_first_iteration(
         node_index, start_lcp, expand_nodes, f, []() {},
         [](size_t n, size_t l, size_t &e) {});
@@ -607,7 +623,9 @@ protected:
 
   void breadth_first_iteration(
       size_t node_index, size_t start_lcp, bool expand_nodes,
-      const std::function<bool(size_t, size_t, size_t &, size_t)> &f,
+      const std::function<
+          bool(size_t, size_t, size_t &, size_t,
+               lst::details::alphabet_array<size_t, alphabet_t> &)> &f,
       const std::function<void()> &done,
       const std::function<void(size_t, size_t, size_t &)> &locked_callback) {
     if (this->multi_core) {
@@ -624,7 +642,9 @@ protected:
 
   void breadth_first_iteration_sequential(
       size_t node_index, size_t start_lcp, bool expand_nodes,
-      const std::function<bool(size_t, size_t, size_t &, size_t)> &f) {
+      const std::function<
+          bool(size_t, size_t, size_t &, size_t,
+               lst::details::alphabet_array<size_t, alphabet_t> &)> &f) {
     lst::details::breadth_first_iteration(
         node_index, start_lcp, this->sequence, this->suffixes, this->table,
         expand_nodes, f, [](size_t n, size_t l, size_t &e) {});
