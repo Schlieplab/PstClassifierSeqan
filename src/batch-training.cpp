@@ -4,7 +4,6 @@
 #include <string>
 #include <thread>
 
-#include <Eigen/Dense>
 #include <highfive/H5File.hpp>
 
 #include <seqan3/std/filesystem>
@@ -14,12 +13,10 @@
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 
-#include "distances/cv.hpp"
 #include "kl_tree_map.hpp"
 #include "probabilistic_suffix_tree_map.hpp"
 
 using tree_t = pst::ProbabilisticSuffixTreeMap<seqan3::dna5>;
-using matrix_t = Eigen::MatrixXd;
 
 struct input_arguments {
   std::filesystem::path fasta_path{};

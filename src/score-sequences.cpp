@@ -6,7 +6,6 @@
 
 #include <highfive/H5File.hpp>
 
-#include <Eigen/Dense>
 
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/argument_parser/argument_parser.hpp>
@@ -115,8 +114,8 @@ int main(int argc, char *argv[]) {
   input_arguments arguments = parse_cli_arguments(argc, argv);
 
   HighFive::File file{arguments.filepath, HighFive::File::ReadOnly};
-  HighFive::File out_file{arguments.outpath, HighFive::File::ReadWrite |
-                                                 HighFive::File::OpenOrCreate};
+  HighFive::File out_file{arguments.outpath,
+                          HighFive::File::ReadWrite | HighFive::File::Create};
 
   std::ifstream infile(arguments.sequence_list);
   std::string path;
