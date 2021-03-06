@@ -10,17 +10,17 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fconcepts")
 
 if (NOT SEQAN3_INCLUDED)
     set(SeqAn3_DIR "${CMAKE_SOURCE_DIR}/../seqan3/build_system")
-    find_package (SeqAn3 REQUIRED)
-endif()
+    find_package(SeqAn3 REQUIRED)
+endif ()
 
 find_package(Threads REQUIRED)
 
-add_executable (pst-classifier pst-classifier.cpp)
-target_link_libraries (pst-classifier seqan3::seqan3)
+add_executable(pst-classifier pst-classifier.cpp)
+target_link_libraries(pst-classifier seqan3::seqan3)
 target_link_libraries(pst-classifier Threads::Threads)
 
-add_library (vlmc SHARED vlmc.cpp)
-target_link_libraries (vlmc seqan3::seqan3)
+add_library(vlmc SHARED vlmc.cpp)
+target_link_libraries(vlmc seqan3::seqan3)
 target_link_libraries(vlmc Threads::Threads)
 
 
@@ -33,3 +33,7 @@ add_executable (pst-score-sequences score-sequences.cpp)
 target_link_libraries (pst-score-sequences seqan3::seqan3)
 target_link_libraries(pst-score-sequences Threads::Threads)
 target_link_libraries(pst-score-sequences HighFive)
+
+add_executable(bic bic.cpp)
+target_link_libraries(bic seqan3::seqan3)
+target_link_libraries(bic Threads::Threads)
