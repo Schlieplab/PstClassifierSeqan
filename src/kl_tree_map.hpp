@@ -116,7 +116,7 @@ protected:
    */
   void cutoff_prune() {
     auto pst_leaves = this->get_pst_leaves();
-    std::mutex status_mutex{};
+    std::mutex remove_mutex{};
 
     if (this->multi_core) {
       robin_hood::unordered_map<std::string, std::queue<std::string>>
@@ -130,7 +130,7 @@ protected:
       std::vector<std::thread> threads{};
       for (auto &[key, queue] : map_queue) {
         threads.emplace_back(&KullbackLieblerTreeMap::prune_queue, this,
-                             std::ref(queue), std::ref(status_mutex));
+                             std::ref(queue), std::ref(remove_mutex));
       }
 
       for (auto &thread : threads) {
@@ -143,11 +143,11 @@ protected:
       for (std::string &v : pst_leaves) {
         queue.push(std::move(v));
       }
-      this->prune_queue(queue, status_mutex);
+      this->prune_queue(queue, remove_mutex);
     }
   }
 
-  void prune_queue(std::queue<std::string> &queue, std::mutex &status_mutex) {
+  void prune_queue(std::queue<std::string> &queue, std::mutex &remove_mutex) {
     while (!queue.empty()) {
       auto &node_label = queue.front();
 
@@ -161,10 +161,10 @@ protected:
       if (delta < this->cutoff_value) {
         if (node_label.size() <= this->parallel_depth) {
           // These cases are the only ones where we could get conflicts.
-          status_mutex.lock();
+          remove_mutex.lock();
         }
 
-        this->status.erase(node_label);
+        this->counts.erase(node_label);
 
         auto parent_label = this->get_pst_parent(node_label);
         if (this->is_pst_leaf(parent_label)) {
@@ -172,7 +172,7 @@ protected:
         }
 
         if (node_label.size() <= this->parallel_depth) {
-          status_mutex.unlock();
+          remove_mutex.unlock();
         }
       }
       queue.pop();
@@ -196,8 +196,8 @@ protected:
 
     float delta = 0;
     for (auto char_rank : this->valid_characters) {
-      float prob = this->probabilities[node_label][char_rank];
-      float parent_prob = this->probabilities[parent_label][char_rank];
+      float prob = std::get<1>(this->counts[node_label])[char_rank];
+      float parent_prob = std::get<1>(this->counts[parent_label])[char_rank];
 
       if (parent_prob == 0 || prob == 0) {
         continue;
@@ -205,7 +205,7 @@ protected:
 
       delta += prob * std::log(prob / parent_prob);
     }
-    delta *= this->counts[node_label];
+    delta *= std::get<0>(this->counts[node_label]);
 
     return delta;
   }

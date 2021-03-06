@@ -44,9 +44,10 @@ TEST_F(ProbabilisticSuffixTreeTestMap, ConstructorStatus) {
 
   probabilisticSuffixTree.construct_tree();
 
-  probabilisticSuffixTree.print();
-
-  EXPECT_EQ(probabilisticSuffixTree.status, expected_status);
+  for (auto &label : expected_status) {
+    EXPECT_TRUE(probabilisticSuffixTree.counts.find(label) !=
+                probabilisticSuffixTree.counts.end());
+  }
 }
 
 TEST_F(ProbabilisticSuffixTreeTestMap, ConstructorProbabilities) {
@@ -69,7 +70,7 @@ TEST_F(ProbabilisticSuffixTreeTestMap, ConstructorProbabilities) {
 
   for (auto &label : labels) {
     for (size_t j = 0; j < 4; j++) {
-      EXPECT_FLOAT_EQ(probabilisticSuffixTree.probabilities[label][j],
+      EXPECT_FLOAT_EQ(std::get<1>(probabilisticSuffixTree.counts[label])[j],
                       expected_probabilities[label][j])
           << label << " " << j;
     }
@@ -80,11 +81,12 @@ TEST_F(ProbabilisticSuffixTreeTestMap, PrunedKL) {
   auto kl_tree = pst::KullbackLieblerTreeMap<seqan3::dna4>{
       "TEST", sequence, 3, 2, 0.2, 192, "cutoff", false, 2};
   kl_tree.construct_tree();
-  kl_tree.print();
 
   robin_hood::unordered_set<std::string> expected_status{"", "A"};
 
-  EXPECT_EQ(kl_tree.status, expected_status);
+  for (auto &label : expected_status) {
+    EXPECT_TRUE(kl_tree.counts.find(label) != kl_tree.counts.end());
+  }
 }
 
 TEST_F(ProbabilisticSuffixTreeTestMap, PrunedParameters) {
@@ -93,7 +95,9 @@ TEST_F(ProbabilisticSuffixTreeTestMap, PrunedParameters) {
   kl_tree.construct_tree();
   robin_hood::unordered_set<std::string> expected_status{"", "A"};
 
-  EXPECT_EQ(kl_tree.status, expected_status);
+  for (auto &label : expected_status) {
+    EXPECT_TRUE(kl_tree.counts.find(label) != kl_tree.counts.end());
+  }
 }
 
 TEST_F(ProbabilisticSuffixTreeTestMap, Print) {
@@ -233,16 +237,17 @@ void compare_trees(pst::ProbabilisticSuffixTreeMap<seqan3::dna5> left,
                    pst::ProbabilisticSuffixTreeMap<seqan3::dna5> right) {
   // Left can contain other, non-essential counts.
   for (auto &[k, v] : right.counts) {
-    EXPECT_EQ(left.counts[k], v);
+    EXPECT_EQ(left.counts[k], v) << k;
   }
 
-  for (auto &v : left.status) {
-    EXPECT_TRUE(right.status.find(v) != right.status.end());
+  for (auto &[context, _] : left.counts) {
+    EXPECT_TRUE(right.counts.find(context) != right.counts.end());
   }
 
-  for (auto &[k, v] : right.probabilities) {
+  for (auto &[k, values] : right.counts) {
+    auto &[c, v] = values;
     for (size_t i = 0; i < v.size(); i++) {
-      EXPECT_FLOAT_EQ(left.probabilities[k][i], v[i]) << k << " " << i;
+      EXPECT_FLOAT_EQ(std::get<1>(left.counts[k])[i], v[i]) << k << " " << i;
     }
   }
 }
@@ -307,7 +312,7 @@ void correct_counts(pst::ProbabilisticSuffixTreeMap<seqan3::dna5> &tree,
   }
 
   for (auto &[k, v] : tree.counts) {
-    EXPECT_EQ(counts[k], v) << k;
+    EXPECT_EQ(counts[k], std::get<0>(v)) << k;
   }
 }
 

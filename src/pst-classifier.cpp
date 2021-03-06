@@ -148,7 +148,6 @@ std::string train(lst::details::sequence_t<seqan3::dna5> sequence,
 }
 
 int main(int argc, char *argv[]) {
-  auto start = std::chrono::system_clock::now();
   input_arguments arguments = parse_cli_arguments(argc, argv);
 
   std::string tree = train(
