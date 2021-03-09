@@ -80,7 +80,7 @@ endmacro(benchmark_case)
 test_case(probabilistic_suffix_tree_tests.cpp)
 test_case(probabilistic_suffix_tree_map_tests.cpp)
 test_case(distances_test.cpp)
-
+test_case(regression_tests.cpp)
 
 add_subdirectory(search)
 add_subdirectory(search/lazy_suffix_tree)

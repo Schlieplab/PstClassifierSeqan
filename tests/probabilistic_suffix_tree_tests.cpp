@@ -19,6 +19,7 @@
 #include <seqan3/range/views/to_char.hpp>
 
 #include "random_sequence.hpp"
+#include "test_utils.hpp"
 
 class ProbabilisticSuffixTreeTest : public ::testing::Test {
 protected:
@@ -453,26 +454,6 @@ TEST_F(ProbabilisticSuffixTreeTest, ResourceTemporarilyUnavailableError) {
   tree.similarity_pruning();
 }
 
-std::unordered_map<std::string, size_t>
-get_label_count_map(pst::ProbabilisticSuffixTree<seqan3::dna5> &tree) {
-  std::unordered_map<std::string, size_t> map{};
-
-  static std::mutex labels_mutex{};
-
-  tree.breadth_first_iteration(
-      [&](size_t node_index, size_t lcp, size_t edge_lcp, size_t node_count,
-          lst::details::alphabet_array<size_t, seqan3::dna5> &child_counts)
-          -> bool {
-        std::lock_guard labels_lock{labels_mutex};
-        auto label = tree.node_label(node_index, lcp, edge_lcp);
-
-        map[label] = tree.get_counts(node_index);
-
-        return true;
-      });
-
-  return map;
-}
 
 void correct_counts(pst::ProbabilisticSuffixTree<seqan3::dna5> &tree,
                     lst::details::sequence_t<seqan3::dna5> &seq) {
