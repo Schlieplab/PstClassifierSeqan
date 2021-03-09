@@ -6,7 +6,6 @@
 
 #include <highfive/H5File.hpp>
 
-
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/argument_parser/argument_parser.hpp>
 #include <seqan3/io/sequence_file/input.hpp>

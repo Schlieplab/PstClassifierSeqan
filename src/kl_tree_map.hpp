@@ -41,7 +41,7 @@ public:
    * \param[in] parallel_depth The maximum depth to spawn new processes, will
    * control task size as `alphabet_size ** depth`.
    */
-  KullbackLieblerTreeMap(std::string id,
+  KullbackLieblerTreeMap(std::string &id,
                          lst::details::sequence_t<alphabet_t> &sequence,
                          size_t max_depth, size_t freq,
                          size_t number_of_parameters, bool multi_core = true,
@@ -60,7 +60,7 @@ public:
    * \param[in] parallel_depth The maximum depth to spawn new processes, will
    * control task size as `alphabet_size ** depth`.
    */
-  KullbackLieblerTreeMap(std::string id,
+  KullbackLieblerTreeMap(std::string &id,
                          lst::details::sequence_t<alphabet_t> &sequence,
                          size_t max_depth, size_t freq, float cutoff_value_,
                          bool multi_core = true, int parallel_depth = 2)
@@ -83,12 +83,12 @@ public:
    * \param[in] parallel_depth The maximum depth to spawn new processes, will
    * control task size as 4 ** depth.
    */
-  KullbackLieblerTreeMap(std::string id,
+  KullbackLieblerTreeMap(std::string &id,
                          lst::details::sequence_t<alphabet_t> &sequence,
                          size_t max_depth, size_t freq, float cutoff_value_,
                          size_t number_of_parameters,
-                         std::string pruning_method, bool multi_core = true,
-                         int parallel_depth = 2)
+                         const std::string &pruning_method,
+                         bool multi_core = true, int parallel_depth = 2)
       : ProbabilisticSuffixTreeMap<alphabet_t>(
             id, sequence, max_depth, freq, number_of_parameters, pruning_method,
             multi_core, parallel_depth),
@@ -98,7 +98,7 @@ public:
    * \param[in] id The id of the model.
    * \param[in] sequence The text to construct from.
    */
-  KullbackLieblerTreeMap(std::filesystem::path &filename)
+  explicit KullbackLieblerTreeMap(std::filesystem::path &filename)
       : ProbabilisticSuffixTreeMap<alphabet_t>(filename), cutoff_value(3.9075) {
   }
 
@@ -159,20 +159,12 @@ protected:
       float delta = calculate_delta(node_label);
 
       if (delta < this->cutoff_value) {
-        if (node_label.size() <= this->parallel_depth) {
-          // These cases are the only ones where we could get conflicts.
-          remove_mutex.lock();
-        }
-
+        std::lock_guard lock{remove_mutex};
         this->counts.erase(node_label);
 
         auto parent_label = this->get_pst_parent(node_label);
         if (this->is_pst_leaf(parent_label)) {
           queue.push(std::move(parent_label));
-        }
-
-        if (node_label.size() <= this->parallel_depth) {
-          remove_mutex.unlock();
         }
       }
       queue.pop();

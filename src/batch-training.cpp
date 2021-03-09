@@ -94,8 +94,8 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
   return arguments;
 }
 
-std::string train(lst::details::sequence_t<seqan3::dna5> sequence,
-                  std::string id, size_t max_depth, size_t min_count,
+std::string train(lst::details::sequence_t<seqan3::dna5> &sequence,
+                  std::string &id, size_t max_depth, size_t min_count,
                   float threshold, size_t number_of_parameters,
                   std::string pruning_method, std::string estimator,
                   bool multi_core, int parallel_depth) {

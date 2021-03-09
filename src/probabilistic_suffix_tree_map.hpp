@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <ctime>
@@ -100,7 +101,7 @@ public:
         id(std::move(id_)), freq(freq_), max_depth(max_depth_),
         number_of_parameters(number_of_parameters_),
         pruning_method(std::move(pruning_method_)) {
-    auto characters = get_valid_characters();
+    auto characters = this->get_valid_characters();
     for (auto &c : characters) {
       auto char_rank = seqan3::to_rank(c);
       valid_characters.insert(char_rank);
@@ -122,7 +123,7 @@ public:
       throw std::invalid_argument{"Failed to open file."};
     }
 
-    auto characters = get_valid_characters();
+    auto characters = this->get_valid_characters();
     for (auto &c : characters) {
       auto char_rank = seqan3::to_rank(c);
       valid_characters.insert(char_rank);
@@ -138,7 +139,7 @@ public:
    * \param[in] sequence The text to construct from.
    */
   ProbabilisticSuffixTreeMap(std::string &tree) {
-    auto characters = get_valid_characters();
+    auto characters = this->get_valid_characters();
 
     for (auto &c : characters) {
       auto char_rank = seqan3::to_rank(c);
@@ -223,7 +224,7 @@ public:
     tree_string << "Tree: PST" << std::endl;
     tree_string << "Alphabet: " << lst::get_alphabet_name<alphabet_t>()
                 << std::endl;
-    tree_string << "Number(nodes): " << nodes_in_tree() << std::endl;
+    tree_string << "Number(nodes): " << this->nodes_in_tree() << std::endl;
 
     auto n_parameters =
         this->count_terminal_nodes() * (valid_characters.size() - 1);
@@ -253,16 +254,13 @@ public:
    * \return vector of indices to all terminal nodes.
    */
   size_t count_terminal_nodes() {
-    size_t n_terminal_nodes = 0;
+    std::atomic<size_t> n_terminal_nodes = 0;
 
-    this->pst_breadth_first_iteration(
-        [&](const std::string child_label, size_t level) -> bool {
-          if (this->is_terminal(child_label)) {
-            n_terminal_nodes += 1;
-          }
-
-          return true;
-        });
+    for (auto &[node, _] : this->counts) {
+      if (this->is_terminal(node)) {
+        n_terminal_nodes += 1;
+      }
+    }
 
     return n_terminal_nodes;
   }
@@ -363,7 +361,7 @@ public:
 
       std::vector<std::string> children{};
       this->iterate_pst_children(label, [&](const std::string child_label) {
-        if (is_included(child_label)) {
+        if (this->is_included(child_label)) {
           children.emplace_back(std::move(child_label));
         }
       });
