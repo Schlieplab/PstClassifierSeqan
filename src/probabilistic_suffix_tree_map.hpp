@@ -534,7 +534,6 @@ public:
    */
   void build_tree() {
     std::shared_mutex counts_mutex{};
-    vec_t<alphabet_t> global_vec{};
     // Reset main thread.
     thread_vec = vec_t<alphabet_t>{};
 
