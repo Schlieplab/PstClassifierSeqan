@@ -2,6 +2,7 @@
 
 #include <limits>
 #include <queue>
+#include <shared_mutex>
 #include <string>
 
 #include <seqan3/alphabet/concept.hpp>
@@ -41,7 +42,7 @@ public:
    * \param[in] parallel_depth The maximum depth to spawn new processes, will
    * control task size as `alphabet_size ** depth`.
    */
-  KullbackLieblerTreeMap(std::string &id,
+  KullbackLieblerTreeMap(std::string id,
                          lst::details::sequence_t<alphabet_t> &sequence,
                          size_t max_depth, size_t freq,
                          size_t number_of_parameters, bool multi_core = true,
@@ -60,9 +61,9 @@ public:
    * \param[in] parallel_depth The maximum depth to spawn new processes, will
    * control task size as `alphabet_size ** depth`.
    */
-  KullbackLieblerTreeMap(std::string &id,
+  KullbackLieblerTreeMap(std::string id,
                          lst::details::sequence_t<alphabet_t> &sequence,
-                         size_t max_depth, size_t freq, float cutoff_value_,
+                         size_t max_depth, size_t freq, double cutoff_value_,
                          bool multi_core = true, int parallel_depth = 2)
       : ProbabilisticSuffixTreeMap<alphabet_t>(id, sequence, max_depth, freq,
                                                192, "cutoff", multi_core,
@@ -83,9 +84,9 @@ public:
    * \param[in] parallel_depth The maximum depth to spawn new processes, will
    * control task size as 4 ** depth.
    */
-  KullbackLieblerTreeMap(std::string &id,
+  KullbackLieblerTreeMap(std::string id,
                          lst::details::sequence_t<alphabet_t> &sequence,
-                         size_t max_depth, size_t freq, float cutoff_value_,
+                         size_t max_depth, size_t freq, double cutoff_value_,
                          size_t number_of_parameters,
                          const std::string &pruning_method,
                          bool multi_core = true, int parallel_depth = 2)
@@ -103,7 +104,7 @@ public:
   }
 
 protected:
-  float cutoff_value = 1.2;
+  double cutoff_value = 1.2;
 
   /**! \brief Removes all nodes from the tree with a delta value below
    * threshold.
@@ -116,7 +117,7 @@ protected:
    */
   void cutoff_prune() {
     auto pst_leaves = this->get_pst_leaves();
-    std::mutex remove_mutex{};
+    std::shared_mutex remove_mutex{};
 
     if (this->multi_core) {
       robin_hood::unordered_map<std::string, std::queue<std::string>>
@@ -147,7 +148,8 @@ protected:
     }
   }
 
-  void prune_queue(std::queue<std::string> &queue, std::mutex &remove_mutex) {
+  void prune_queue(std::queue<std::string> &queue,
+                   std::shared_mutex &remove_mutex) {
     while (!queue.empty()) {
       auto &node_label = queue.front();
 
@@ -156,10 +158,11 @@ protected:
         continue;
       }
 
-      float delta = calculate_delta(node_label);
+      double delta = calculate_delta(node_label, remove_mutex);
 
       if (delta < this->cutoff_value) {
-        std::lock_guard lock{remove_mutex};
+
+        std::unique_lock lock{remove_mutex};
         this->counts.erase(node_label);
 
         auto parent_label = this->get_pst_parent(node_label);
@@ -179,25 +182,64 @@ protected:
    * \param node_label Node to get delta for.
    * \return Delta value.
    */
-  float calculate_delta(const std::string &node_label) {
+  double calculate_delta(const std::string &node_label,
+                         std::shared_mutex &remove_mutex) {
     if (node_label.empty()) {
-      return std::numeric_limits<float>::max();
+      return std::numeric_limits<double>::max();
     }
 
     const std::string parent_label = this->get_pst_parent(node_label);
+    std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>>
+        node_counts{};
+    std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>>
+        parent_counts{};
+    {
+      std::shared_lock lock{remove_mutex};
+      node_counts = this->counts[node_label];
+      parent_counts = this->counts[parent_label];
+    }
+    return calculate_delta(node_counts, parent_counts);
+  }
 
-    float delta = 0;
+  /**! \brief Kullback-Liebler delta value for pruning.
+   * \details
+   * Based on the relative probabilities between the node and its parent
+   * combined with the absolute count of the node.
+   *
+   * \param node_label Node to get delta for.
+   * \return Delta value.
+   */
+  double calculate_delta(const std::string &node_label) {
+    if (node_label.empty()) {
+      return std::numeric_limits<double>::max();
+    }
+
+    const std::string parent_label = this->get_pst_parent(node_label);
+    auto node_counts = this->counts[node_label];
+    auto parent_counts = this->counts[parent_label];
+
+    return calculate_delta(node_counts, parent_counts);
+  }
+
+  double calculate_delta(
+      std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>>
+          &node_counts,
+      std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>>
+          &parent_counts) {
+    double delta = 0.0;
     for (auto char_rank : this->valid_characters) {
-      float prob = std::get<1>(this->counts[node_label])[char_rank];
-      float parent_prob = std::get<1>(this->counts[parent_label])[char_rank];
+      double prob, parent_prob;
 
-      if (parent_prob == 0 || prob == 0) {
+      prob = std::get<1>(node_counts)[char_rank];
+      parent_prob = std::get<1>(parent_counts)[char_rank];
+
+      if (parent_prob == 0.0 || prob == 0.0) {
         continue;
       }
 
       delta += prob * std::log(prob / parent_prob);
     }
-    delta *= std::get<0>(this->counts[node_label]);
+    delta *= std::get<0>(node_counts);
 
     return delta;
   }

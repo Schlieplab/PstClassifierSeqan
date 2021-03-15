@@ -39,7 +39,7 @@ enum Status : unsigned char {
 template <seqan3::alphabet alphabet_t> struct PSTEntry {
   bool included;
   size_t count;
-  std::array<float, seqan3::alphabet_size<alphabet_t>> probabilities;
+  std::array<double, seqan3::alphabet_size<alphabet_t>> probabilities;
 };
 
 /*!\brief The probabilistic suffix tree implementation.
@@ -409,7 +409,7 @@ public:
    * \param[in] node_index
    * \return next-symbol probabilities of the node.
    */
-  std::array<float, seqan3::alphabet_size<alphabet_t>>
+  std::array<double, seqan3::alphabet_size<alphabet_t>>
   get_probabilities(size_t node_index) {
     if (node_index == max_size) {
       return {};
@@ -582,14 +582,14 @@ protected:
   void assign_node_probabilities(size_t node_index) {
     auto child_counts = this->get_child_counts(node_index, true);
 
-    float child_sum = 0;
+    double child_sum = 0;
     for (auto c : child_counts) {
       child_sum += c;
     }
 
     for (size_t i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
       this->entries[node_index / 2].probabilities[i] =
-          float(child_counts[i]) / child_sum;
+          double(child_counts[i]) / child_sum;
     }
   }
 
@@ -609,14 +609,14 @@ protected:
     }
     child_counts[child_counts.size() - 1] = 0;
 
-    float child_sum = 0;
+    double child_sum = 0;
     for (auto c : child_counts) {
       child_sum += c;
     }
 
     for (size_t i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
       this->entries[node_index / 2].probabilities[i] =
-          float(child_counts[i]) / child_sum;
+          double(child_counts[i]) / child_sum;
     }
   }
 
@@ -630,7 +630,7 @@ protected:
    * if it now a leaf.
    */
   virtual void cutoff_prune() { parameters_prune(); }
-  virtual float calculate_delta(size_t node_index) { return 0.0; }
+  virtual double calculate_delta(size_t node_index) { return 0.0; }
 
   /**! \brief Removes all nodes until a specified number of parameters are
    * left.
@@ -645,7 +645,7 @@ protected:
   void parameters_prune() {
     auto pst_leaves = this->get_pst_leaves();
 
-    using q_t = std::tuple<size_t, float>;
+    using q_t = std::tuple<size_t, double>;
     auto cmp = [](q_t left, q_t right) -> bool {
       return std::get<1>(left) < std::get<1>(right);
     };

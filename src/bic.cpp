@@ -62,40 +62,43 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
   return arguments;
 }
 
-std::tuple<float, size_t>
+std::tuple<double, size_t, double>
 bic_score(std::string &id, lst::details::sequence_t<seqan3::dna5> &sequence,
           size_t min_count, size_t max_depth, float threshold) {
-  pst::KullbackLieblerTreeMap<seqan3::dna5> pst{
+  pst::KullbackLieblerTreeMap<seqan3::dna5> tree{
       id, sequence, max_depth, min_count, threshold, true, 2};
-  pst.construct_tree();
+  tree.construct_tree();
+  double log_likelihood = pst::distances::log_likelihood(tree, sequence);
 
-  double likelihood = -pst::distances::negative_log_likelihood(pst, sequence) *
-                      double(sequence.size());
+  double n_parameters = 3 * tree.count_terminal_nodes();
 
-  float n_parameters = pst.count_terminal_nodes();
+  double bic_value =
+      n_parameters * std::log(sequence.size()) - 2 * log_likelihood;
 
-  double bic_value = n_parameters * std::log(sequence.size()) - 2 * likelihood;
   std::cout << n_parameters << " " << bic_value << " " << min_count << " "
-            << max_depth << " " << threshold << std::endl;
+            << max_depth << " " << threshold << " " << log_likelihood
+            << std::endl;
 
-  return {bic_value, n_parameters};
+  return {bic_value, n_parameters, log_likelihood};
 }
 
-std::tuple<int, int, float, int>
+std::tuple<int, int, double, int, float>
 bic(std::string &id, lst::details::sequence_t<seqan3::dna5> &sequence) {
-  std::vector<int> max_depths{9, 12, 15};
-  std::vector<int> min_counts{2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 50, 100, 1000};
+  std::vector<int> max_depths{3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+  std::vector<int> min_counts{2,  3,  4,  5,  6,  7,  8,  9,   10,  20,
+                              30, 40, 50, 60, 70, 80, 90, 100, 150, 200};
   std::vector<float> thresholds{3.9075};
 
-  std::vector<std::tuple<int, int, float, size_t, float>> results{};
+  std::vector<std::tuple<int, int, double, size_t, float, float>> results{};
 
   for (auto min_count : min_counts) {
     for (auto max_depth : max_depths) {
       for (auto threshold : thresholds) {
-        auto [score, n_parameters] =
+        auto [score, n_parameters, log_likelihood] =
             bic_score(id, sequence, min_count, max_depth, threshold);
+
         results.emplace_back(min_count, max_depth, score, n_parameters,
-                             threshold);
+                             threshold, log_likelihood);
       }
     }
   }
@@ -107,33 +110,40 @@ bic(std::string &id, lst::details::sequence_t<seqan3::dna5> &sequence) {
   std::filesystem::path path{s};
   std::ofstream ofs(path);
 
-  ofs << "n_params,bic_score,min_count,max_depth,threshold" << std::endl;
+  ofs << "n_params,bic_score,min_count,max_depth,threshold,log_likelihood"
+      << std::endl;
 
-  auto [best_min_count, best_max_depth, best_bic, best_n_params,
-        best_threshold] = results[0];
-  for (auto [min_count, max_depth, score, n_params, threshold] : results) {
+  auto [best_min_count, best_max_depth, best_bic, best_n_params, best_threshold,
+        best_log] = results[0];
+  for (auto [min_count, max_depth, score, n_params, threshold, log_likelihood] :
+       results) {
+    ofs << n_params << "," << score << "," << min_count << "," << max_depth
+        << "," << threshold << "," << log_likelihood << std::endl;
+
     if (score < best_bic) {
       best_bic = score;
       best_max_depth = max_depth;
       best_min_count = min_count;
       best_n_params = n_params;
       best_threshold = threshold;
+      best_log = log_likelihood;
     }
-    ofs << n_params << "," << score << "," << min_count << "," << max_depth
-        << "," << threshold << std::endl;
   }
   ofs.close();
 
-  return {best_min_count, best_max_depth, best_bic, best_n_params};
+  return {best_min_count, best_max_depth, best_bic, best_n_params, best_log};
 }
 
 int main(int argc, char *argv[]) {
   input_arguments arguments = parse_cli_arguments(argc, argv);
 
-  auto [min_count, max_depth, score, n_params] =
+  auto [min_count, max_depth, score, n_params, log_likelihood] =
       bic(arguments.id, arguments.sequence);
   std::cout << "min count: " << min_count << " max depth: " << max_depth
-            << " bic: " << score << " parameters: " << n_params << std::endl;
+            << " bic: " << score << " parameters: " << n_params
+            << " Log likelihood: " << log_likelihood
+            << " log sequence: " << std::log(arguments.sequence.size())
+            << std::endl;
 
   return EXIT_SUCCESS;
 }

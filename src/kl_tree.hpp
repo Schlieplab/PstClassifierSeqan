@@ -60,7 +60,7 @@ public:
    */
   KullbackLieblerTree(std::string id,
                       lst::details::sequence_t<alphabet_t> &sequence,
-                      size_t max_depth, size_t freq, float cutoff_value_,
+                      size_t max_depth, size_t freq, double cutoff_value_,
                       bool multi_core = true, int parallel_depth = 2)
       : ProbabilisticSuffixTree<alphabet_t>(id, sequence, max_depth, freq, 192,
                                             "cutoff", multi_core,
@@ -83,7 +83,7 @@ public:
    */
   KullbackLieblerTree(std::string id,
                       lst::details::sequence_t<alphabet_t> &sequence,
-                      size_t max_depth, size_t freq, float cutoff_value_,
+                      size_t max_depth, size_t freq, double cutoff_value_,
                       size_t number_of_parameters, std::string pruning_method,
                       bool multi_core, int parallel_depth)
       : ProbabilisticSuffixTree<alphabet_t>(
@@ -92,7 +92,7 @@ public:
         cutoff_value(cutoff_value_) {}
 
 protected:
-  float cutoff_value = 1.2;
+  double cutoff_value = 1.2;
 
   /**! \brief Removes all nodes from the tree with a delta value below
    * threshold.
@@ -119,7 +119,7 @@ protected:
         continue;
       }
 
-      float delta = calculate_delta(node_index);
+      double delta = calculate_delta(node_index);
 
       if (delta < this->cutoff_value) {
         this->entries[node_index / 2].included = false;
@@ -140,9 +140,9 @@ protected:
    * \param node_index Index to get delta for.
    * \return Delta value.
    */
-  float calculate_delta(size_t node_index) {
+  double calculate_delta(size_t node_index) {
     if (node_index == 0) {
-      return std::numeric_limits<float>::max();
+      return std::numeric_limits<double>::max();
     }
 
     auto parent_index = this->suffix_links[node_index / 2];
@@ -151,13 +151,13 @@ protected:
           "[kl_delta] Given node does not have a parent.");
     }
 
-    float delta = 0;
+    double delta = 0;
     for (auto char_rank : this->valid_characters) {
-      float prob = this->entries[node_index / 2].probabilities[char_rank];
-      float parent_prob =
+      double prob = this->entries[node_index / 2].probabilities[char_rank];
+      double parent_prob =
           this->entries[parent_index / 2].probabilities[char_rank];
 
-      if (parent_prob == 0 || prob == 0) {
+      if (parent_prob == 0.0 || prob == 0.0) {
         continue;
       }
 

@@ -426,12 +426,13 @@ public:
     return "";
   }
 
-  float get_transition_probability(const std::string &label, size_t char_rank) {
+  double get_transition_probability(const std::string &label,
+                                    size_t char_rank) {
     return std::get<1>(this->counts[label])[char_rank];
   }
 
-  float get_transition_probability(const std::string &label,
-                                   const char &character) {
+  double get_transition_probability(const std::string &label,
+                                    const char &character) {
     auto c = seqan3::assign_char_to(character, alphabet_t{});
     auto char_rank = c.to_rank();
     if (this->valid_characters.find(char_rank) ==
@@ -492,12 +493,12 @@ public:
 
   robin_hood::unordered_map<
       std::string,
-      std::tuple<size_t, std::array<float, seqan3::alphabet_size<alphabet_t>>>>
+      std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>>>
       counts{};
 
   robin_hood::unordered_set<size_t> valid_characters{};
   std::vector<char> valid_character_chars{};
-  size_t max_order = -1;
+  size_t max_order = max_size;
 
   friend class ProbabilisticSuffixTreeTest;
   size_t freq;
@@ -639,11 +640,11 @@ public:
   void assign_node_probabilities(const std::string &label) {
     auto child_counts = this->get_child_counts(label, true);
 
-    float child_sum =
+    double child_sum =
         std::accumulate(child_counts.begin(), child_counts.end(), 0.0);
 
     for (size_t i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
-      std::get<1>(this->counts[label])[i] = float(child_counts[i]) / child_sum;
+      std::get<1>(this->counts[label])[i] = double(child_counts[i]) / child_sum;
     }
   }
 
@@ -659,18 +660,15 @@ public:
       const std::string &label,
       lst::details::alphabet_array<size_t, alphabet_t> &child_counts,
       std::shared_mutex &counts_mutex) {
+    double child_sum = 0.0;
     for (auto char_rank : this->valid_characters) {
       child_counts[char_rank] += 1;
+      child_sum += child_counts[char_rank];
     }
-    // Last entry is for sequence end character.
-    child_counts[child_counts.size() - 1] = 0;
-
-    float child_sum =
-        std::accumulate(child_counts.begin(), child_counts.end(), 0.0);
 
     std::shared_lock lock{counts_mutex};
     for (size_t i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
-      std::get<1>(this->counts[label])[i] = float(child_counts[i]) / child_sum;
+      std::get<1>(this->counts[label])[i] = double(child_counts[i]) / child_sum;
     }
   }
 
@@ -684,7 +682,7 @@ public:
    * it now a leaf.
    */
   virtual void cutoff_prune() { parameters_prune(); }
-  virtual float calculate_delta(const std::string &node_label) { return 0.0; }
+  virtual double calculate_delta(const std::string &node_label) { return 0.0; }
 
   /**! \brief Removes all nodes until a specified number of parameters are left.
    *
@@ -698,7 +696,7 @@ public:
   void parameters_prune() {
     auto pst_leaves = this->get_pst_leaves();
 
-    using q_t = std::tuple<std::string, float>;
+    using q_t = std::tuple<std::string, double>;
     auto cmp = [](q_t left, q_t right) -> bool {
       return std::get<1>(left) < std::get<1>(right);
     };
@@ -1142,7 +1140,7 @@ public:
         if (word[0] == ']') {
           found_probs = true;
         } else if (word != "[") {
-          float child_count = std::stof(word);
+          double child_count = std::stof(word);
           auto c = characters[prob_index];
           auto char_rank = seqan3::to_rank(c);
           std::get<1>(this->counts[node_label])[char_rank] = child_count;
@@ -1160,13 +1158,13 @@ public:
    * @param node_label Label to convert counts for.
    */
   void convert_counts_to_probabilities(std::string &node_label) {
-    float child_sum =
+    double child_sum =
         std::accumulate(std::get<1>(this->counts[node_label]).begin(),
                         std::get<1>(this->counts[node_label]).end(), 0.0);
 
     for (size_t i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
       std::get<1>(this->counts[node_label])[i] =
-          float(std::get<1>(this->counts[node_label])[i]) / child_sum;
+          double(std::get<1>(this->counts[node_label])[i]) / child_sum;
     }
   }
 

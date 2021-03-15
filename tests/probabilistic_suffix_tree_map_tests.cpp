@@ -96,7 +96,7 @@ TEST_F(ProbabilisticSuffixTreeTestMap, PrunedParameters) {
   robin_hood::unordered_set<std::string> expected_status{"", "A"};
 
   for (auto &label : expected_status) {
-    EXPECT_TRUE(kl_tree.counts.find(label) != kl_tree.counts.end());
+    EXPECT_TRUE(kl_tree.counts.find(label) != kl_tree.counts.end()) << label;
   }
 }
 
@@ -170,7 +170,7 @@ TEST_F(ProbabilisticSuffixTreeTestMap, PSTBreadthFirstIterationSubtree) {
   EXPECT_EQ(visited, expected_visited);
 }
 
-void test_suffix_links(pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree) {
+void test_suffix_links(pst::ProbabilisticSuffixTreeMap<seqan3::dna5> &tree) {
   tree.construct_tree();
 
   tree.pst_breadth_first_iteration(
