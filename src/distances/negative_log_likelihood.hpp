@@ -30,15 +30,12 @@ double log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
     }
     std::string subsequence =
         sequence.substr(start_index, std::min(i, order_max));
-    //    std::cout << "subsequence: " << subsequence;
 
     char char_ = sequence[i];
     auto context = tree.get_closest_state(subsequence);
-    //    std::cout << " context: " << context << " char: " << char_;
 
     double probability = tree.get_transition_probability(context, char_);
 
-    //    std::cout << "prob: " << probability << std::endl;
     if (probability != 0.0) {
       log_likelihood += std::log(probability);
     }
