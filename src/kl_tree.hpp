@@ -122,9 +122,9 @@ protected:
       double delta = calculate_delta(node_index);
 
       if (delta < this->cutoff_value) {
-        this->entries[node_index / 2].included = false;
+        this->entries[node_index].included = false;
 
-        auto parent_index = this->suffix_links[node_index / 2];
+        auto parent_index = this->suffix_links[node_index];
         if (this->is_pst_leaf(parent_index)) {
           bottom_up.push(parent_index);
         }
@@ -145,7 +145,7 @@ protected:
       return std::numeric_limits<double>::max();
     }
 
-    auto parent_index = this->suffix_links[node_index / 2];
+    auto parent_index = this->suffix_links[node_index];
     if (parent_index == -1) {
       throw std::invalid_argument(
           "[kl_delta] Given node does not have a parent.");
@@ -153,9 +153,8 @@ protected:
 
     double delta = 0;
     for (auto char_rank : this->valid_characters) {
-      double prob = this->entries[node_index / 2].probabilities[char_rank];
-      double parent_prob =
-          this->entries[parent_index / 2].probabilities[char_rank];
+      double prob = this->entries[node_index].probabilities[char_rank];
+      double parent_prob = this->entries[parent_index].probabilities[char_rank];
 
       if (parent_prob == 0.0 || prob == 0.0) {
         continue;

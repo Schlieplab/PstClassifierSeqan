@@ -237,15 +237,22 @@ void compare_trees(pst::ProbabilisticSuffixTreeMap<seqan3::dna5> left,
                    pst::ProbabilisticSuffixTreeMap<seqan3::dna5> right) {
   // Left can contain other, non-essential counts.
   for (auto &[k, v] : right.counts) {
-    EXPECT_EQ(left.counts[k], v) << k;
+    if (std::get<2>(v)) {
+      EXPECT_EQ(left.counts[k], v) << k;
+    }
   }
 
-  for (auto &[context, _] : left.counts) {
-    EXPECT_TRUE(right.counts.find(context) != right.counts.end());
+  for (auto &[context, v] : left.counts) {
+    if (std::get<2>(v)) {
+      EXPECT_TRUE(right.counts.find(context) != right.counts.end());
+    }
   }
 
   for (auto &[k, values] : right.counts) {
-    auto &[c, v] = values;
+    auto &[c, v, included] = values;
+    if (!included) {
+      continue;
+    }
     for (size_t i = 0; i < v.size(); i++) {
       EXPECT_FLOAT_EQ(std::get<1>(left.counts[k])[i], v[i]) << k << " " << i;
     }

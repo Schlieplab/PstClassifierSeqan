@@ -678,9 +678,9 @@ public:
     for (auto char_rank : this->valid_characters) {
       child_sum += child_counts[char_rank];
     }
-    child_sum += 4
+    child_sum += 4;
 
-        std::shared_lock lock{counts_mutex};
+    std::shared_lock lock{counts_mutex};
     for (auto char_rank : this->valid_characters) {
       std::get<1>(this->counts[label])[char_rank] =
           double(child_counts[char_rank] + 1) / child_sum;

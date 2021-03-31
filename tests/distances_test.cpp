@@ -175,7 +175,7 @@ TEST_F(DistancesTest, LogLikelighoodGrowth) {
 TEST_F(DistancesTest, LogLikelighoodHandCrafted0Order) {
   pst::KullbackLieblerTreeMap<seqan3::dna5> tree{
       "0-order", sequence, max_depth, min_count, threshold, false, 1};
-  tree.counts[""] = {8, {0.8, 0.0, 0.0, 0.0, 0.2}};
+  tree.counts[""] = {8, {0.8, 0.0, 0.0, 0.0, 0.2}, true};
 
   double log_likelihood = pst::distances::log_likelihood(tree, binary_seq);
   double log_likelihood_manual = std::log(0.8) * 434 + std::log(0.2) * 42;
@@ -185,9 +185,9 @@ TEST_F(DistancesTest, LogLikelighoodHandCrafted0Order) {
 TEST_F(DistancesTest, LogLikelighoodHandCrafted1Order) {
   pst::KullbackLieblerTreeMap<seqan3::dna5> tree{
       "1-order", sequence, max_depth, min_count, threshold, false, 1};
-  tree.counts[""] = {8, {0.8, 0.0, 0.0, 0.0, 0.2}};
-  tree.counts["A"] = {3, {0.9, 0.0, 0.0, 0.0, 0.1}};
-  tree.counts["T"] = {5, {1.0, 0.0, 0.0, 0.0, 0.0}};
+  tree.counts[""] = {8, {0.8, 0.0, 0.0, 0.0, 0.2}, true};
+  tree.counts["A"] = {3, {0.9, 0.0, 0.0, 0.0, 0.1}, true};
+  tree.counts["T"] = {5, {1.0, 0.0, 0.0, 0.0, 0.0}, true};
 
   double log_likelihood = pst::distances::log_likelihood(tree, binary_seq);
 
@@ -214,9 +214,9 @@ std::unordered_map<std::string, size_t> count_2_mers(std::string &sequence) {
 TEST_F(DistancesTest, LogLikelighoodHandCrafted1OrderLong) {
   pst::KullbackLieblerTreeMap<seqan3::dna5> tree{
       "1-order", sequence, max_depth, min_count, threshold, false, 1};
-  tree.counts[""] = {8, {0.6, 0.1, 0.1, 0.0, 0.1}};
-  tree.counts["A"] = {3, {0.7, 0.1, 0.1, 0.0, 0.1}};
-  tree.counts["T"] = {5, {0.4, 0.2, 0.1, 0.0, 0.3}};
+  tree.counts[""] = {8, {0.6, 0.1, 0.1, 0.0, 0.1}, true};
+  tree.counts["A"] = {3, {0.7, 0.1, 0.1, 0.0, 0.1}, true};
+  tree.counts["T"] = {5, {0.4, 0.2, 0.1, 0.0, 0.3}, true};
 
   auto seq = random_sequence(100000000);
   std::string sequence =

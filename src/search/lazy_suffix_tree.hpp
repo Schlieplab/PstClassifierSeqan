@@ -292,7 +292,7 @@ public:
    *
    */
   void add_suffix_links() {
-    suffix_links.resize(table.size() / 2, (size_t)-1);
+    suffix_links.resize(table.size(), (size_t)-1);
     std::fill(suffix_links.begin(), suffix_links.end(), -1);
 
     lst::details::add_explicit_suffix_links(sequence, suffixes, table,
@@ -315,11 +315,11 @@ public:
    * and requires (or will compute) the suffix links.
    */
   void add_reverse_suffix_links() {
-    if (suffix_links.size() != table.size() / 2) {
+    if (suffix_links.size() != table.size()) {
       add_suffix_links();
     }
 
-    reverse_suffix_links.resize(table.size() / 2);
+    reverse_suffix_links.resize(table.size());
 
     for (auto &reverses : reverse_suffix_links) {
       reverses.fill(-1);
@@ -337,7 +337,7 @@ public:
           auto sequence_index = this->get_sequence_index(node_index);
           auto node_start = sequence_index - lcp;
 
-          auto suffix_parent = suffix_links[node_index / 2];
+          auto suffix_parent = suffix_links[node_index];
 
           if (suffix_parent == -1) {
             return true;
@@ -345,8 +345,8 @@ public:
 
           auto character_rank = this->get_character_rank(node_start);
 
-          if (reverse_suffix_links[suffix_parent / 2][character_rank] == -1) {
-            reverse_suffix_links[suffix_parent / 2][character_rank] =
+          if (reverse_suffix_links[suffix_parent][character_rank] == -1) {
+            reverse_suffix_links[suffix_parent][character_rank] =
                 node_index;
           }
           return true;
@@ -379,22 +379,22 @@ public:
       label = this->leaf_label(node_index, lcp);
     }
 
-    std::cout << label << "\t" << node_index << "\t" << table[node_index].value
-              << "\t" << table[node_index + 1].value;
+    std::cout << label << "\t" << node_index << "\t" << table[node_index].first
+              << "\t" << table[node_index].second;
 
     std::cout << "\tLeaf: " << this->is_leaf(node_index);
     std::cout << "\tUnevaluated: " << this->is_unevaluated(node_index);
 
     std::cout << "\tRightmost child: " << this->is_rightmostchild(node_index);
 
-    //    if (this->suffix_links.size() > node_index / 2) {
+    //    if (this->suffix_links.size() > node_index) {
     //      std::cout << "\tSuffix link: " << this->suffix_links[node_index /
     //      2];
     //    }
 
-    //    if (this->reverse_suffix_links.size() > node_index / 2) {
+    //    if (this->reverse_suffix_links.size() > node_index) {
     //      std::cout << "\tReverse suffix links: " <<
-    //      this->reverse_suffix_links[node_index / 2];
+    //      this->reverse_suffix_links[node_index];
     //    }
   }
 
@@ -449,9 +449,9 @@ protected:
       queue.pop();
 
       if (is_leaf(index)) {
-        start_indices.push_back(table[index].value - lcp);
+        start_indices.push_back(table[index].first - lcp);
       } else if (is_unevaluated(index)) {
-        for (auto i = table[index].value; i < table[index + 1].value; i++) {
+        for (auto i = table[index].first; i < table[index].second; i++) {
           start_indices.push_back(suffixes[i] - lcp);
         }
       } else {
@@ -522,7 +522,7 @@ protected:
                     lst::details::sequence_t<alphabet_t> &edge) {
     for (size_t i = 0; pattern_lcp + i < pattern.size() && i < edge.size();
          i++) {
-      auto sequence_index = table[node_index].value + i;
+      auto sequence_index = table[node_index].first + i;
       auto character = this->get_character(sequence_index);
 
       if (character != pattern[pattern_lcp + i]) {
@@ -545,7 +545,7 @@ protected:
   }
 
   std::string leaf_label(size_t node_index, size_t lcp) {
-    auto node_start = table[node_index].value - lcp;
+    auto node_start = table[node_index].first - lcp;
     lst::details::sequence_t<alphabet_t> label(
         this->sequence.begin() + node_start, this->sequence.end());
 

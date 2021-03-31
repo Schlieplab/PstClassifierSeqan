@@ -187,8 +187,8 @@ public:
     lst::LazySuffixTree<alphabet_t>::debug_print_node(node_index, lcp,
                                                       edge_lcp);
 
-    if (this->suffix_links.size() > node_index / 2 &&
-        this->suffix_links[node_index / 2] != max_size) {
+    if (this->suffix_links.size() > node_index &&
+        this->suffix_links[node_index] != max_size) {
       std::cout << "\tDelta: " << this->calculate_delta(node_index);
 
       std::cout << "\tPST Leaf: " << this->is_pst_leaf(node_index);
@@ -196,8 +196,8 @@ public:
       std::cout << "\tTerminal: " << this->is_terminal(node_index);
     }
 
-    if (this->entries.size() > node_index / 2) {
-      std::cout << "\tStatus: " << this->entries[node_index / 2].included;
+    if (this->entries.size() > node_index) {
+      std::cout << "\tStatus: " << this->entries[node_index].included;
     }
   }
 
@@ -333,7 +333,7 @@ public:
 
       if (f(node_index, level)) {
         if (this->multi_core && this->parallel_depth > level) {
-          for (auto child : this->reverse_suffix_links[node_index / 2]) {
+          for (auto child : this->reverse_suffix_links[node_index]) {
             if (child != max_size && !this->skip_node(child)) {
               threads.emplace_back(
                   &ProbabilisticSuffixTree::pst_breadth_first_iteration_, this,
@@ -341,7 +341,7 @@ public:
             }
           }
         } else {
-          for (auto child : this->reverse_suffix_links[node_index / 2]) {
+          for (auto child : this->reverse_suffix_links[node_index]) {
             if (child != max_size && !this->skip_node(child)) {
               queue.emplace(child, level + 1);
             }
@@ -364,7 +364,7 @@ public:
    */
   std::vector<size_t> get_pst_children(const size_t node_index) {
     std::vector<size_t> children{};
-    for (auto child : this->reverse_suffix_links[node_index / 2]) {
+    for (auto child : this->reverse_suffix_links[node_index]) {
       if (child != max_size && !this->skip_node(child)) {
         children.push_back(child);
       }
@@ -378,13 +378,13 @@ public:
    * \return Parent index, or -1 if no parent.
    */
   size_t get_pst_parent(const size_t node_index) {
-    return this->suffix_links[node_index / 2];
+    return this->suffix_links[node_index];
   }
 
   /**! \brief Returns count of the node
    * \details
    * Finds the count of the node by iterating the tree.  Saves the result in
-   * a vector with the size of the tree / 2.
+   * a vector with the size of the tree.
    *
    * \param[in] node_index
    * \return count of the node
@@ -396,11 +396,11 @@ public:
     if (node_index == 0) {
       return this->sequence.size();
     }
-    auto c = this->entries[node_index / 2].count;
+    auto c = this->entries[node_index].count;
 
     if (c == max_size) {
       c = this->node_occurrences(node_index);
-      this->entries[node_index / 2].count = c;
+      this->entries[node_index].count = c;
     }
     return c;
   }
@@ -416,19 +416,19 @@ public:
       return {};
     }
 
-    auto probs = this->entries[node_index / 2].probabilities;
+    auto probs = this->entries[node_index].probabilities;
     if (probs.size() == 0) {
       this->assign_node_probabilities(node_index);
     }
-    return this->entries[node_index / 2].probabilities;
+    return this->entries[node_index].probabilities;
   }
 
   bool is_included(size_t node_index) {
-    return this->entries[node_index / 2].included;
+    return this->entries[node_index].included;
   }
 
   bool is_excluded(size_t node_index) {
-    return !this->entries[node_index / 2].included;
+    return !this->entries[node_index].included;
   }
 
   std::string id;
@@ -441,7 +441,7 @@ public:
 
   std::vector<PSTEntry<alphabet_t>> entries{};
 
-protected:
+  // protected:
   friend class ProbabilisticSuffixTreeTest;
 
   bool build_tree_callback(
@@ -458,7 +458,7 @@ protected:
     // reallocate it. This can lead to a race condition when a
     // different thread tries to set a value.  Therefore, we lock
     // changes to entries here.
-    auto new_table_size = this->table.capacity() / 2;
+    auto new_table_size = this->table.capacity();
     if (this->entries.capacity() < new_table_size) {
       std::unique_lock entries_reallocate_lock{entries_reallocate_mutex};
       this->resize_entries();
@@ -504,7 +504,7 @@ protected:
           expand_implicit_nodes(node_index, lcp, edge_lcp);
         });
 
-    this->entries.resize(this->table.size() / 2);
+    this->entries.resize(this->table.size());
   }
 
   void expand_implicit_nodes(size_t node_index, size_t lcp, size_t &edge_lcp) {
@@ -527,7 +527,7 @@ protected:
   }
 
   void resize_entries() {
-    auto new_size = this->table.capacity() / 2;
+    auto new_size = this->table.capacity();
     this->entries.reserve(new_size);
     this->entries.resize(new_size, {false, max_size, {}});
   }
@@ -541,14 +541,14 @@ protected:
    */
   bool check_node(size_t node_index, size_t lcp, size_t edge_lcp,
                   size_t count) {
-    auto label_start = this->table[node_index].value - lcp;
-    auto label_end = this->table[node_index].value + edge_lcp;
+    auto label_start = this->table[node_index].first - lcp;
+    auto label_end = this->table[node_index].first + edge_lcp;
 
-    this->entries[node_index / 2].count = count;
+    this->entries[node_index].count = count;
 
     if (!this->is_leaf(node_index) &&
         this->include_node(label_start, label_end, edge_lcp, count)) {
-      this->entries[node_index / 2].included = true;
+      this->entries[node_index].included = true;
       return true;
     } else {
       return false;
@@ -594,7 +594,7 @@ protected:
     }
 
     for (size_t i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
-      this->entries[node_index / 2].probabilities[i] =
+      this->entries[node_index].probabilities[i] =
           double(child_counts[i]) / child_sum;
     }
   }
@@ -621,7 +621,7 @@ protected:
     }
 
     for (size_t i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
-      this->entries[node_index / 2].probabilities[i] =
+      this->entries[node_index].probabilities[i] =
           double(child_counts[i]) / child_sum;
     }
   }
@@ -673,9 +673,9 @@ protected:
         continue;
       }
 
-      auto parent_index = this->suffix_links[node_index / 2];
+      auto parent_index = this->suffix_links[node_index];
 
-      this->entries[node_index / 2].included = false;
+      this->entries[node_index].included = false;
 
       if (this->is_pst_leaf(parent_index) && parent_index != 0) {
         queue.emplace(parent_index, -this->calculate_delta(parent_index));
@@ -750,7 +750,7 @@ protected:
    */
   bool is_pst_leaf(size_t node_index) {
     for (auto char_rank : this->valid_characters) {
-      auto child_index = this->reverse_suffix_links[node_index / 2][char_rank];
+      auto child_index = this->reverse_suffix_links[node_index][char_rank];
 
       if (child_index == 0 || child_index == max_size) {
         continue;
@@ -774,7 +774,7 @@ protected:
    */
   bool is_terminal(size_t node_index) {
     for (auto char_rank : this->valid_characters) {
-      auto child_index = this->reverse_suffix_links[node_index / 2][char_rank];
+      auto child_index = this->reverse_suffix_links[node_index][char_rank];
 
       if (child_index == 0) {
         continue;
@@ -799,7 +799,7 @@ protected:
    */
   bool became_terminal(size_t node_index, size_t removed_index) {
     for (auto char_rank : this->valid_characters) {
-      auto child_index = this->reverse_suffix_links[node_index / 2][char_rank];
+      auto child_index = this->reverse_suffix_links[node_index][char_rank];
 
       if (child_index == 0) {
         continue;
@@ -816,7 +816,7 @@ protected:
 
   /**! \brief Append string for a node to the output stream.
    * \details
-   * The format is Node: (index / 2) [ <reverse_children_count> ] count [
+   * The format is Node: (index) [ <reverse_children_count> ] count [
    * <children_count>] [ <reverse child indices> ]
    *
    * \param[in] node_index The node index to operate on
@@ -892,7 +892,7 @@ protected:
 
     std::vector<size_t> output(seqan3::alphabet_size<alphabet_t>, max_size);
 
-    auto reverse_children = this->reverse_suffix_links[node_index / 2];
+    auto reverse_children = this->reverse_suffix_links[node_index];
     for (auto char_rank : this->valid_characters) {
 
       auto reverse_child = reverse_children[char_rank];
@@ -914,7 +914,7 @@ protected:
   /**! \brief Append the index of reverse children to the output stream.
    * \details
    * For excluded nodes, a -1 is appended, for included nodes, the
-   * internal node index / 2 is used (which to be fair is arbitrary).
+   * internal node index is used (which to be fair is arbitrary).
    * The format is [ x y z ... ]
    *
    * \param[in] node_index The node index to operate on.
@@ -927,7 +927,7 @@ protected:
 
     std::vector<size_t> output(seqan3::alphabet_size<alphabet_t>, -2);
 
-    auto reverse_children = this->reverse_suffix_links[node_index / 2];
+    auto reverse_children = this->reverse_suffix_links[node_index];
     for (auto char_rank : this->valid_characters) {
       auto reverse_child = reverse_children[char_rank];
 

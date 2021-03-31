@@ -42,35 +42,26 @@ protected:
 TEST_F(LazySuffixTreeTest, SimpleTest) {
   tree.expand_all();
 
-  Table<> expected_table{
-      {0, Flag::RIGHT_MOST_CHILD},
-      {2, Flag::NONE},
-      {1, Flag::NONE},
-      {8, Flag::NONE},
-      {0, Flag::NONE},
-      {12, Flag::NONE},
-      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
-      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
-      {3, Flag::LEAF},
-      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
-      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
-      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
-      {1, Flag::NONE},
-      {16, Flag::NONE},
-      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
-      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
-      {3, Flag::LEAF},
-      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
-      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
-      {0, Flag::NONE}}; // Added to allow for explicit labels in the tree
+  Table<> expected_table{{0, 1, Flag::RIGHT_MOST_CHILD},
+                         {1, 4, Flag::NONE},
+                         {0, 6, Flag::NONE},
+                         {5, 0, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
+                         {3, 0, Flag::LEAF},
+                         {5, 0, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
+                         {1, 8, Flag::NONE},
+                         {5, 0, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
+                         {3, 0, Flag::LEAF},
+                         {5, 0, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)}};
 
   std::vector<size_t> expected_values{};
   for (auto &e : expected_table.table) {
-    expected_values.push_back(e.value);
+    expected_values.push_back(e.first);
+    expected_values.push_back(e.second);
   }
   std::vector<size_t> tree_values{};
   for (auto &e : tree.table.table) {
-    tree_values.push_back(e.value);
+    tree_values.push_back(e.first);
+    tree_values.push_back(e.second);
   }
   std::vector<Flag> expected_flags{};
   for (auto &e : expected_table.table) {
@@ -224,15 +215,15 @@ TEST_F(LazySuffixTreeTest, SuffixLinks) {
     t.add_suffix_links();
     std::vector<size_t> expected_links{
         max_size, // root
-        4,        // AC
+        2,        // AC
         0,        // C
         0,        // -
-        18,       // ACAC
-        14,       // AC
-        2,        // CAC
-        6,        // C
-        8,        // CACAC
-        10        // CAC
+        9,        // ACAC
+        7,        // AC
+        1,        // CAC
+        3,        // C
+        4,        // CACAC
+        5         // CAC
     };
 
     EXPECT_EQ(t.suffix_links, expected_links);
@@ -245,18 +236,18 @@ TEST_F(LazySuffixTreeTest, SuffixLinks) {
         0,        // 2: A
         0,        // 4: C
         0,        // 6: -
-        12,       // 8: ACA
-        14,       // 10: AC-
-        2,        // 12: CA
-        6,        // 14: C-
-        8,        // 16: CACA
-        10,       // 18: CAC-
-        4,        // 20: AC
-        26,       // 22: ACAC
-        18,       // 24: ACAC-
-        20,       // 26: CAC
-        22,       // 28: CACAC
-        24        // 30: CACAC-
+        6,        // 8: ACA
+        7,        // 10: AC-
+        1,        // 12: CA
+        3,        // 14: C-
+        4,        // 16: CACA
+        5,        // 18: CAC-
+        2,        // 20: AC
+        13,       // 22: ACAC
+        9,        // 24: ACAC-
+        10,       // 26: CAC
+        11,       // 28: CACAC
+        12        // 30: CACAC-
     };
 
     EXPECT_EQ(t.suffix_links, implicit_expected_links);
@@ -267,9 +258,9 @@ TEST_F(LazySuffixTreeTest, SuffixLinks) {
   dna_tree.add_suffix_links();
 
   std::vector<size_t> implicit_expected_dna_links{
-      max_size, 0,  0,  0,  0,  0,  4,  8,  6,  8,  2,  4,  4,  10, 20, 22, 16,
-      28,       84, 86, 88, 90, 92, 94, 24, 76, 78, 80, 82, 26, 14, 48, 50, 52,
-      54,       56, 18, 58, 16, 30, 96, 98, 60, 62, 64, 66, 68, 70, 72, 74};
+      max_size, 0,  0,  0,  0,  0,  2,  4,  3,  4,  1,  2,  2,  5,  10, 11, 8,
+      14,       42, 43, 44, 45, 46, 47, 12, 38, 39, 40, 41, 13, 7,  24, 25, 26,
+      27,       28, 9,  29, 8,  15, 48, 49, 30, 31, 32, 33, 34, 35, 36, 37};
 
   EXPECT_EQ(dna_tree.suffix_links, implicit_expected_dna_links);
 
@@ -278,9 +269,7 @@ TEST_F(LazySuffixTreeTest, SuffixLinks) {
   dna_tree_parallel.add_suffix_links();
 
   std::set<size_t> implicit_expected_dna_links_set{
-      max_size, 0,  0,  0,  0,  0,  4,  8,  6,  8,  2,  4,  4,  10, 20, 22, 16,
-      28,       84, 86, 88, 90, 92, 94, 24, 76, 78, 80, 82, 26, 14, 48, 50, 52,
-      54,       56, 18, 58, 16, 30, 96, 98, 60, 62, 64, 66, 68, 70, 72, 74};
+      implicit_expected_dna_links.begin(), implicit_expected_dna_links.end()};
 
   std::set<size_t> suffix_links_set{dna_tree_parallel.suffix_links.begin(),
                                     dna_tree_parallel.suffix_links.end()};
@@ -298,31 +287,30 @@ TEST_F(LazySuffixTreeTest, ReverseSuffixLinks) {
     std::set<
         std::array<size_t, seqan3::alphabet_size<seqan3::gapped<seqan3::dna5>>>>
         expected_reverse_links{
-            {2, 4, 6, max_size, 8, 10}, // root
+            {1, 2, 3, max_size, 4, 5}, // root
             {max_size, max_size, max_size, max_size, max_size,
              max_size}, // A, 2
             {max_size, max_size, max_size, max_size, max_size,
-             max_size},                                             // C, 4
-            {max_size, 16, max_size, max_size, max_size, max_size}, // G, 6
+             max_size},                                            // C, 4
+            {max_size, 8, max_size, max_size, max_size, max_size}, // G, 6
             {max_size, max_size, max_size, max_size, max_size,
              max_size},                                             // T, 8
-            {max_size, max_size, max_size, max_size, 26, max_size}, // -, 10
+            {max_size, max_size, max_size, max_size, 13, max_size}, // -, 10
             {max_size, max_size, max_size, max_size, max_size,
              max_size}, // ACGATCGCT-, 12
-            {max_size, max_size, 20, max_size, max_size,
+            {max_size, max_size, 10, max_size, max_size,
              max_size}, // ATCGCT-, 14
             {max_size, max_size, max_size, max_size, max_size,
              max_size},                                             // CG, 16
-            {max_size, max_size, 22, max_size, max_size, max_size}, // CT-, 18
-            {max_size, 28, max_size, max_size, max_size,
+            {max_size, max_size, 11, max_size, max_size, max_size}, // CT-, 18
+            {max_size, 14, max_size, max_size, max_size,
              max_size}, // GATCGCT-, 20
-            {max_size, 30, max_size, max_size, max_size, max_size}, // GCT-, 22
-            {14, max_size, max_size, max_size, max_size,
-             max_size}, // TCGCT-, 24
-            {max_size, 18, max_size, max_size, max_size, max_size}, // T-, 26
-            {12, max_size, max_size, max_size, max_size,
+            {max_size, 15, max_size, max_size, max_size, max_size}, // GCT-, 22
+            {7, max_size, max_size, max_size, max_size, max_size}, // TCGCT-, 24
+            {max_size, 9, max_size, max_size, max_size, max_size}, // T-, 26
+            {6, max_size, max_size, max_size, max_size,
              max_size}, // CGATCGCT-, 28
-            {max_size, max_size, max_size, max_size, 24, max_size} // CGCT-, 30
+            {max_size, max_size, max_size, max_size, 12, max_size} // CGCT-, 30
         };
 
     std::set<

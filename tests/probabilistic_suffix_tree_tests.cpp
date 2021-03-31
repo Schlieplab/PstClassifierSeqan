@@ -81,17 +81,17 @@ TEST_F(ProbabilisticSuffixTreeTest, ConstructorSuffixLinks) {
       0,        // G
       0,        // T
       0,        // -
-      6,        // AT
-      8,        // A-
-      2,        // GA
-      24,       // GATTATA-
-      2,        // TA
-      6,        // TT
-      28,       // ATA
-      30,       // ATTATA
-      22,       // TATA
-      12,       // TA
-      26        // TTATA
+      3,        // AT
+      4,        // A-
+      1,        // GA
+      12,       // GATTATA-
+      1,        // TA
+      3,        // TT
+      14,       // ATA
+      15,       // ATTATA
+      11,       // TATA
+      6,        // TA
+      13        // TTATA
   };
 
   EXPECT_EQ(probabilisticSuffixTree.suffix_links, expected_suffix_links);
@@ -252,7 +252,7 @@ TEST_F(ProbabilisticSuffixTreeTest, PSTBreadthFirstIteration) {
         return true;
       });
 
-  std::vector<size_t> expected_visited{0, 2, 4, 6, 14, 18, 10, 20};
+  std::vector<size_t> expected_visited{0, 1, 2, 3, 7, 9, 5, 10};
 
   EXPECT_EQ(visited, expected_visited);
 }
@@ -261,12 +261,12 @@ TEST_F(ProbabilisticSuffixTreeTest, PSTBreadthFirstIterationSubtree) {
   std::vector<size_t> visited{};
 
   probabilisticSuffixTree.pst_breadth_first_iteration(
-      2, 1, [&](size_t index, size_t level) {
+      1, 1, [&](size_t index, size_t level) {
         visited.push_back(index);
         return true;
       });
 
-  std::vector<size_t> expected_visited{2, 14, 18};
+  std::vector<size_t> expected_visited{1, 7, 9};
 
   EXPECT_EQ(visited, expected_visited);
 }
@@ -453,7 +453,6 @@ TEST_F(ProbabilisticSuffixTreeTest, ResourceTemporarilyUnavailableError) {
   tree.add_reverse_suffix_links();
   tree.similarity_pruning();
 }
-
 
 void correct_counts(pst::ProbabilisticSuffixTree<seqan3::dna5> &tree,
                     lst::details::sequence_t<seqan3::dna5> &seq) {

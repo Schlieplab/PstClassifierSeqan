@@ -25,7 +25,8 @@ enum Flag : unsigned char {
 };
 
 template <class size_t = size_t, class flag_t = Flag> struct Entry {
-  size_t value;
+  size_t first;
+  size_t second;
   flag_t flag;
 };
 
@@ -93,15 +94,12 @@ bool is_rightmostchild(size_t node_index, const Table<> &table) {
 }
 
 void add_branching_node(size_t index, size_t count, Table<> &table) {
-  table.push_back({index, Flag::UNEVALUATED});
-  table.push_back({index + count, Flag::NONE});
+  table.push_back({index, index + count, Flag::UNEVALUATED});
 }
 
 void add_leaf(size_t index, Table<> &table,
               const std::vector<size_t> &suffixes) {
-  table.push_back({suffixes[index], Flag::LEAF});
-  // Add extra index for leaves to allow for explicit nodes.
-  table.push_back({0, Flag::NONE});
+  table.push_back({suffixes[index], 0, Flag::LEAF});
 }
 
 template <seqan3::alphabet alphabet_t>
@@ -171,7 +169,7 @@ void add_children(const alphabet_array<size_t, alphabet_t> &counts,
     index += count;
   }
 
-  auto right_most_child_index = table.size() - 2;
+  auto right_most_child_index = table.size() - 1;
 
   //  if (last_added_leaf) {
   //    // Should be 1, but I've added a value to leaves to allow for
@@ -393,8 +391,8 @@ expand_node(size_t node_index, const sequence_t<alphabet_t> &sequence,
             const std::function<void(size_t, size_t &)> &locked_callback) {
   assert(is_unevaluated(node_index, table));
 
-  auto lower_bound = table[node_index].value;
-  auto upper_bound = table[node_index + 1].value;
+  auto lower_bound = table[node_index].first;
+  auto upper_bound = table[node_index].second;
   auto suffix_lower_bound = suffixes[lower_bound];
 
   auto [lcp, counts, count] =
@@ -402,8 +400,8 @@ expand_node(size_t node_index, const sequence_t<alphabet_t> &sequence,
 
   std::lock_guard<std::mutex> unevaluated_lock{table.mutex};
 
-  table[node_index].value = suffix_lower_bound;
-  table[node_index + 1].value = table.size();
+  table[node_index].first = suffix_lower_bound;
+  table[node_index].second = table.size();
 
   add_children<alphabet_t>(counts, lower_bound, suffixes, table);
   table[node_index].flag = Flag(table[node_index].flag & ~Flag::UNEVALUATED);
@@ -436,23 +434,22 @@ void add_implicit_nodes(size_t node_index, size_t edge_lcp, Table<> &table) {
     return;
   }
 
-  auto previous_child = table[node_index + 1].value;
-  table[node_index + 1].value = table.size();
+  auto previous_child = table[node_index].second;
+  table[node_index].second = table.size();
 
-  auto start = table[node_index].value;
+  auto start = table[node_index].first;
   for (auto i = start + 1; i < start + edge_lcp; i++) {
-    table.push_back({i, Flag::RIGHT_MOST_CHILD});
-    table.push_back({table.size() + 1, Flag::NONE});
+    table.push_back({i, table.size() + 1, Flag::RIGHT_MOST_CHILD});
   }
 
   if (is_leaf(node_index, table)) {
     table[node_index].flag = Flag(table[node_index].flag & ~Flag::LEAF);
-    table[table.size() - 2].flag =
-        Flag(table[table.size() - 2].flag | Flag::LEAF);
+    table[table.size() - 1].flag =
+        Flag(table[table.size() - 1].flag | Flag::LEAF);
 
-    table[table.size() - 1].value = 0;
+    table[table.size() - 1].second = 0;
   } else {
-    table[table.size() - 1].value = previous_child;
+    table[table.size() - 1].second = previous_child;
   }
 }
 
@@ -460,9 +457,9 @@ size_t get_sequence_index(size_t node_index,
                           const std::vector<size_t> &suffixes,
                           const Table<> &table) {
   if (is_unevaluated(node_index, table)) {
-    return suffixes[table[node_index].value];
+    return suffixes[table[node_index].first];
   } else {
-    return table[node_index].value;
+    return table[node_index].first;
   }
 }
 

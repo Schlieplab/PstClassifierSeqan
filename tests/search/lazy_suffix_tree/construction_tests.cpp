@@ -17,11 +17,9 @@ protected:
 
   sequence_t<seqan3::dna5> sequence{"CACAC"_dna5};
   std::vector<size_t> suffixes{0, 1, 2, 3, 4, 5};
-  Table<> table{{0, Flag::UNEVALUATED},
-                {2, Flag::NONE},
-                {2, Flag::UNEVALUATED},
-                {5, Flag::NONE},
-                {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)}};
+  Table<> table{{0, 2, Flag::UNEVALUATED},
+                {2, 5, Flag::UNEVALUATED},
+                {5, 0, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)}};
 };
 
 TEST_F(ConstructionTests, CountSuffixes) {
@@ -86,7 +84,8 @@ TEST_F(ConstructionTests, AddChildren) {
   std::vector<size_t> tree_values{};
   std::vector<Flag> tree_flags{};
   for (auto &e : table.table) {
-    tree_values.push_back(e.value);
+    tree_values.push_back(e.first);
+    tree_values.push_back(e.second);
     tree_flags.push_back(e.flag);
   }
 
@@ -97,11 +96,8 @@ TEST_F(ConstructionTests, AddChildren) {
 
   std::vector<Flag> expected_flags{
       Flag::UNEVALUATED,
-      Flag::NONE,
       Flag::UNEVALUATED,
-      Flag::NONE,
       Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
-      Flag::NONE, // Added to allow for explicit labels in the tree
   };
   EXPECT_EQ(tree_flags, expected_flags);
 }
@@ -113,7 +109,8 @@ TEST_F(ConstructionTests, ExpandRoot) {
   std::vector<size_t> tree_values{};
   std::vector<Flag> tree_flags{};
   for (auto &e : table.table) {
-    tree_values.push_back(e.value);
+    tree_values.push_back(e.first);
+    tree_values.push_back(e.second);
     tree_flags.push_back(e.flag);
   }
 
@@ -123,11 +120,8 @@ TEST_F(ConstructionTests, ExpandRoot) {
 
   std::vector<Flag> expected_flags{
       Flag::UNEVALUATED,
-      Flag::NONE,
       Flag::UNEVALUATED,
-      Flag::NONE,
       Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
-      Flag::NONE, // Added to allow for explicit labels in the tree
   };
   EXPECT_EQ(tree_flags, expected_flags);
 
@@ -141,25 +135,21 @@ TEST_F(ConstructionTests, ExpandTest) {
   expand_node(0, sequence, suffixes, table);
 
   // Changed to allow for explicit labels in the tree
-  std::vector<size_t> expected_table{1, 6, 2, 5, 5, 0, 3, 0, 5, 0};
+  std::vector<size_t> expected_table{1, 3, 2, 5, 5, 0, 3, 0, 5, 0};
 
   std::vector<Flag> expected_flags{
       Flag::NONE,
-      Flag::NONE,
       Flag::UNEVALUATED,
-      Flag::NONE,
       Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
-      Flag::NONE, // Added to allow for explicit labels in the tree
       Flag::LEAF,
-      Flag::NONE, // Added to allow for explicit labels in the tree
       Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD),
-      Flag::NONE, // Added to allow for explicit labels in the tree
   };
 
   std::vector<size_t> tree_values{};
   std::vector<Flag> tree_flags{};
   for (auto &e : table.table) {
-    tree_values.push_back(e.value);
+    tree_values.push_back(e.first);
+    tree_values.push_back(e.second);
     tree_flags.push_back(e.flag);
   }
 

@@ -119,9 +119,9 @@ size_t get_leaf_index(size_t node_index, size_t lcp,
                       const std::vector<size_t> &suffixes,
                       const Table<> &table) {
   if (is_leaf(node_index, table)) {
-    return table[node_index].value - lcp;
+    return table[node_index].first - lcp;
   } else if (is_unevaluated(node_index, table)) {
-    return suffixes[table[node_index].value] - lcp;
+    return suffixes[table[node_index].first] - lcp;
   } else {
     return -1;
   }
@@ -266,7 +266,7 @@ void assign_link(size_t leaf_index,
   auto [caused, depth] = cause[leaf_index];
 
   if (caused != (size_t)-1 && depth != (size_t)-1) {
-    suffix_links[caused / 2] = branch[depth - 1];
+    suffix_links[caused] = branch[depth - 1];
   }
 }
 
@@ -274,7 +274,7 @@ void assign_leaf_link(size_t node_index, size_t leaf_index,
                       std::vector<size_t> &suffix_links,
                       const std::vector<size_t> &leaf_indices) {
   if (leaf_indices[leaf_index + 1] != -1) {
-    suffix_links[node_index / 2] = leaf_indices[leaf_index + 1];
+    suffix_links[node_index] = leaf_indices[leaf_index + 1];
   }
 }
 
@@ -398,8 +398,7 @@ size_t compute_single_suffix_link(
     branch[height] = node_index;
     std::fill(branch.begin() + height + 1, branch.end(), -1);
 
-    for (auto i = table[node_index].value; i < table[node_index + 1].value;
-         i++) {
+    for (auto i = table[node_index].first; i < table[node_index].second; i++) {
       auto leaf_index = suffixes[i] - lcp;
       assign_link(leaf_index, cause, branch, suffix_links);
     }
@@ -767,16 +766,16 @@ void visit_implicit_suffix_links_node(size_t node_index, size_t parent_index,
   //  size_t edge_lcp = get_edge_lcp(node_index, sequence, suffixes, table);
   size_t edge_lcp = 1;
 
-  if (suffix_links[node_index / 2] == max_size && parent_index == 0) {
-    suffix_links[node_index / 2] = 0;
-  } else if (suffix_links[node_index / 2] == max_size &&
-             suffix_links[parent_index / 2] != max_size) {
-    auto parent_suffix_link = suffix_links[parent_index / 2];
+  if (suffix_links[node_index] == max_size && parent_index == 0) {
+    suffix_links[node_index] = 0;
+  } else if (suffix_links[node_index] == max_size &&
+             suffix_links[parent_index] != max_size) {
+    auto parent_suffix_link = suffix_links[parent_index];
 
     auto suffix_link_destination = find_suffix_match(
         node_index, edge_lcp, parent_suffix_link, sequence, suffixes, table);
 
-    suffix_links[node_index / 2] = suffix_link_destination;
+    suffix_links[node_index] = suffix_link_destination;
   }
 }
 

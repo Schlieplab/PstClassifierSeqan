@@ -14,13 +14,7 @@
 namespace lst::details {
 
 size_t next_child_index(size_t node_index, const Table<> &table) {
-  if (is_leaf(node_index, table)) {
-    // Should be 1, but I've added a value to leaves to allow for
-    // explicit nodes.
-    return node_index + 2;
-  } else {
-    return node_index + 2;
-  }
+  return node_index + 1;
 }
 
 void iterate_children(size_t node_index, const Table<> &table,
@@ -29,7 +23,7 @@ void iterate_children(size_t node_index, const Table<> &table,
     return;
   }
 
-  auto first_child = table[node_index + 1].value;
+  auto first_child = table[node_index].second;
 
   for (size_t i = first_child; i <= table.size();) {
     f(i);
@@ -59,8 +53,8 @@ size_t node_occurrences(size_t node_index, const Table<> &table,
     if (is_leaf(index, table)) {
       occurrences += 1;
     } else if (is_unevaluated(index, table)) {
-      auto lower_bound = table[index].value;
-      auto upper_bound = table[index + 1].value;
+      auto lower_bound = table[index].first;
+      auto upper_bound = table[index].second;
 
       auto [counts, count] =
           count_suffixes(lower_bound, upper_bound, sequence, suffixes);
@@ -203,10 +197,10 @@ void breadth_first_iteration_table_less(
       size_t lower_bound, upper_bound;
 
       if (is_unevaluated(index, table)) {
-        lower_bound = table[index].value;
-        upper_bound = table[index + 1].value;
+        lower_bound = table[index].first;
+        upper_bound = table[index].second;
       } else if (is_leaf(index, table)) {
-        lower_bound = table[index].value;
+        lower_bound = table[index].first;
         upper_bound = (size_t)-1;
       }
 
@@ -226,10 +220,10 @@ void breadth_first_iteration_table_less(
       size_t lower_bound, upper_bound;
 
       if (is_unevaluated(index, table)) {
-        lower_bound = table[index].value;
-        upper_bound = table[index + 1].value;
+        lower_bound = table[index].first;
+        upper_bound = table[index].second;
       } else if (is_leaf(index, table)) {
-        lower_bound = table[index].value;
+        lower_bound = table[index].first;
         upper_bound = -1;
       }
 
@@ -465,13 +459,12 @@ size_t get_edge_lcp(size_t node_index, const sequence_t<alphabet_t> &sequence,
   }
 
   if (is_leaf(node_index, table)) {
-    return suffixes.size() - table[node_index].value;
+    return suffixes.size() - table[node_index].first;
   }
 
   if (is_unevaluated(node_index, table)) {
-    return lst::details::longest_common_prefix(table[node_index].value,
-                                               table[node_index + 1].value,
-                                               sequence, suffixes);
+    return lst::details::longest_common_prefix(
+        table[node_index].first, table[node_index].second, sequence, suffixes);
   }
 
   auto smallest_child_index = suffixes.size();
@@ -481,9 +474,9 @@ size_t get_edge_lcp(size_t node_index, const sequence_t<alphabet_t> &sequence,
     smallest_child_index = std::min(smallest_child_index, sequence_index);
   });
 
-  assert(smallest_child_index > table[node_index].value);
+  assert(smallest_child_index > table[node_index].first);
 
-  size_t edge_lcp = smallest_child_index - table[node_index].value;
+  size_t edge_lcp = smallest_child_index - table[node_index].first;
 
   return edge_lcp;
 }

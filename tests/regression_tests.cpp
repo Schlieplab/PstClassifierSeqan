@@ -35,7 +35,10 @@ void same_contexts(pst::KullbackLieblerTree<seqan3::dna5> &tree,
   for (auto &[context, count] : tree_label_counts) {
     EXPECT_TRUE(map.counts.find(context) != map.counts.end())
         << "context " << context << " not in map";
-    auto [map_count, map_prob] = map.counts[context];
+    auto [map_count, map_prob, included] = map.counts[context];
+    if (!included) {
+      continue;
+    }
     EXPECT_EQ(count, map_count)
         << "map count for " << context << " is incorrect. Should be " << count
         << " is " << map_count;
@@ -45,7 +48,10 @@ void same_contexts(pst::KullbackLieblerTree<seqan3::dna5> &tree,
     if (context.size() == 0) {
       continue;
     }
-    auto &[map_count, _p] = values;
+    auto &[map_count, _p, included] = values;
+    if (!included) {
+      continue;
+    }
 
     EXPECT_TRUE(tree_label_counts.find(context) != tree_label_counts.end())
         << "context " << context << " not in tree";

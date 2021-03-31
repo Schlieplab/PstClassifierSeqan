@@ -18,27 +18,16 @@ protected:
   sequence_t<seqan3::dna5> sequence{"CACAC"_dna5};
 
   Table<> table{
-      {0, Flag::RIGHT_MOST_CHILD},
-      {2, Flag::NONE},
-      {1, Flag::NONE},
-      {8, Flag::NONE},
-      {0, Flag::NONE},
-      {12, Flag::NONE},
-      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
-      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
-      {3, Flag::LEAF},
-      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
-      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
-      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
-      {1, Flag::NONE},
-      {16, Flag::NONE},
-      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
-      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
-      {3, Flag::LEAF},
-      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
-      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
-      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
-
+      {0, 1, Flag::RIGHT_MOST_CHILD},
+      {1, 4, Flag::NONE},
+      {0, 6, Flag::NONE},
+      {5, 0, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
+      {3, 0, Flag::LEAF},
+      {5, 0, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
+      {1, 8, Flag::NONE},
+      {5, 0, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
+      {3, 0, Flag::LEAF},
+      {5, 0, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
   };
 
   std::vector<size_t> suffixes{3, 5, 3, 5, 5, 5};
@@ -46,12 +35,9 @@ protected:
   std::vector<size_t> unfinished_suffixes{1, 3, 0, 2, 4, 5};
 
   Table<> unfinished_table{
-      {0, Flag::UNEVALUATED},
-      {2, Flag::NONE},
-      {2, Flag::UNEVALUATED},
-      {5, Flag::NONE},
-      {5, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
-      {0, Flag::NONE}, // Added to allow for explicit labels in the tree
+      {0, 1, Flag::UNEVALUATED},
+      {2, 5, Flag::UNEVALUATED},
+      {5, 0, Flag(Flag::LEAF | Flag::RIGHT_MOST_CHILD)},
   };
 };
 
@@ -69,7 +55,7 @@ TEST_F(SuffixLinksTests, TreeHeightParallel) {
 }
 
 TEST_F(SuffixLinksTests, LeafIndex) {
-  size_t leaf_index = get_leaf_index(6, 0, suffixes, table);
+  size_t leaf_index = get_leaf_index(3, 0, suffixes, table);
   EXPECT_EQ(leaf_index, 5);
 
   size_t root_leaf_index = get_leaf_index(0, 0, suffixes, table);
