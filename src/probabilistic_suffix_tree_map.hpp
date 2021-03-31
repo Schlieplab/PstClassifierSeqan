@@ -232,12 +232,13 @@ public:
 
     robin_hood::unordered_map<std::string, size_t> iteration_order_indices{};
     size_t i = 0;
-    this->pst_breadth_first_iteration(
-        [&](const std::string child_label, size_t level) -> bool {
-          iteration_order_indices[child_label] = i;
-          i++;
-          return true;
-        });
+    // old pst-classifier compatibility:
+    //    this->pst_breadth_first_iteration(
+    //        [&](const std::string child_label, size_t level) -> bool {
+    //          iteration_order_indices[child_label] = i;
+    //          i++;
+    //          return true;
+    //        });
 
     this->pst_breadth_first_iteration(
         [&](const std::string child_label, size_t level) -> bool {
@@ -906,7 +907,10 @@ public:
       const std::string &label,
       robin_hood::unordered_map<std::string, size_t> &iteration_order_indices,
       std::ostringstream &tree_string) {
-    tree_string << "Node: " << iteration_order_indices[label];
+    // old pst-classifier compatibility:
+    // tree_string << "Node: " << iteration_order_indices[label];
+
+    tree_string << "Node: ";
     if (label.empty()) {
       tree_string << " # ";
     } else {
@@ -1008,7 +1012,9 @@ public:
       if (child_label.empty() || this->is_excluded(child_label)) {
         output[char_rank] = max_size;
       } else {
-        output[char_rank] = iteration_order_indices[child_label];
+        // old pst-classifier compatibility:
+        // output[char_rank] = iteration_order_indices[child_label];
+        output[char_rank] = char_rank;
       }
     };
 

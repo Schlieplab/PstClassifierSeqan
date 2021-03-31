@@ -250,14 +250,15 @@ public:
         });
 
     std::unordered_map<size_t, size_t> iteration_order_indices{};
-    size_t i = 0;
-    this->pst_breadth_first_iteration(
-        [&](size_t node_index, size_t level) -> bool {
-          std::lock_guard lock{print_mutex};
-          iteration_order_indices[node_index] = i;
-          i++;
-          return true;
-        });
+    // old pst-classifier compatibility:
+    //    size_t i = 0;
+    //    this->pst_breadth_first_iteration(
+    //        [&](size_t node_index, size_t level) -> bool {
+    //          std::lock_guard lock{print_mutex};
+    //          iteration_order_indices[node_index] = i;
+    //          i++;
+    //          return true;
+    //        });
 
     this->pst_breadth_first_iteration(
         [&](size_t node_index, size_t level) -> bool {
@@ -832,9 +833,11 @@ protected:
     if (node_index == 0) {
       label = "#";
     }
+    // old pst-classifier compatibility:
+    // tree_string << "Node: " << iteration_order_indices[node_index] << " "
+    //             << label << " ";
 
-    tree_string << "Node: " << iteration_order_indices[node_index] << " "
-                << label << " ";
+    tree_string << "Node: " << label << " ";
 
     append_reverse_child_counts(node_index, tree_string);
 
@@ -932,7 +935,10 @@ protected:
           this->is_excluded(reverse_child)) {
         output[char_rank] = max_size;
       } else {
-        output[char_rank] = iteration_order_indices[reverse_child];
+        // old pst-classifier compatibility:
+        // output[char_rank] = iteration_order_indices[reverse_child];
+
+        output[char_rank] = reverse_child;
       }
     };
 
