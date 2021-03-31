@@ -126,9 +126,9 @@ int main(int argc, char *argv[]) {
   std::cout << "Training" << std::endl;
   for (auto &[seq, id, qual] : file_in) {
     std::cout << id << std::endl;
+    lst::details::sequence_t<seqan3::dna5> seq_{std::move(seq)};
     std::string tree = train(
-        lst::details::sequence_t<seqan3::dna5>{std::move(seq)}, id,
-        arguments.max_depth, arguments.min_count, arguments.threshold,
+        seq_, id, arguments.max_depth, arguments.min_count, arguments.threshold,
         arguments.number_of_parameters, arguments.pruning_method,
         arguments.estimator, arguments.multi_core, arguments.parallel_depth);
     trees.push_back(tree);

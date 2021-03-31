@@ -256,8 +256,9 @@ public:
   size_t count_terminal_nodes() {
     std::atomic<size_t> n_terminal_nodes = 0;
 
-    for (auto &[node, _] : this->counts) {
-      if (this->is_terminal(node)) {
+    for (auto &[node, v] : this->counts) {
+      bool included = std::get<2>(v);
+      if (included && this->is_terminal(node)) {
         n_terminal_nodes += 1;
       }
     }
@@ -277,8 +278,9 @@ public:
     }
 
     std::vector<std::string> nodes{};
-    for (const auto &[child_label, _] : this->counts) {
-      if (this->is_terminal(child_label)) {
+    for (const auto &[child_label, v] : this->counts) {
+      bool included = std::get<2>(v);
+      if (included && this->is_terminal(child_label)) {
         nodes.push_back(child_label);
       }
     }
@@ -444,12 +446,12 @@ public:
   }
 
   size_t get_max_order() {
-    if (this->max_order != -1) {
-      return this->max_order;
-    }
     size_t max_order_ = 0;
-    for (const auto &[label, _] : this->counts) {
-      max_order_ = std::max(label.size(), max_order_);
+    for (const auto &[label, v] : this->counts) {
+      bool included = std::get<2>(v);
+      if (included) {
+        max_order_ = std::max(label.size(), max_order_);
+      }
     }
 
     this->max_order = max_order_;
@@ -467,7 +469,7 @@ public:
    */
   void support_pruning() {
     std::string root{""};
-    this->counts[root] = {this->sequence.size(), {}};
+    this->counts[root] = {this->sequence.size(), {}, true};
     this->build_tree();
   }
 
@@ -493,7 +495,8 @@ public:
 
   robin_hood::unordered_map<
       std::string,
-      std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>>>
+      std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>,
+                 bool>>
       counts{};
 
   robin_hood::unordered_set<size_t> valid_characters{};
@@ -524,6 +527,81 @@ public:
     return characters;
   }
 
+  bool build_tree_callback(
+      size_t sequence_index, size_t lcp, size_t edge_lcp, size_t node_count,
+      lst::details::alphabet_array<size_t, alphabet_t> &child_counts,
+      bool is_leaf) {
+    if (is_leaf && edge_lcp == 1) {
+      return false;
+    }
+
+    if (edge_lcp == 0) {
+      return true;
+    }
+
+    bool include_node = true;
+
+    for (size_t i = 1; i <= edge_lcp && include_node; i++) {
+      bool include_sub_node =
+          this->include_node(sequence_index, lcp, i, node_count);
+
+      auto label = get_label(sequence_index, lcp, i);
+
+      // If we're expanding the node, the child counts will be the count
+      // of this node, but at the next character
+      lst::details::alphabet_array<size_t, alphabet_t> cc{};
+      auto next_node_end = std::min(sequence_index + i, this->sequence.size());
+      auto character_rank = this->get_character_rank(next_node_end);
+      cc[character_rank] = node_count;
+
+      if (include_sub_node) {
+        thread_vec.emplace_back(std::move(label), node_count, std::move(cc));
+      }
+
+      include_node = include_sub_node;
+    }
+
+    if (include_node) {
+      // If we added nodes, add the correct counts to the last one.
+      std::get<2>(thread_vec.back()) = std::move(child_counts);
+    }
+
+    return include_node;
+  }
+
+  std::string get_label(size_t sequence_index, size_t lcp, size_t edge_lcp) {
+    auto node_start = sequence_index - lcp;
+    auto node_end = std::min(sequence_index + edge_lcp, this->sequence.size());
+
+    lst::details::sequence_t<alphabet_t> label_dna(
+        this->sequence.begin() + node_start, this->sequence.begin() + node_end);
+
+    std::string label =
+        label_dna | seqan3::views::to_char | seqan3::views::to<std::string>;
+
+    return label;
+  }
+
+  void merge_tree_callback(std::shared_mutex &counts_mutex) {
+    {
+      std::unique_lock lock{counts_mutex};
+      for (auto &[label, node_count, _cc] : thread_vec) {
+        this->counts[label] = {node_count, {}, true};
+      }
+    }
+
+    for (auto &[label, _nc, child_counts] : thread_vec) {
+      size_t child_sum =
+          std::accumulate(child_counts.begin(), child_counts.end() - 1, 0);
+      if (child_sum == 0) {
+        std::shared_lock count_lock{counts_mutex};
+        this->assign_node_probabilities(label);
+      } else {
+        this->assign_node_probabilities(label, child_counts, counts_mutex);
+      }
+    }
+  }
+
   /**! \brief Builds the tree top-down.
    * \details
    * The lazy suffix tree is iterated in a breadth-first fashion and the nodes
@@ -533,83 +611,18 @@ public:
    * Also saves the count of the node as well as if it is included or excluded.
    */
   void build_tree() {
-    std::shared_mutex counts_mutex{};
     // Reset main thread.
     thread_vec = vec_t<alphabet_t>{};
+    std::shared_mutex counts_mutex{};
 
-    this->breadth_first_iteration_table_less(
-        [&](size_t sequence_index, size_t lcp, size_t edge_lcp,
-            size_t node_count,
-            lst::details::alphabet_array<size_t, alphabet_t> &child_counts,
-            bool is_leaf) -> bool {
-          if (is_leaf && edge_lcp == 1) {
-            return false;
-          }
+    using namespace std::placeholders;
+    auto build_callback = [&](auto &&...args) -> bool {
+      return this->build_tree_callback(args...);
+    };
 
-          if (edge_lcp == 0) {
-            return true;
-          }
+    auto merge_callback = [&]() { merge_tree_callback(counts_mutex); };
 
-          bool include_node = true;
-
-          for (size_t i = 1; i <= edge_lcp && include_node; i++) {
-
-            bool include_sub_node =
-                this->include_node(sequence_index, lcp, i, node_count);
-
-            auto node_start = sequence_index - lcp;
-            auto node_end = std::min(sequence_index + i, this->sequence.size());
-
-            lst::details::sequence_t<alphabet_t> label_dna(
-                this->sequence.begin() + node_start,
-                this->sequence.begin() + node_end);
-
-            std::string label = label_dna | seqan3::views::to_char |
-                                seqan3::views::to<std::string>;
-
-            // If we're expanding the node, the child counts will be the count
-            // of this node, but at the next character
-            lst::details::alphabet_array<size_t, alphabet_t> cc{};
-            auto next_node_end =
-                std::min(sequence_index + i, this->sequence.size());
-            auto character_rank = this->get_character_rank(next_node_end);
-            cc[character_rank] = node_count;
-
-            if (include_sub_node) {
-              thread_vec.emplace_back(std::move(label), node_count,
-                                      std::move(cc));
-            }
-
-            include_node = include_sub_node;
-          }
-
-          if (include_node) {
-            // If we added nodes, add the correct counts to the last one.
-            std::get<2>(thread_vec.back()) = std::move(child_counts);
-          }
-
-          return include_node;
-        },
-        [&]() {
-          {
-            std::unique_lock lock{counts_mutex};
-            for (auto &[label, node_count, _cc] : thread_vec) {
-              this->counts[label] = {node_count, {}};
-            }
-          }
-
-          for (auto &[label, _nc, child_counts] : thread_vec) {
-            size_t child_sum = std::accumulate(child_counts.begin(),
-                                               child_counts.end() - 1, 0);
-            if (child_sum == 0) {
-              std::shared_lock count_lock{counts_mutex};
-              this->assign_node_probabilities(label);
-            } else {
-              this->assign_node_probabilities(label, child_counts,
-                                              counts_mutex);
-            }
-          }
-        });
+    this->breadth_first_iteration_table_less(build_callback, merge_callback);
     this->assign_node_probabilities("");
   }
 
@@ -659,15 +672,17 @@ public:
       const std::string &label,
       lst::details::alphabet_array<size_t, alphabet_t> &child_counts,
       std::shared_mutex &counts_mutex) {
+
     double child_sum = 0.0;
     for (auto char_rank : this->valid_characters) {
-      child_counts[char_rank] += 1;
       child_sum += child_counts[char_rank];
     }
+    child_sum += 4
 
-    std::shared_lock lock{counts_mutex};
-    for (size_t i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
-      std::get<1>(this->counts[label])[i] = double(child_counts[i]) / child_sum;
+        std::shared_lock lock{counts_mutex};
+    for (auto char_rank : this->valid_characters) {
+      std::get<1>(this->counts[label])[char_rank] =
+          double(child_counts[char_rank] + 1) / child_sum;
     }
   }
 
@@ -716,7 +731,7 @@ public:
         queue.pop();
         continue;
       }
-      this->counts.erase(node_label);
+      std::get<2>(this->counts[node_label]) = false;
 
       const std::string parent_label = this->get_pst_parent(node_label);
 
@@ -789,7 +804,7 @@ public:
   get_prob_estimated_child_counts(const std::string &label) {
     std::array<size_t, seqan3::alphabet_size<alphabet_t>> child_counts{};
 
-    auto [count, probs] = this->counts[label];
+    auto &[count, probs, included] = this->counts[label];
     size_t count_with_pseudo = count + 4;
     for (auto char_rank : this->valid_characters) {
       child_counts[char_rank] =
@@ -808,6 +823,10 @@ public:
    * \return If all children are missing.
    */
   bool is_pst_leaf(const std::string &node_label) {
+    if (this->is_excluded(node_label)) {
+      return false;
+    }
+
     std::string child_label{' ' + node_label};
 
     for (auto char_rank : this->valid_characters) {
@@ -866,11 +885,13 @@ public:
   }
 
   bool is_included(const std::string &label) {
-    return this->counts.find(label) != this->counts.end();
+    return this->counts.find(label) != this->counts.end() &&
+           std::get<2>(this->counts[label]);
   }
 
   bool is_excluded(const std::string &label) {
-    return this->counts.find(label) == this->counts.end();
+    return this->counts.find(label) == this->counts.end() ||
+           !std::get<2>(this->counts[label]);
   }
 
   /**! \brief Append string for a node to the output stream.
@@ -1132,7 +1153,7 @@ public:
 
       } else if (prev_word == "]" && !found_count) {
         node_count = std::stoi(word);
-        this->counts[node_label] = {node_count, {}};
+        this->counts[node_label] = {node_count, {}, true};
         found_count = true;
 
       } else if (found_count && !found_probs) {

@@ -62,35 +62,15 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
   return arguments;
 }
 
-std::vector<size_t>
-histogram_counts(pst::KullbackLieblerTreeMap<seqan3::dna5> &tree,
-                 int n_bins = 100) {
-  size_t min = (size_t)-1;
-  size_t max = 0;
-  for (auto &[context, v] : tree.counts) {
-    auto &[count, _p] = v;
-    max = std::max(count, max);
-    min = std::min(count, min);
-  }
-  max++;
-
-  std::vector<size_t> bins(n_bins);
-
-  for (auto &[context, v] : tree.counts) {
-    auto &[count, _p] = v;
-    int bin_idx = (double(count - min) / double(max - min)) * n_bins;
-    bins[bin_idx]++;
-  }
-
-  return bins;
-}
-
 size_t percentile_frequency(pst::KullbackLieblerTreeMap<seqan3::dna5> &tree,
                             float percentile) {
   std::vector<size_t> counts(tree.counts.size());
   int idx = 0;
   for (auto &[_c, v] : tree.counts) {
-    auto &[count, _p] = v;
+    auto &[count, _p, included] = v;
+    if (included) {
+      continue;
+    }
     counts[idx] = count;
     idx++;
   }

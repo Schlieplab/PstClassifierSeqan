@@ -395,8 +395,8 @@ public:
     if (node_index == 0) {
       return this->sequence.size();
     }
-
     auto c = this->entries[node_index / 2].count;
+
     if (c == max_size) {
       c = this->node_occurrences(node_index);
       this->entries[node_index / 2].count = c;
@@ -443,6 +443,43 @@ public:
 protected:
   friend class ProbabilisticSuffixTreeTest;
 
+  bool build_tree_callback(
+      std::shared_mutex &entries_reallocate_mutex, size_t node_index,
+      size_t lcp, size_t &edge_lcp, size_t count,
+      lst::details::alphabet_array<size_t, alphabet_t> &child_counts) {
+    if (this->is_leaf(node_index) && lcp <= this->max_depth) {
+      std::lock_guard lock{this->table.mutex};
+      expand_implicit_nodes(node_index, lcp, edge_lcp);
+      // After adding implicit nodes, we may have to expand the entries
+    }
+
+    // If we reach the capacity of the entries vector, we will
+    // reallocate it. This can lead to a race condition when a
+    // different thread tries to set a value.  Therefore, we lock
+    // changes to entries here.
+    auto new_table_size = this->table.capacity() / 2;
+    if (this->entries.capacity() < new_table_size) {
+      std::unique_lock entries_reallocate_lock{entries_reallocate_mutex};
+      this->resize_entries();
+    }
+
+    std::shared_lock lock{entries_reallocate_mutex};
+
+    if (count == max_size) {
+      count = get_counts(node_index);
+    }
+
+    size_t child_count_sum =
+        std::accumulate(child_counts.begin(), child_counts.end() - 1, 0);
+    if (child_count_sum == 0) {
+      this->assign_node_probabilities(node_index);
+    } else {
+      this->assign_node_probabilities(node_index, child_counts);
+    }
+
+    return this->check_node(node_index, lcp, edge_lcp, count);
+  }
+
   /**! \brief Builds the tree top-down.
    * \details
    * The lazy suffix tree is iterated in a breadth-first fashion and the nodes
@@ -458,40 +495,8 @@ protected:
 
     this->breadth_first_iteration(
         0, 0, true,
-        [&](size_t node_index, size_t lcp, size_t &edge_lcp, size_t count,
-            lst::details::alphabet_array<size_t, alphabet_t> &child_counts)
-            -> bool {
-          if (this->is_leaf(node_index) && lcp <= this->max_depth) {
-            std::lock_guard lock{this->table.mutex};
-            expand_implicit_nodes(node_index, lcp, edge_lcp);
-            // After adding implicit nodes, we may have to expand the entries
-          }
-
-          // If we reach the capacity of the entries vector, we will
-          // reallocate it. This can lead to a race condition when a
-          // different thread tries to set a value.  Therefore, we lock
-          // changes to entries here.
-          auto new_table_size = this->table.capacity() / 2;
-          if (this->entries.capacity() < new_table_size) {
-            std::unique_lock entries_reallocate_lock{entries_reallocate_mutex};
-            this->resize_entries();
-          }
-
-          std::shared_lock lock{entries_reallocate_mutex};
-
-          if (count == max_size) {
-            count = get_counts(node_index);
-          }
-
-          size_t child_count_sum =
-              std::accumulate(child_counts.begin(), child_counts.end() - 1, 0);
-          if (child_count_sum == 0) {
-            this->assign_node_probabilities(node_index);
-          } else {
-            this->assign_node_probabilities(node_index, child_counts);
-          }
-
-          return this->check_node(node_index, lcp, edge_lcp, count);
+        [&](auto &&...args) -> bool {
+          return this->build_tree_callback(entries_reallocate_mutex, args...);
         },
         []() {},
         [&](size_t node_index, size_t lcp, size_t &edge_lcp) {

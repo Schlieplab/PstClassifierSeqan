@@ -8,10 +8,10 @@
 namespace pst::distances {
 
 std::string get_background_state(std::string &state, size_t background_order) {
-  size_t background = state.size() - background_order;
-  if (background <= 0) {
+  if (state.size() <= background_order) {
     return state;
   } else {
+    size_t background = state.size() - background_order;
     return state.substr(background);
   }
 }
@@ -58,8 +58,8 @@ inline Eigen::VectorXd composition_vector_state_probability_scaled(
   for (auto &context : contexts) {
     auto state = tree.get_closest_state(context);
 
-    float state_probability =
-        float(tree.counts[state]) / float(tree.counts[""]);
+    float state_probability = float(std::get<0>(tree.counts[state])) /
+                              float(std::get<0>(tree.counts[""]));
 
     const auto background_state = get_background_state(state, background_order);
 

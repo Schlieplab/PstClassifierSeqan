@@ -161,13 +161,18 @@ protected:
       double delta = calculate_delta(node_label, remove_mutex);
 
       if (delta < this->cutoff_value) {
-
-        std::unique_lock lock{remove_mutex};
-        this->counts.erase(node_label);
+        if (node_label.size() < this->parallel_depth) {
+          // These are the only cases with conflicts
+          remove_mutex.lock();
+        }
+        std::get<2>(this->counts[node_label]) = false;
 
         auto parent_label = this->get_pst_parent(node_label);
         if (this->is_pst_leaf(parent_label)) {
           queue.push(std::move(parent_label));
+        }
+        if (node_label.size() < this->parallel_depth) {
+          remove_mutex.unlock();
         }
       }
       queue.pop();
@@ -189,9 +194,11 @@ protected:
     }
 
     const std::string parent_label = this->get_pst_parent(node_label);
-    std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>>
+    std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>,
+               bool>
         node_counts{};
-    std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>>
+    std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>,
+               bool>
         parent_counts{};
     {
       std::shared_lock lock{remove_mutex};
@@ -222,10 +229,10 @@ protected:
   }
 
   double calculate_delta(
-      std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>>
-          &node_counts,
-      std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>>
-          &parent_counts) {
+      std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>,
+                 bool> &node_counts,
+      std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>,
+                 bool> &parent_counts) {
     double delta = 0.0;
     for (auto char_rank : this->valid_characters) {
       double prob, parent_prob;
