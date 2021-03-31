@@ -106,8 +106,6 @@ void breadth_first_iteration_table_less_(
   while (!queue.empty()) {
     auto [lower, upper, lcp] = queue.front();
     queue.pop();
-    if (lower == 0 && upper == suffixes.size()) {
-    }
 
     if (upper == (size_t)-1) {
       alphabet_array<size_t, alphabet_t> no_counts{};
@@ -174,6 +172,74 @@ void breadth_first_iteration_table_less(
     const std::function<void()> &done) {
   breadth_first_iteration_table_less_<alphabet_t>(
       0, suffixes.size(), 0, 0, parallel_depth, sequence, suffixes, f, done);
+}
+
+/**
+ * Iterates over the tree in a breadth-first fashion without constructing the
+ * tree, but starts with an root-expanded tree.
+ *
+ * \tparam alphabet_t seqan3::alphabet type
+ * \param start_lower_bound lower bound of unevaluated node
+ * \param start_upper_bound upper bound of unevaluated node
+ * \param start_lcp Longest common prefix of the node.
+ * \param start_level Depth in tree.
+ * \param parallel_depth Depth to spawn threads to.
+ * \param sequence Sequence the tree is built over.
+ * \param suffixes Suffix vector of the tree.
+ * \param table Table vector of the tree.
+ * \param f Callback for the visited nodes.
+ * \param done Callback to signal that there are no more nodes to iterate.
+ */
+template <seqan3::alphabet alphabet_t>
+void breadth_first_iteration_table_less(
+    int parallel_depth, const Table<> &table,
+    const sequence_t<alphabet_t> &sequence, std::vector<size_t> &suffixes,
+    const std::function<bool(size_t, size_t, size_t, size_t,
+                             alphabet_array<size_t, alphabet_t> &, bool)> &f,
+    const std::function<void()> &done) {
+  if (parallel_depth > 0) {
+    std::vector<std::thread> threads{};
+    iterate_children(0, table, [&](size_t index) {
+      size_t lower_bound, upper_bound;
+
+      if (is_unevaluated(index, table)) {
+        lower_bound = table[index].value;
+        upper_bound = table[index + 1].value;
+      } else if (is_leaf(index, table)) {
+        lower_bound = table[index].value;
+        upper_bound = (size_t)-1;
+      }
+
+      threads.emplace_back(breadth_first_iteration_table_less_<alphabet_t>,
+                           lower_bound, upper_bound, 0, 1, parallel_depth,
+                           std::ref(sequence), std::ref(suffixes), f, done);
+    });
+
+    for (auto &thread : threads) {
+      if (thread.joinable()) {
+        thread.join();
+      }
+    }
+
+  } else {
+    iterate_children(0, table, [&](size_t index) {
+      size_t lower_bound, upper_bound;
+
+      if (is_unevaluated(index, table)) {
+        lower_bound = table[index].value;
+        upper_bound = table[index + 1].value;
+      } else if (is_leaf(index, table)) {
+        lower_bound = table[index].value;
+        upper_bound = -1;
+      }
+
+      breadth_first_iteration_table_less_<alphabet_t>(
+          lower_bound, upper_bound, 0, 1, parallel_depth, sequence, suffixes, f,
+          []() {});
+    });
+  }
+
+  done();
 }
 
 /**

@@ -67,9 +67,14 @@ template <class size_t = size_t, class flag_t = Flag> struct Table {
     return *this;
   }
 
+  void push_back(Entry<> entry) { table.push_back(entry); }
+
+  void push_back(Entry<> &entry) { table.push_back(entry); }
+
   Entry<> &operator[](size_type pos) { return table[pos]; }
 
   Entry<> operator[](size_type pos) const { return table[pos]; }
+
   size_type size() const { return table.size(); }
   size_type capacity() const { return table.capacity(); }
 };
@@ -88,15 +93,15 @@ bool is_rightmostchild(size_t node_index, const Table<> &table) {
 }
 
 void add_branching_node(size_t index, size_t count, Table<> &table) {
-  table.table.push_back({index, Flag::UNEVALUATED});
-  table.table.push_back({index + count, Flag::NONE});
+  table.push_back({index, Flag::UNEVALUATED});
+  table.push_back({index + count, Flag::NONE});
 }
 
 void add_leaf(size_t index, Table<> &table,
               const std::vector<size_t> &suffixes) {
-  table.table.push_back({suffixes[index], Flag::LEAF});
+  table.push_back({suffixes[index], Flag::LEAF});
   // Add extra index for leaves to allow for explicit nodes.
-  table.table.push_back({0, Flag::NONE});
+  table.push_back({0, Flag::NONE});
 }
 
 template <seqan3::alphabet alphabet_t>
@@ -436,8 +441,8 @@ void add_implicit_nodes(size_t node_index, size_t edge_lcp, Table<> &table) {
 
   auto start = table[node_index].value;
   for (auto i = start + 1; i < start + edge_lcp; i++) {
-    table.table.push_back({i, Flag::RIGHT_MOST_CHILD});
-    table.table.push_back({table.size() + 1, Flag::NONE});
+    table.push_back({i, Flag::RIGHT_MOST_CHILD});
+    table.push_back({table.size() + 1, Flag::NONE});
   }
 
   if (is_leaf(node_index, table)) {

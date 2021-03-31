@@ -241,7 +241,7 @@ public:
                lst::details::alphabet_array<size_t, alphabet_t> &, bool)> &f,
       const std::function<void()> &done) {
     lst::details::breadth_first_iteration_table_less(
-        this->parallel_depth, sequence, suffixes, f, done);
+        this->parallel_depth, this->table, this->sequence, this->suffixes, f, done);
   }
 
   /**! \brief Expands implicit nodes in the tree.
