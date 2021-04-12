@@ -12,6 +12,11 @@
 
 using seqan3::operator""_dna5;
 
+using counts_map = robin_hood::unordered_map<
+    std::string,
+    std::tuple<size_t, std::array<double, seqan3::alphabet_size<seqan3::dna5>>,
+               bool>>;
+
 class KLTreeixture : public benchmark::Fixture {
 public:
   void SetUp(const ::benchmark::State &state) override {
@@ -35,12 +40,12 @@ BENCHMARK_F(KLTreeixture, MapSimilarityPruning)(benchmark::State &state) {
   pst::KullbackLieblerTreeMap tree{"test", sequence, 15,    10, 1.2,
                                    0,      "cutoff", false, 0};
   tree.support_pruning();
-  robin_hood::unordered_set<std::string> status{tree.status};
+  counts_map counts{tree.counts};
 
   for (auto _ : state) {
     state.PauseTiming();
-    robin_hood::unordered_set<std::string> status_copy{status};
-    tree.status = status_copy;
+    counts_map counts_copy{counts};
+    tree.counts = counts;
 
     state.ResumeTiming();
 
@@ -64,12 +69,12 @@ BENCHMARK_F(KLTreeixture, MapSimilarityPruningParallel)
   pst::KullbackLieblerTreeMap tree{"test", sequence, 15,   10, 1.2,
                                    0,      "cutoff", true, 2};
   tree.support_pruning();
-  robin_hood::unordered_set<std::string> status{tree.status};
+  counts_map counts{tree.counts};
 
   for (auto _ : state) {
     state.PauseTiming();
-    robin_hood::unordered_set<std::string> status_copy{status};
-    tree.status = status_copy;
+    counts_map counts_copy{counts};
+    tree.counts = counts;
     state.ResumeTiming();
 
     tree.similarity_pruning();
