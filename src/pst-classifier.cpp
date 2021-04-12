@@ -20,7 +20,7 @@ using seqan3::operator""_dna5;
 struct input_arguments {
   size_t max_depth{15};
   size_t min_count{100};
-  float threshold{1.2};
+  float threshold{3.9075};
   size_t number_of_parameters{192};
   std::string algorithm_method{"hashmap"};
   std::string pruning_method{"cutoff"};
