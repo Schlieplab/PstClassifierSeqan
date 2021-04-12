@@ -147,8 +147,8 @@ void add_explicit_suffix_links(const sequence_t<alphabet_t> &sequence,
                                const Table<> &table,
                                std::vector<size_t> &suffix_links,
                                bool multi_core, int parallel_depth) {
-
-  std::vector<std::tuple<size_t, size_t>> cause(suffixes.size());
+  std::vector<std::tuple<size_t, unsigned short>> cause(suffixes.size(),
+                                                        {-1, -1});
 
   if (multi_core) {
     prepare_suffix_links(0, 0, cause, sequence, suffixes, table,
@@ -188,11 +188,13 @@ void add_explicit_suffix_links(const sequence_t<alphabet_t> &sequence,
  * \return The smallest index of the node.
  */
 template <seqan3::alphabet alphabet_t>
-size_t prepare_suffix_links(size_t node_index, size_t lcp,
-                            std::vector<std::tuple<size_t, size_t>> &cause,
-                            const sequence_t<alphabet_t> &sequence,
-                            const std::vector<size_t> &suffixes,
-                            const Table<> &table, int parallel_depth) {
+size_t
+prepare_suffix_links(size_t node_index, size_t lcp,
+                     std::vector<std::tuple<size_t, unsigned short>> &cause,
+                     const sequence_t<alphabet_t> &sequence,
+                     const std::vector<size_t> &suffixes, const Table<> &table,
+                     int parallel_depth) {
+
   if (is_leaf(node_index, table) || is_unevaluated(node_index, table)) {
     return get_leaf_index(node_index, lcp, suffixes, table);
   } else {
@@ -259,13 +261,15 @@ size_t prepare_suffix_links(size_t node_index, size_t lcp,
  * \param[in] branch Contains the branching node at each depth.
  * \param[out] suffix_links The suffix link for each node.
  */
-void assign_link(size_t leaf_index,
-                 const std::vector<std::tuple<size_t, size_t>> &cause,
-                 const std::vector<size_t> &branch,
-                 std::vector<size_t> &suffix_links) {
-  auto [caused, depth] = cause[leaf_index];
+inline void
+assign_link(size_t leaf_index,
+            const std::vector<std::tuple<size_t, unsigned short>> &cause,
+            const std::vector<size_t> &branch,
+            std::vector<size_t> &suffix_links) {
+  auto &[caused, depth] = cause[leaf_index];
 
-  if (caused != (size_t)-1 && depth != (size_t)-1) {
+  if (caused != std::numeric_limits<size_t>::max() &&
+      depth != std::numeric_limits<unsigned short>::max()) {
     suffix_links[caused] = branch[depth - 1];
   }
 }
@@ -290,12 +294,11 @@ void assign_leaf_link(size_t node_index, size_t leaf_index,
  * \param[out] suffix_links The suffix link for each node.
  */
 template <seqan3::alphabet alphabet_t>
-void compute_suffix_links(std::vector<std::tuple<size_t, size_t>> &cause,
-                          std::vector<size_t> &branch,
-                          const sequence_t<alphabet_t> &sequence,
-                          const std::vector<size_t> &suffixes,
-                          const Table<> &table,
-                          std::vector<size_t> &suffix_links) {
+void compute_suffix_links(
+    std::vector<std::tuple<size_t, unsigned short>> &cause,
+    std::vector<size_t> &branch, const sequence_t<alphabet_t> &sequence,
+    const std::vector<size_t> &suffixes, const Table<> &table,
+    std::vector<size_t> &suffix_links) {
 
   std::stack<std::tuple<size_t, size_t>> stack{};
   stack.emplace(0, 0);
@@ -331,7 +334,7 @@ void compute_suffix_links(std::vector<std::tuple<size_t, size_t>> &cause,
 template <seqan3::alphabet alphabet_t>
 void compute_suffix_links_parallel(
     size_t node_index, size_t lcp, size_t depth,
-    const std::vector<std::tuple<size_t, size_t>> &cause,
+    const std::vector<std::tuple<size_t, unsigned short>> &cause,
     std::vector<size_t> &branch, const sequence_t<alphabet_t> &sequence,
     const std::vector<size_t> &suffixes, const Table<> &table,
     std::vector<size_t> &suffix_links, int parallel_depth) {
@@ -381,7 +384,7 @@ void compute_suffix_links_parallel(
 template <seqan3::alphabet alphabet_t>
 size_t compute_single_suffix_link(
     size_t node_index, size_t lcp,
-    const std::vector<std::tuple<size_t, size_t>> &cause,
+    const std::vector<std::tuple<size_t, unsigned short>> &cause,
     std::vector<size_t> &branch, const sequence_t<alphabet_t> &sequence,
     const std::vector<size_t> &suffixes, const Table<> &table,
     std::vector<size_t> &suffix_links) {
@@ -396,12 +399,10 @@ size_t compute_single_suffix_link(
     return 0;
   } else if (is_unevaluated(node_index, table)) {
     branch[height] = node_index;
-    std::fill(branch.begin() + height + 1, branch.end(), -1);
 
-    for (auto i = table[node_index].first; i < table[node_index].second; i++) {
-      auto leaf_index = suffixes[i] - lcp;
-      assign_link(leaf_index, cause, branch, suffix_links);
-    }
+    // For a correct, general, lazy suffix tree.
+    //    deal_with_implicit_nodes(node_index, lcp, cause, branch, sequence,
+    //    suffixes, table, suffix_links);
   } else {
     auto n_children = get_number_of_children(node_index, table);
     // If the node only has one child it is an implicit node
@@ -412,6 +413,19 @@ size_t compute_single_suffix_link(
   }
 
   return height;
+}
+
+template <seqan3::alphabet alphabet_t>
+void deal_with_implicit_nodes(
+    size_t node_index, size_t lcp,
+    const std::vector<std::tuple<size_t, unsigned short>> &cause,
+    std::vector<size_t> &branch, const sequence_t<alphabet_t> &sequence,
+    const std::vector<size_t> &suffixes, const Table<> &table,
+    std::vector<size_t> &suffix_links) {
+  for (auto i = table[node_index].first; i < table[node_index].second; i++) {
+    auto leaf_index = suffixes[i] - lcp;
+    assign_link(leaf_index, cause, branch, suffix_links);
+  }
 }
 
 /**! \brief For each node in the tree, computes which node caused that node.
