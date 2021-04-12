@@ -187,7 +187,9 @@ public:
         });
   }
 
-  void debug_print_node(const std::string &node_label) {
+  virtual void debug_print_node(const std::string &node_label) {
+    std::cout << node_label << " ";
+
     std::cout << "\tDelta: " << this->calculate_delta(node_label);
 
     std::cout << "\tPST Leaf: " << this->is_pst_leaf(node_label);
