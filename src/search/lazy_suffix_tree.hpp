@@ -423,8 +423,7 @@ public:
 
   lst::details::sequence_t<alphabet_t> sequence;
   std::vector<size_t> suffixes{};
-  lst::details::Table<> table{{0, lst::details::Flag::RIGHT_MOST_CHILD},
-                              {2, lst::details::Flag::NONE}};
+  lst::details::Table<> table{{0, 1, lst::details::Flag::RIGHT_MOST_CHILD}};
   std::vector<size_t> suffix_links{};
   std::vector<lst::details::alphabet_array<size_t, alphabet_t>>
       reverse_suffix_links{};
