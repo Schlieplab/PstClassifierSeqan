@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.4...3.12)
+cmake_minimum_required(VERSION 3.4...3.12)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -23,14 +23,13 @@ add_library(vlmc SHARED vlmc.cpp)
 target_link_libraries(vlmc seqan3::seqan3)
 target_link_libraries(vlmc Threads::Threads)
 
-
 add_executable(pst-batch-training batch-training.cpp)
 target_link_libraries(pst-batch-training seqan3::seqan3)
 target_link_libraries(pst-batch-training Threads::Threads)
 target_link_libraries(pst-batch-training HighFive)
 
-add_executable (pst-score-sequences score-sequences.cpp)
-target_link_libraries (pst-score-sequences seqan3::seqan3)
+add_executable(pst-score-sequences score-sequences.cpp)
+target_link_libraries(pst-score-sequences seqan3::seqan3)
 target_link_libraries(pst-score-sequences Threads::Threads)
 target_link_libraries(pst-score-sequences HighFive)
 
