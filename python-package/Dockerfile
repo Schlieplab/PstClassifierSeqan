@@ -1,3 +1,18 @@
+FROM python:3.9-buster as python39
+
+COPY src /PstClassifierSeqan/src
+COPY seqan3 /PstClassifierSeqan/seqan3
+COPY robin-hood-hashing /PstClassifierSeqan/robin-hood-hashing
+COPY HighFive /PstClassifierSeqan/HighFive
+COPY eigen /PstClassifierSeqan/eigen
+COPY python-package/ /PstClassifierSeqan/python-package/
+COPY python-package/libvlmc /PstClassifierSeqan/python-package/libvlmc
+COPY python-package/setup.py /PstClassifierSeqan/python-package/setup.py
+COPY python-package/CMakeLists.txt /PstClassifierSeqan/python-package/CMakeLists.txt
+COPY python-package/dev-requirements.txt /PstClassifierSeqan/python-package/dev-requirements.txt
+
+RUN apt-get update -y && apt-get install -y cmake ninja-build
+
 FROM python:3.8-buster as python38
 
 COPY src /PstClassifierSeqan/src
@@ -11,7 +26,7 @@ COPY python-package/setup.py /PstClassifierSeqan/python-package/setup.py
 COPY python-package/CMakeLists.txt /PstClassifierSeqan/python-package/CMakeLists.txt
 COPY python-package/dev-requirements.txt /PstClassifierSeqan/python-package/dev-requirements.txt
 
-RUN apt-get update -y && apt-get install -y cmake ninja-build libtbb-dev
+RUN apt-get update -y && apt-get install -y cmake ninja-build
 
 WORKDIR /PstClassifierSeqan/python-package/
 
@@ -30,7 +45,7 @@ COPY python-package/setup.py /PstClassifierSeqan/python-package/setup.py
 COPY python-package/CMakeLists.txt /PstClassifierSeqan/python-package/CMakeLists.txt
 COPY python-package/dev-requirements.txt /PstClassifierSeqan/python-package/dev-requirements.txt
 
-RUN apt-get update -y && apt-get install -y cmake ninja-build libtbb-dev
+RUN apt-get update -y && apt-get install -y cmake ninja-build
 
 WORKDIR /PstClassifierSeqan/python-package/
 
@@ -49,7 +64,7 @@ COPY python-package/libvlmc /PstClassifierSeqan/python-package/libvlmc
 COPY python-package/setup.py /PstClassifierSeqan/python-package/setup.py
 COPY python-package/CMakeLists.txt /PstClassifierSeqan/python-package/CMakeLists.txt
 COPY python-package/dev-requirements.txt /PstClassifierSeqan/python-package/dev-requirements.txt
-RUN apt-get update -y && apt-get install -y cmake ninja-build libtbb-dev
+RUN apt-get update -y && apt-get install -y cmake ninja-build
 
 WORKDIR /PstClassifierSeqan/python-package/
 
@@ -60,6 +75,7 @@ FROM python:3.8-buster
 
 WORKDIR /artifacts/dist/
 
+COPY --from=python39 /PstClassifierSeqan/python-package/dist/libvlmc-0.2-cp39-cp39-linux_x86_64.whl /artifacts/dist/
 COPY --from=python38 /PstClassifierSeqan/python-package/dist/libvlmc-0.2-cp38-cp38-linux_x86_64.whl /artifacts/dist/
 COPY --from=python37 /PstClassifierSeqan/python-package/dist/libvlmc-0.2-cp37-cp37m-linux_x86_64.whl /artifacts/dist/
 COPY --from=python36 /PstClassifierSeqan/python-package/dist/libvlmc-0.2-cp36-cp36m-linux_x86_64.whl /artifacts/dist/
