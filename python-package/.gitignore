@@ -4,3 +4,5 @@ _skbuild/
 __pycache__
 *.pyc
 *.so
+*.whl
+*.egg
