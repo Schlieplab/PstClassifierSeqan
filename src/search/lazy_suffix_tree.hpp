@@ -241,7 +241,8 @@ public:
                lst::details::alphabet_array<size_t, alphabet_t> &, bool)> &f,
       const std::function<void()> &done) {
     lst::details::breadth_first_iteration_table_less(
-        this->parallel_depth, this->table, this->sequence, this->suffixes, f, done);
+        this->parallel_depth, this->table, this->sequence, this->suffixes, f,
+        done);
   }
 
   /**! \brief Expands implicit nodes in the tree.
@@ -346,8 +347,7 @@ public:
           auto character_rank = this->get_character_rank(node_start);
 
           if (reverse_suffix_links[suffix_parent][character_rank] == -1) {
-            reverse_suffix_links[suffix_parent][character_rank] =
-                node_index;
+            reverse_suffix_links[suffix_parent][character_rank] = node_index;
           }
           return true;
         });
