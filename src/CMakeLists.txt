@@ -27,12 +27,18 @@ add_executable(pst-batch-training batch-training.cpp)
 target_link_libraries(pst-batch-training seqan3::seqan3)
 target_link_libraries(pst-batch-training Threads::Threads)
 target_link_libraries(pst-batch-training HighFive)
+target_link_libraries(pst-batch-training ${HDF5_LIBRARIES})
 
 add_executable(pst-score-sequences score-sequences.cpp)
 target_link_libraries(pst-score-sequences seqan3::seqan3)
 target_link_libraries(pst-score-sequences Threads::Threads)
 target_link_libraries(pst-score-sequences HighFive)
+target_link_libraries(pst-batch-training ${HDF5_LIBRARIES})
 
 add_executable(bic bic.cpp)
 target_link_libraries(bic seqan3::seqan3)
 target_link_libraries(bic Threads::Threads)
+
+install(TARGETS pst-batch-training DESTINATION bin)
+install(TARGETS pst-classifier DESTINATION bin)
+install(TARGETS pst-score-sequences DESTINATION bin)

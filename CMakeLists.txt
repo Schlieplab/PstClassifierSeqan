@@ -14,6 +14,8 @@ include_directories("${CMAKE_SOURCE_DIR}/robin-hood-hashing/src/include")
 #find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 include_directories("${CMAKE_SOURCE_DIR}/eigen")
 
+find_package(HDF5 REQUIRED COMPONENTS CXX)
+
 set(HIGHFIVE_USE_BOOST OFF)
 set(HIGHFIVE_USE_EIGEN ON)
 set(HIGHFIVE_EXAMPLES FALSE)
