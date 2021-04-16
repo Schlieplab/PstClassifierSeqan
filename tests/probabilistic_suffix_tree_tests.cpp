@@ -12,7 +12,6 @@
 #include <robin_hood.h>
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
-#include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/range/container/bitcompressed_vector.hpp>
 #include <seqan3/range/views/to.hpp>
@@ -210,17 +209,17 @@ TEST_F(ProbabilisticSuffixTreeTest, Print) {
       "TEST", sequence, 10, 1, 192, "parameters", false};
   pst_unpruned.construct_tree();
   pst_unpruned.print();
-  seqan3::debug_stream << std::endl;
+  std::cout << std::endl;
 
   probabilisticSuffixTree.print();
-  seqan3::debug_stream << std::endl;
+  std::cout << std::endl;
 
   auto pst_pruned = pst::KullbackLieblerTree<seqan3::dna4>{
       "TEST", sequence, 3, 2, 1.2, 0, "threshold", false, 2};
   pst_pruned.construct_tree();
 
   pst_pruned.print();
-  seqan3::debug_stream << std::endl;
+  std::cout << std::endl;
 }
 
 TEST_F(ProbabilisticSuffixTreeTest, MemoryAllocationException) {

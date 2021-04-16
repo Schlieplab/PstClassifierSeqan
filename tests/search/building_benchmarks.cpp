@@ -44,7 +44,7 @@ BENCHMARK_F(LSTFixture, ExpandRoot)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, ExpandNodeLevel1)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  auto first_level_child = tree.table[1].value;
+  auto first_level_child = tree.table[0].second;
 
   for (auto _ : state) {
     state.PauseTiming();
@@ -62,7 +62,7 @@ BENCHMARK_F(LSTFixture, ExpandNodeLevel1)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, ExpandNodeLevel2)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  auto first_level_child = tree.table[1].value;
+  auto first_level_child = tree.table[0].second;
 
   lst::details::expand_node(first_level_child, tree.sequence, tree.suffixes,
                             tree.table);
@@ -84,7 +84,7 @@ BENCHMARK_F(LSTFixture, ExpandNodeLevel2)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, ExpandNodeLevel3)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  auto first_level_child = tree.table[1].value;
+  auto first_level_child = tree.table[0].second;
 
   lst::details::expand_node(first_level_child, tree.sequence, tree.suffixes,
                             tree.table);
@@ -109,7 +109,7 @@ BENCHMARK_F(LSTFixture, ExpandNodeLevel3)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, LongestCommonPrefix)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  auto first_level_child = tree.table[1].value;
+  auto first_level_child = tree.table[0].second;
   auto lower_bound = tree.table[first_level_child].value;
   auto upper_bound = tree.table[first_level_child + 1].value;
 
@@ -121,7 +121,7 @@ BENCHMARK_F(LSTFixture, LongestCommonPrefix)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, AddLCPToSuffixes)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  auto first_level_child = tree.table[1].value;
+  auto first_level_child = tree.table[0].second;
   auto lower_bound = tree.table[first_level_child].value;
   auto upper_bound = tree.table[first_level_child + 1].value;
 
@@ -140,7 +140,7 @@ BENCHMARK_F(LSTFixture, AddLCPToSuffixes)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, CountSuffixes)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  auto first_level_child = tree.table[1].value;
+  auto first_level_child = tree.table[0].second;
 
   auto lower_bound = tree.table[first_level_child].value;
   auto upper_bound = tree.table[first_level_child + 1].value;
@@ -157,7 +157,7 @@ BENCHMARK_F(LSTFixture, CountSuffixes)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, AddLcpAndCountSuffixes)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  auto first_level_child = tree.table[1].value;
+  auto first_level_child = tree.table[0].second;
 
   auto lower_bound = tree.table[first_level_child].value;
   auto upper_bound = tree.table[first_level_child + 1].value;
@@ -174,7 +174,7 @@ BENCHMARK_F(LSTFixture, AddLcpAndCountSuffixes)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, SortSuffixes)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  auto first_level_child = tree.table[1].value;
+  auto first_level_child = tree.table[0].second;
 
   auto lower_bound = tree.table[first_level_child].value;
   auto upper_bound = tree.table[first_level_child + 1].value;
@@ -197,7 +197,7 @@ BENCHMARK_F(LSTFixture, SortSuffixes)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, SuffixPointers)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  auto first_level_child = tree.table[1].value;
+  auto first_level_child = tree.table[0].second;
 
   auto lower_bound = tree.table[first_level_child].value;
   auto upper_bound = tree.table[first_level_child + 1].value;
@@ -217,7 +217,7 @@ BENCHMARK_F(LSTFixture, SuffixPointers)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, CopySuffixes)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  auto first_level_child = tree.table[1].value;
+  auto first_level_child = tree.table[0].second;
 
   auto lower_bound = tree.table[first_level_child].value;
   auto upper_bound = tree.table[first_level_child + 1].value;
@@ -231,7 +231,7 @@ BENCHMARK_F(LSTFixture, CopySuffixes)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, AddChildren)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  auto first_level_child = tree.table[1].value;
+  auto first_level_child = tree.table[0].second;
 
   auto lower_bound = tree.table[first_level_child].value;
   auto upper_bound = tree.table[first_level_child + 1].value;
@@ -263,7 +263,7 @@ BENCHMARK_F(LSTFixture, GetCharacterRank)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, GetEdgeLcpExpanded)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  auto first_level_child = tree.table[1].value;
+  auto first_level_child = tree.table[0].second;
 
   lst::details::expand_node(first_level_child, tree.sequence, tree.suffixes,
                             tree.table);
@@ -276,7 +276,7 @@ BENCHMARK_F(LSTFixture, GetEdgeLcpExpanded)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, GetEdgeLcpNotExpanded)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  auto first_level_child = tree.table[1].value;
+  auto first_level_child = tree.table[0].second;
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(lst::details::get_edge_lcp(
@@ -286,7 +286,7 @@ BENCHMARK_F(LSTFixture, GetEdgeLcpNotExpanded)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, IteratingOverSuffixes)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  auto first_level_child = tree.table[1].value;
+  auto first_level_child = tree.table[0].second;
   auto lower_bound = tree.table[first_level_child].value;
   auto upper_bound = tree.table[first_level_child + 1].value;
 
@@ -299,7 +299,7 @@ BENCHMARK_F(LSTFixture, IteratingOverSuffixes)(benchmark::State &state) {
 
 BENCHMARK_F(LSTFixture, NodeOccurrences)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
-  auto first_level_child = tree.table[1].value;
+  auto first_level_child = tree.table[0].second;
   lst::details::expand_node(first_level_child, tree.sequence, tree.suffixes,
                             tree.table);
 
