@@ -112,9 +112,18 @@ score_sequences_paths(std::vector<tree_t> &trees,
 int main(int argc, char *argv[]) {
   input_arguments arguments = parse_cli_arguments(argc, argv);
 
-  HighFive::File file{arguments.filepath, HighFive::File::ReadOnly};
-  HighFive::File out_file{arguments.outpath,
-                          HighFive::File::ReadWrite | HighFive::File::Create};
+  std::vector<tree_t> trees;
+
+  if (arguments.filepath.extension() == ".h5" ||
+      arguments.filepath.extension() == ".hdf5") {
+
+    HighFive::File file{arguments.filepath, HighFive::File::ReadOnly};
+    trees = get_trees(file);
+  } else if (arguments.filepath.extension() == ".tree") {
+    pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree{arguments.filepath};
+
+    trees = std::vector<tree_t>{tree};
+  }
 
   std::ifstream infile(arguments.sequence_list);
   std::string path;
@@ -123,9 +132,11 @@ int main(int argc, char *argv[]) {
     sequence_list.push_back(path);
   }
 
-  auto trees = get_trees(file);
   auto scores =
       score_sequences_paths(trees, sequence_list, arguments.background_order);
+
+  HighFive::File out_file{arguments.outpath,
+                          HighFive::File::ReadWrite | HighFive::File::Create};
 
   if (!out_file.exist("scores")) {
     std::vector<size_t> dims{scores.size(),

@@ -29,6 +29,7 @@ struct input_arguments {
   std::string id{};
   bool multi_core{false};
   int parallel_depth{1};
+  std::filesystem::path out_path{""};
 };
 
 struct my_traits : seqan3::sequence_file_input_default_traits_dna {
@@ -46,6 +47,11 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
   parser.info.short_description = "Build PST/VLMC on the given fasta file.";
 
   parser.add_positional_option(filename, "path to fasta file.");
+
+  parser.add_option(
+      arguments.out_path, 'o', "out-path",
+      "Name of output file.  The suffix '.tree' will be added if not present. "
+      "Will write to stdout if not specified.");
 
   parser.add_option(arguments.max_depth, 'd', "max-depth",
                     "Max depth of the built probabilistic suffix tree.  "
@@ -155,7 +161,18 @@ int main(int argc, char *argv[]) {
       arguments.min_count, arguments.threshold, arguments.number_of_parameters,
       arguments.pruning_method, arguments.algorithm_method, arguments.estimator,
       arguments.multi_core, arguments.parallel_depth);
-  std::cout << tree << std::endl;
+
+  if (arguments.out_path == "") {
+    std::cout << tree << std::endl;
+  } else {
+    if (!arguments.out_path.has_extension()) {
+      arguments.out_path.replace_extension(".tree");
+    }
+
+    std::ofstream ofs{arguments.out_path, std::ios::out};
+    ofs << tree << std::endl;
+    ofs.close();
+  }
 
   return EXIT_SUCCESS;
 }
