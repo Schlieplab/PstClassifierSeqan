@@ -8,6 +8,13 @@ The similarity pruning proceeds to compute the forward probabilities (probabilit
 
 The output is as a `.tree` file which for, each node, contains the forward and reverse counts of each child as well as the index of the (PST) children of that node.
 
+The algorithms are highly parallel, and at time of implementation, much faster than other current VLMC construction algorithms,
+depending on parameter selection.
+
+## Citation
+
+Publication pending...
+
 ## Usage
 
 Example:
