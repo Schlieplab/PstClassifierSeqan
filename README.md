@@ -1,6 +1,6 @@
 # VLMC construction using a Lazy Suffix Tree
 
-Implements the VLMC(variable length Markov chain) algorithm described by [Schulz et al.](https://doi.org/10.1007/978-3-540-87361-7_26). In short, the VLMC of a sequence _S_ is constructed by building a probabilistic suffix tree (PST) in two phases: support pruning and similarity pruning. This PST has a direct correspondence to the VLMC.
+Implements two VLMC (variable length Markov chain) construction algorithms, based on the ideas by [Schulz et al.](https://doi.org/10.1007/978-3-540-87361-7_26). In short, the VLMC of a sequence _S_ is constructed by building a probabilistic suffix tree (PST) in two phases: support pruning and similarity pruning. This PST has a direct correspondence to the VLMC.
 
 In support pruning, we select only those branches which are at most _d_ deep (_k_-mer is at most _d_ long), and occur at least _c_ times in the sequence. This is implemented in practice using a Lazy Suffix Tree (using the WOTD algorithm described by [Giegerich et al.](https://doi.org/10.1002/spe.535)). The suffix tree is extended with implicit nodes and suffix links. See [search/lazy_suffix_tree.hpp](src/search/lazy_suffix_tree.hpp) and [search/lazy_suffix_tree/](src/search/lazy_suffix_tree/) for the implementation details.
 
@@ -21,7 +21,7 @@ int main() {
     using seqan3::operator""_dna5;
     seqan3::dna5_vector sequence = "GATTACA"_dna5;
 
-    // Parameters: name, sequence, min_count, max_depth, Kullback-leibler threshold, parallel, parallel-depth
+    // Parameters: name, sequence, min_count, max_depth, Kullback-Leibler threshold, parallel, parallel-depth
     pst::KullbackLieblerTreeMap<seqan3::dna5> vlmc{"Test", sequence, 2, 3, 3.9075, true, 2};
 
     std::cout << vlmc.to_tree() << std::endl;
@@ -35,7 +35,7 @@ int main() {
 ```
 
 
-This will train a PST on `sequence` with a depth of `2`, and that occur at least `3` times.
+This will train a PST on `sequence` with a depth of `15`, and include `k`-mers that occur at least `15` times.
 
 We also provide a cli, which can be used as follows:
 
@@ -66,7 +66,7 @@ Configure the `cmake`-project and build.
 
 ```shell script
 cmake -DCMAKE_BUILD_TYPE=Release ..
-make
+make pst-classifier pst-batch-training pst-score-sequences
 ```
 
 This should yield three files in the `build/src` directory:
