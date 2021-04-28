@@ -44,6 +44,8 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 dependency(googletest)
 dependency(benchmark)
 
+include(GoogleTest)
+
 # The gtest/gtest_main targets carry header search path
 # dependencies automatically when using CMake 2.8.11 or
 # later. Otherwise we have to add them here ourselves.
@@ -58,6 +60,7 @@ macro(test_case unit_test)
   target_link_libraries(${target} gtest_main)
   target_link_libraries(${target} seqan3::seqan3)
   target_link_libraries(${target} Threads::Threads)
+  gtest_discover_tests(${target})
 
   add_test(NAME ${target} COMMAND ${target})
 

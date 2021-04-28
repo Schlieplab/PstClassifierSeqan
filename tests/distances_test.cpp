@@ -177,7 +177,8 @@ TEST_F(DistancesTest, LogLikelighoodHandCrafted0Order) {
       "0-order", sequence, max_depth, min_count, threshold, false, 1};
   tree.counts[""] = {8, {0.8, 0.0, 0.0, 0.0, 0.2}, true};
 
-  double log_likelihood = pst::distances::log_likelihood(tree, binary_seq);
+  double log_likelihood = pst::distances::log_likelihood_part(
+      tree, binary_seq, 0, binary_seq.size());
   double log_likelihood_manual = std::log(0.8) * 434 + std::log(0.2) * 42;
 
   EXPECT_FLOAT_EQ(log_likelihood, log_likelihood_manual);

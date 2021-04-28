@@ -66,7 +66,7 @@ BENCHMARK_F(LSTFixture, ExpandNodeLevel2)(benchmark::State &state) {
 
   lst::details::expand_node(first_level_child, tree.sequence, tree.suffixes,
                             tree.table);
-  auto second_level_child = tree.table[first_level_child + 1].value;
+  auto second_level_child = tree.table[first_level_child].second;
 
   for (auto _ : state) {
     state.PauseTiming();
@@ -88,10 +88,10 @@ BENCHMARK_F(LSTFixture, ExpandNodeLevel3)(benchmark::State &state) {
 
   lst::details::expand_node(first_level_child, tree.sequence, tree.suffixes,
                             tree.table);
-  auto second_level_child = tree.table[first_level_child + 1].value;
+  auto second_level_child = tree.table[first_level_child].second;
   lst::details::expand_node(second_level_child, tree.sequence, tree.suffixes,
                             tree.table);
-  auto third_level_child = tree.table[second_level_child + 1].value;
+  auto third_level_child = tree.table[second_level_child].second;
 
   for (auto _ : state) {
     state.PauseTiming();
@@ -110,8 +110,8 @@ BENCHMARK_F(LSTFixture, ExpandNodeLevel3)(benchmark::State &state) {
 BENCHMARK_F(LSTFixture, LongestCommonPrefix)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
   auto first_level_child = tree.table[0].second;
-  auto lower_bound = tree.table[first_level_child].value;
-  auto upper_bound = tree.table[first_level_child + 1].value;
+  auto lower_bound = tree.table[first_level_child].first;
+  auto upper_bound = tree.table[first_level_child].second;
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(lst::details::longest_common_prefix(
@@ -122,8 +122,8 @@ BENCHMARK_F(LSTFixture, LongestCommonPrefix)(benchmark::State &state) {
 BENCHMARK_F(LSTFixture, AddLCPToSuffixes)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
   auto first_level_child = tree.table[0].second;
-  auto lower_bound = tree.table[first_level_child].value;
-  auto upper_bound = tree.table[first_level_child + 1].value;
+  auto lower_bound = tree.table[first_level_child].first;
+  auto upper_bound = tree.table[first_level_child].second;
 
   for (auto _ : state) {
     state.PauseTiming();
@@ -142,8 +142,8 @@ BENCHMARK_F(LSTFixture, CountSuffixes)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
   auto first_level_child = tree.table[0].second;
 
-  auto lower_bound = tree.table[first_level_child].value;
-  auto upper_bound = tree.table[first_level_child + 1].value;
+  auto lower_bound = tree.table[first_level_child].first;
+  auto upper_bound = tree.table[first_level_child].second;
   auto lcp = lst::details::longest_common_prefix(lower_bound, upper_bound,
                                                  tree.sequence, tree.suffixes);
   lst::details::add_lcp_to_suffixes(lower_bound, upper_bound, lcp,
@@ -159,8 +159,8 @@ BENCHMARK_F(LSTFixture, AddLcpAndCountSuffixes)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
   auto first_level_child = tree.table[0].second;
 
-  auto lower_bound = tree.table[first_level_child].value;
-  auto upper_bound = tree.table[first_level_child + 1].value;
+  auto lower_bound = tree.table[first_level_child].first;
+  auto upper_bound = tree.table[first_level_child].second;
   auto lcp = lst::details::longest_common_prefix(lower_bound, upper_bound,
                                                  tree.sequence, tree.suffixes);
   lst::details::add_lcp_to_suffixes(lower_bound, upper_bound, lcp,
@@ -176,8 +176,8 @@ BENCHMARK_F(LSTFixture, SortSuffixes)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
   auto first_level_child = tree.table[0].second;
 
-  auto lower_bound = tree.table[first_level_child].value;
-  auto upper_bound = tree.table[first_level_child + 1].value;
+  auto lower_bound = tree.table[first_level_child].first;
+  auto upper_bound = tree.table[first_level_child].second;
   auto lcp = lst::details::longest_common_prefix(lower_bound, upper_bound,
                                                  tree.sequence, tree.suffixes);
 
@@ -199,8 +199,8 @@ BENCHMARK_F(LSTFixture, SuffixPointers)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
   auto first_level_child = tree.table[0].second;
 
-  auto lower_bound = tree.table[first_level_child].value;
-  auto upper_bound = tree.table[first_level_child + 1].value;
+  auto lower_bound = tree.table[first_level_child].first;
+  auto upper_bound = tree.table[first_level_child].second;
   auto lcp = lst::details::longest_common_prefix(lower_bound, upper_bound,
                                                  tree.sequence, tree.suffixes);
   lst::details::add_lcp_to_suffixes(lower_bound, upper_bound, lcp,
@@ -219,8 +219,8 @@ BENCHMARK_F(LSTFixture, CopySuffixes)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
   auto first_level_child = tree.table[0].second;
 
-  auto lower_bound = tree.table[first_level_child].value;
-  auto upper_bound = tree.table[first_level_child + 1].value;
+  auto lower_bound = tree.table[first_level_child].first;
+  auto upper_bound = tree.table[first_level_child].second;
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(
@@ -233,8 +233,8 @@ BENCHMARK_F(LSTFixture, AddChildren)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
   auto first_level_child = tree.table[0].second;
 
-  auto lower_bound = tree.table[first_level_child].value;
-  auto upper_bound = tree.table[first_level_child + 1].value;
+  auto lower_bound = tree.table[first_level_child].first;
+  auto upper_bound = tree.table[first_level_child].second;
   auto lcp = lst::details::longest_common_prefix(lower_bound, upper_bound,
                                                  tree.sequence, tree.suffixes);
   lst::details::add_lcp_to_suffixes(lower_bound, upper_bound, lcp,
@@ -287,8 +287,8 @@ BENCHMARK_F(LSTFixture, GetEdgeLcpNotExpanded)(benchmark::State &state) {
 BENCHMARK_F(LSTFixture, IteratingOverSuffixes)(benchmark::State &state) {
   lst::LazySuffixTree tree{sequence, false};
   auto first_level_child = tree.table[0].second;
-  auto lower_bound = tree.table[first_level_child].value;
-  auto upper_bound = tree.table[first_level_child + 1].value;
+  auto lower_bound = tree.table[first_level_child].first;
+  auto upper_bound = tree.table[first_level_child].second;
 
   for (auto _ : state) {
     for (auto i = lower_bound; i < upper_bound; i++) {
