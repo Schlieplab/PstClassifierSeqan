@@ -1,8 +1,8 @@
-cmake_minimum_required (VERSION 3.5...3.12)
+cmake_minimum_required (VERSION 3.5...3.20)
 
 project(PstClassifierSeqan CXX)
 
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native")
 
 set(SeqAn3_DIR "${CMAKE_SOURCE_DIR}/seqan3/build_system")
 find_package(SeqAn3 REQUIRED)
@@ -14,11 +14,11 @@ include_directories("${CMAKE_SOURCE_DIR}/robin-hood-hashing/src/include")
 #find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 include_directories("${CMAKE_SOURCE_DIR}/eigen")
 
-find_package(HDF5 REQUIRED COMPONENTS CXX)
-
 set(HIGHFIVE_USE_BOOST OFF)
 set(HIGHFIVE_USE_EIGEN ON)
 set(HIGHFIVE_EXAMPLES FALSE)
+
+find_package(HDF5 REQUIRED COMPONENTS CXX)
 add_subdirectory("${CMAKE_SOURCE_DIR}/HighFive")
 
 

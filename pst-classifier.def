@@ -2,31 +2,31 @@ Bootstrap: docker
 From: debian:buster
 
 %files
-	src /PstClassifierSeqan/src
-	tests /PstClassifierSeqan/tests
-	seqan3 /PstClassifierSeqan/seqan3
-	eigen /PstClassifierSeqan/eigen
-	HighFive /PstClassifierSeqan/HighFive
-	robin-hood-hashing /PstClassifierSeqan/robin-hood-hashing
-	CMakeLists.txt /PstClassifierSeqan/CMakeLists.txt
+    src /PstClassifierSeqan/src
+    tests /PstClassifierSeqan/tests
+    seqan3 /PstClassifierSeqan/seqan3
+    eigen /PstClassifierSeqan/eigen
+    HighFive /PstClassifierSeqan/HighFive
+    robin-hood-hashing /PstClassifierSeqan/robin-hood-hashing
+    CMakeLists.txt /PstClassifierSeqan/CMakeLists.txt
 
 %post
-	apt-get update -y && apt-get install -y cmake build-essential g++ git gcc libhdf5-dev libeigen3-dev
+    apt-get update -y && apt-get install -y cmake build-essential g++ git gcc libhdf5-dev libeigen3-dev
 
-	mkdir /PstClassifierSeqan/build
-	cd /PstClassifierSeqan/build
+    mkdir /PstClassifierSeqan/build
+    cd /PstClassifierSeqan/build
 
-	cmake -DCMAKE_BUILD_TYPE=Release ..
-	make
+    cmake -DCMAKE_BUILD_TYPE=Release ..
+    make pst-classifier pst-batch-training pst-score-sequences
 
 %environment
-	export PATH="/PstClassifierSeqan/build/src/:$PATH"
+    export PATH="/PstClassifierSeqan/build/src/:$PATH"
 
 %test
-	cd /PstClassifierSeqan/build/tests
-	echo "Running tests"
-	./probabilistic_suffix_tree_tests
+    cd /PstClassifierSeqan/build/tests
+    echo "Running tests"
+    pst-classifier -h
 
 %runscript
-	/PstClassifierSeqan/build/src/pst-classifier $*
+    /PstClassifierSeqan/build/src/pst-classifier $*
 
