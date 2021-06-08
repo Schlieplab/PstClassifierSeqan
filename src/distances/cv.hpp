@@ -57,57 +57,35 @@ get_all_contexts(size_t order,
   return contexts;
 }
 
-template <seqan3::alphabet alphabet_t>
-inline std::vector<std::string>
-get_shared_contexts(ProbabilisticSuffixTreeMap<alphabet_t> &left,
-                    ProbabilisticSuffixTreeMap<alphabet_t> &right) {
-
-  auto left_terminal = left.get_terminal_nodes();
-  auto right_terminal = right.get_terminal_nodes();
-
-  std::vector<std::string> contexts{};
-  // terminal nodes have to be sorted for this to work!
-  std::set_union(left_terminal.begin(), left_terminal.end(),
-                 right_terminal.begin(), right_terminal.end(),
-                 std::back_inserter(contexts));
-
-  if (contexts.empty()) {
-    contexts.emplace_back("");
-  }
-  return contexts;
-}
-
-inline float square_and_sum(Eigen::VectorXd &composition_vector) {
+inline double square_and_sum(Eigen::VectorXd &composition_vector) {
   return composition_vector.squaredNorm();
 }
 
-inline float multiply_and_sum(Eigen::VectorXd &left, Eigen::VectorXd &right) {
+inline double multiply_and_sum(Eigen::VectorXd &left, Eigen::VectorXd &right) {
   return left.dot(right);
 }
 
-float cosine_dissimilarity(Eigen::VectorXd &left, Eigen::VectorXd &right) {
+double cosine_dissimilarity(Eigen::VectorXd &left, Eigen::VectorXd &right) {
   auto left_normalisation = details::square_and_sum(left);
   auto right_normalisation = details::square_and_sum(right);
 
-  float normalisation = std::sqrt(left_normalisation * right_normalisation);
+  double normalisation = std::sqrt(left_normalisation * right_normalisation);
 
   if (normalisation == 0.0) {
     return 0.0;
   }
 
-  float numerator = details::multiply_and_sum(left, right);
-  float correlation = numerator / normalisation;
+  double numerator = details::multiply_and_sum(left, right);
+  double correlation = numerator / normalisation;
 
   return (1 - correlation) / 2;
 }
 
 template <seqan3::alphabet alphabet_t>
-inline float core_cv(ProbabilisticSuffixTreeMap<alphabet_t> &left,
-                     ProbabilisticSuffixTreeMap<alphabet_t> &right,
-                     std::vector<std::string> &contexts,
-                     size_t background_order) {
-  static std::unordered_map<std::string, Eigen::VectorXd> cache{};
-
+inline double core_cv(ProbabilisticSuffixTreeMap<alphabet_t> &left,
+                      ProbabilisticSuffixTreeMap<alphabet_t> &right,
+                      std::vector<std::string> &contexts,
+                      size_t background_order) {
   Eigen::VectorXd left_composition_vector =
       composition_vector(left, contexts, background_order);
   Eigen::VectorXd right_composition_vector =
@@ -118,20 +96,21 @@ inline float core_cv(ProbabilisticSuffixTreeMap<alphabet_t> &left,
 }
 
 } // namespace pst::distances::details
+
 namespace pst::distances {
 
 template <seqan3::alphabet alphabet_t>
-inline float cv(ProbabilisticSuffixTreeMap<alphabet_t> &left,
-                ProbabilisticSuffixTreeMap<alphabet_t> &right,
-                size_t background_order = 2) {
+inline double cv(ProbabilisticSuffixTreeMap<alphabet_t> &left,
+                 ProbabilisticSuffixTreeMap<alphabet_t> &right,
+                 size_t background_order = 2) {
   auto contexts = details::get_shared_contexts(left, right);
   return details::core_cv<alphabet_t>(left, right, contexts, background_order);
 }
 
 template <seqan3::alphabet alphabet_t>
-inline float cv_estimation(ProbabilisticSuffixTreeMap<alphabet_t> &left,
-                           ProbabilisticSuffixTreeMap<alphabet_t> &right,
-                           size_t order = 6, size_t background_order = 2) {
+inline double cv_estimation(ProbabilisticSuffixTreeMap<alphabet_t> &left,
+                            ProbabilisticSuffixTreeMap<alphabet_t> &right,
+                            size_t order = 6, size_t background_order = 2) {
   if (details::all_contexts.empty()) {
     details::get_all_contexts<alphabet_t>(order, left.valid_characters);
   }

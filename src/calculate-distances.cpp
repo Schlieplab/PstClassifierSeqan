@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <functional>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <thread>
 
@@ -15,6 +16,8 @@
 #include <seqan3/std/filesystem>
 
 #include "distances/cv.hpp"
+#include "distances/d2.hpp"
+#include "distances/d2star.hpp"
 #include "distances/parallelize.hpp"
 #include "probabilistic_suffix_tree_map.hpp"
 
@@ -92,6 +95,17 @@ parse_distance_function(input_arguments &arguments) {
     };
     return {fun, "cv-estimation-" + std::to_string(arguments.order) + "-" +
                      std::to_string(arguments.background_order)};
+  } else if (arguments.distance_name == "d2star") {
+    auto fun = [&](auto &left, auto &right) {
+      return pst::distances::d2star<seqan3::dna5>(left, right,
+                                                  arguments.background_order);
+    };
+    return {fun, "d2star-" + std::to_string(arguments.background_order)};
+  } else if (arguments.distance_name == "d2") {
+    auto fun = [&](auto &left, auto &right) {
+      return pst::distances::d2star<seqan3::dna5>(left, right);
+    };
+    return {fun, "d2"};
   }
 
   throw std::invalid_argument("Invalid distance function name.");
@@ -107,7 +121,7 @@ std::vector<Eigen::VectorXd> get_composition_vectors(std::vector<tree_t> &trees,
   std::vector<Eigen::VectorXd> vectors{};
   std::cout << "calculating cvs..." << std::endl;
   for (size_t i = 0; i < trees.size(); i++) {
-    vectors.push_back(pst::distances::composition_vector<seqan3::dna5>(
+    vectors.push_back(pst::distances::details::composition_vector<seqan3::dna5>(
         trees[i], contexts, background_order));
   }
 
