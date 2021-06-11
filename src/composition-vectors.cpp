@@ -27,7 +27,7 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
   input_arguments arguments{};
 
   seqan3::argument_parser parser{"vlmc-to-composition-vectors", argc, argv,
-                                 false};
+                                 seqan3::update_notifications::off};
   parser.info.short_description = "Turns a VLMC into a composition vector.";
 
   parser.add_option(arguments.filepath, 'p', "path",

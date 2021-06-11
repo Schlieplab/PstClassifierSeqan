@@ -34,7 +34,8 @@ struct input_arguments {
 input_arguments parse_cli_arguments(int argc, char *argv[]) {
   input_arguments arguments{};
 
-  seqan3::argument_parser parser{"pst-distance-calculation", argc, argv, false};
+  seqan3::argument_parser parser{"pst-distance-calculation", argc, argv,
+                                 seqan3::update_notifications::off};
   parser.info.short_description =
       "Calculate distances between PSTs saved in a hdf5 file.";
 

@@ -5,8 +5,6 @@
 #include <shared_mutex>
 #include <string>
 
-#include <seqan3/range/container/bitcompressed_vector.hpp>
-
 #include "probabilistic_suffix_tree_map.hpp"
 
 namespace pst {

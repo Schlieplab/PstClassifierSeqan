@@ -43,7 +43,8 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
 
   input_arguments arguments{};
 
-  seqan3::argument_parser parser{"Pst-Classifier", argc, argv, false};
+  seqan3::argument_parser parser{"Pst-Classifier", argc, argv,
+                                 seqan3::update_notifications::off};
   parser.info.short_description = "Build PST/VLMC on the given fasta file.";
 
   parser.add_positional_option(filename, "path to fasta file.");

@@ -22,9 +22,9 @@
 
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
-#include <seqan3/range/views/convert.hpp>
-#include <seqan3/range/views/to.hpp>
-#include <seqan3/range/views/to_char.hpp>
+#include <seqan3/alphabet/views/all.hpp>
+#include <seqan3/std/ranges>
+#include <seqan3/utility/views/convert.hpp>
 
 #include "search/lazy_suffix_tree.hpp"
 #include "search/lazy_suffix_tree/iteration.hpp"

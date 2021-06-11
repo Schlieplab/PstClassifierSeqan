@@ -14,10 +14,9 @@
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
-#include <seqan3/core/concept/tuple.hpp>
-#include <seqan3/range/views/convert.hpp>
-#include <seqan3/range/views/to.hpp>
-#include <seqan3/range/views/to_char.hpp>
+#include <seqan3/alphabet/views/all.hpp>
+#include <seqan3/std/ranges>
+#include <seqan3/utility/views/to.hpp>
 
 #include "lazy_suffix_tree/construction.hpp"
 #include "lazy_suffix_tree/iteration.hpp"

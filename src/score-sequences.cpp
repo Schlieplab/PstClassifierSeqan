@@ -31,7 +31,8 @@ struct input_arguments {
 input_arguments parse_cli_arguments(int argc, char *argv[]) {
   input_arguments arguments{};
 
-  seqan3::argument_parser parser{"score-sequences", argc, argv, false};
+  seqan3::argument_parser parser{"score-sequences", argc, argv,
+                                 seqan3::update_notifications::off};
   parser.info.short_description = "Calculates the negative log-likelihood of a "
                                   "set of sequences for a set of signatures.";
 
@@ -40,8 +41,8 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
   parser.add_option(arguments.outpath, 'o', "out-path",
                     "Path to hdf5 file where scores will be stored.");
   parser.add_option(arguments.sequence_list, 's', "sequence-list",
-                    "Path to a file with paths to sequences or a fasta file "
-                    "to be scored.");
+                    "Path to a file with paths to sequences, or a fasta file "
+                    "which will be scored.");
   parser.add_option(arguments.background_order, 'b', "background-order",
                     "Length of background for log-likelihood.");
   parser.add_flag(arguments.score_both_sequence_directions, 'r',

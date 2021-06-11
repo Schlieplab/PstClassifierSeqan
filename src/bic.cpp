@@ -34,7 +34,8 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
 
   input_arguments arguments{};
 
-  seqan3::argument_parser parser{"BIC", argc, argv, false};
+  seqan3::argument_parser parser{"BIC", argc, argv,
+                                 seqan3::update_notifications::off};
   parser.info.short_description =
       "Calculate BIC for a sequence under the variable-length Markov chain.";
 

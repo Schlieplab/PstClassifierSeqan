@@ -41,7 +41,8 @@ struct my_traits : seqan3::sequence_file_input_default_traits_dna {
 input_arguments parse_cli_arguments(int argc, char *argv[]) {
   input_arguments arguments{};
 
-  seqan3::argument_parser parser{"Pst-classifier-batch", argc, argv, false};
+  seqan3::argument_parser parser{"Pst-classifier-batch", argc, argv,
+                                 seqan3::update_notifications::off};
   parser.info.short_description = "Train on all sequences in a fasta file.";
 
   parser.add_option(arguments.h5_path, 'o', "path",

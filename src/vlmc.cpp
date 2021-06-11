@@ -3,9 +3,9 @@
 #include <vector>
 
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
-#include <seqan3/range/views/char_to.hpp>
-#include <seqan3/range/views/to.hpp>
+#include <seqan3/alphabet/views/char_to.hpp>
 #include <seqan3/std/ranges>
+#include <seqan3/utility/views/to.hpp>
 
 #include "kl_tree_map.hpp"
 #include "probabilistic_suffix_tree_map.hpp"
