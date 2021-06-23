@@ -2,7 +2,10 @@
 
 #include "../src/distances/cv.hpp"
 #include "../src/distances/negative_log_likelihood.hpp"
+#include "../src/kl_tree.hpp"
 #include "../src/kl_tree_map.hpp"
+
+#include "random_sequence.hpp"
 
 static void CV(benchmark::State &state) {
   std::filesystem::path first_path{"./../trees/CM008035.1.tree"};
@@ -128,5 +131,38 @@ static void NegativeLogLikelihood(benchmark::State &state) {
 }
 
 BENCHMARK(NegativeLogLikelihood);
+
+static void HashMapScore(benchmark::State &state) {
+  using seqan3::operator""_dna5;
+  std::vector<seqan3::dna5> sequence = random_sequence(50000);
+
+  pst::KullbackLieblerTreeMap<seqan3::dna5> tree{"HashMap", sequence, 7, 2,
+                                                 3.9075,    true,     2};
+
+  tree.construct_tree();
+
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(
+        pst::distances::negative_log_likelihood<seqan3::dna5>(tree, sequence));
+  }
+}
+
+BENCHMARK(HashMapScore);
+
+static void TreeScore(benchmark::State &state) {
+  using seqan3::operator""_dna5;
+  std::vector<seqan3::dna5> sequence = random_sequence(50000);
+
+  pst::KullbackLieblerTree<seqan3::dna5> tree{"Tree", sequence, 7, 2,
+                                              3.9075, false,    2};
+  tree.construct_tree();
+
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(
+        pst::distances::negative_log_likelihood<seqan3::dna5>(tree, sequence));
+  }
+}
+
+BENCHMARK(TreeScore);
 
 BENCHMARK_MAIN();

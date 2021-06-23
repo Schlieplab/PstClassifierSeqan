@@ -610,6 +610,26 @@ protected:
                                       this->suffixes, this->table);
   }
 
+  /**! \brief Get the node index of the child with the char as edge.
+   *
+   * \param node_index Node to traverse from
+   * \param char_rank Rank of character on the edge.
+   * \return child index if an included child was found.  Else the index of the
+   * node.
+   */
+  virtual size_t go_forward(size_t node_index, size_t char_rank) {
+    size_t child_index = node_index;
+    this->iterate_children(node_index, [&](size_t child) {
+      auto sequence_index = this->get_sequence_index(child);
+
+      if (this->sequence[sequence_index].to_rank() == char_rank) {
+        child_index = child;
+      }
+    });
+
+    return child_index;
+  }
+
   void breadth_first_iteration(
       size_t node_index, size_t start_lcp, bool expand_nodes,
       const std::function<

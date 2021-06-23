@@ -145,16 +145,17 @@ protected:
       return std::numeric_limits<double>::max();
     }
 
-    auto parent_index = this->suffix_links[node_index];
+    auto parent_index = this->get_pst_parent(node_index);
     if (parent_index == -1) {
       throw std::invalid_argument(
           "[kl_delta] Given node does not have a parent.");
     }
 
-    double delta = 0;
+    double delta = 0.0;
     for (auto char_rank : this->valid_characters) {
-      double prob = this->entries[node_index].probabilities[char_rank];
-      double parent_prob = this->entries[parent_index].probabilities[char_rank];
+      double prob = this->get_transition_probability(node_index, char_rank);
+      double parent_prob =
+          this->get_transition_probability(parent_index, char_rank);
 
       if (parent_prob == 0.0 || prob == 0.0) {
         continue;

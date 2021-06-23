@@ -17,6 +17,7 @@
 #include <typeinfo>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include <seqan3/alphabet/concept.hpp>
@@ -76,7 +77,6 @@ public:
    */
   ProbabilisticSuffixTree(std::string id,
                           lst::details::sequence_t<alphabet_t> &sequence)
-
       : ProbabilisticSuffixTree(id, sequence, 15, 100, 1.2, 0, "cutoff", true,
                                 2) {} // TODO get number of cores
 
@@ -100,9 +100,9 @@ public:
                           std::string pruning_method_, bool multi_core_ = true,
                           int split_depth_ = 2)
       : lst::LazySuffixTree<alphabet_t>(sequence_, multi_core_, split_depth_),
-        id(id_), freq(freq_), max_depth(max_depth_),
+        id(std::move(id_)), freq(freq_), max_depth(max_depth_),
         number_of_parameters(number_of_parameters_),
-        pruning_method(pruning_method_) {
+        pruning_method(std::move(pruning_method_)) {
     using seqan3::operator""_dna4;
     seqan3::dna4_vector dna4{"ACGT"_dna4};
 
@@ -198,6 +198,10 @@ public:
 
     if (this->entries.size() > node_index) {
       std::cout << "\tStatus: " << this->entries[node_index].included;
+    }
+
+    if (this->entries.size() > node_index) {
+      std::cout << "\tCount: " << this->entries[node_index].count;
     }
   }
 
@@ -431,12 +435,56 @@ public:
     return !this->entries[node_index].included;
   }
 
+  double get_transition_probability(size_t node_index, size_t char_rank) {
+    return this->entries[node_index].probabilities[char_rank];
+  }
+
+  /**! \brief Get the node index of the child with the char as edge.
+   *
+   * \param node_index Node to traverse from
+   * \param char_rank Rank of character on the edge.
+   * \return child index if an included child was found.  Else the index of the
+   * node.
+   */
+  size_t go_forward(size_t node_index, size_t char_rank) {
+    size_t child_index = node_index;
+    this->iterate_children(node_index, [&](size_t child) {
+      if (this->is_excluded(child)) {
+        return;
+      }
+
+      auto sequence_index = this->get_sequence_index(child);
+
+      if (this->sequence[sequence_index].to_rank() == char_rank) {
+        child_index = child;
+      }
+    });
+
+    return child_index;
+  }
+
+  /**! \brief Get the node index of the child with the char as edge.
+   *
+   * \param node_index Node to traverse from
+   * \param char_rank Rank of character on the edge.
+   * \return child index if an included child was found.  Else the index of the
+   * node.
+   */
+  size_t go_backward(size_t node_index, size_t char_rank) {
+    size_t child_index = this->reverse_suffix_links[node_index][char_rank];
+    if (child_index == max_size || this->is_excluded(child_index)) {
+      return node_index;
+    } else {
+      return child_index;
+    }
+  }
+
   std::string id;
 
   std::unordered_set<int> valid_characters{};
-  size_t freq;
-  size_t max_depth;
-  size_t number_of_parameters;
+  size_t freq{};
+  size_t max_depth{};
+  size_t number_of_parameters{};
   std::string pruning_method;
 
   std::vector<PSTEntry<alphabet_t>> entries{};

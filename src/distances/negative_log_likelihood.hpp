@@ -175,6 +175,61 @@ double negative_log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 }
 
 template <seqan3::alphabet alphabet_t>
+double negative_log_likelihood(ProbabilisticSuffixTree<alphabet_t> &tree,
+                               std::vector<alphabet_t> &sequence_dna) {
+  // Example:
+  // Tree edges:  ACGT -> ACGTT
+  // Reverse edges:  ACGT -> CGT
+  // A step forward if the current context is ACGT and the next char is T:
+  // 1. ACGT -> find prob of T.
+  // 2. If ACGTT in tree, follow forward edge to ACGTT
+  // 3. Else, go to reverse suffix link CGT check for CGTT.
+  // 4. Repeat 3 until match.
+  // 5. Try to extend to the left to find GCGTT
+
+  double log_likelihood = 0.0;
+
+  size_t current_node = 0;
+  int node_length = 0;
+
+  size_t length = 0;
+  for (size_t i = 0; i < sequence_dna.size(); i++) {
+    size_t char_ = sequence_dna[i].to_rank();
+
+    auto probability = tree.get_transition_probability(current_node, char_);
+
+    if (probability != 0.0) {
+      length += 1;
+      log_likelihood += std::log(probability);
+    }
+
+    size_t prev_index = current_node;
+    size_t child_index = tree.go_forward(current_node, char_);
+    node_length++;
+    while (child_index == prev_index) {
+      node_length--;
+      prev_index = tree.get_pst_parent(prev_index);
+      child_index = tree.go_forward(prev_index, char_);
+    }
+
+    if (i > node_length) {
+      do {
+        prev_index = child_index;
+        child_index = tree.go_backward(child_index,
+                                       sequence_dna[i - node_length].to_rank());
+        if (child_index != prev_index) {
+          node_length++;
+        }
+      } while (child_index != prev_index && i > node_length);
+    }
+
+    current_node = child_index;
+  }
+
+  return -log_likelihood / double(length);
+}
+
+template <seqan3::alphabet alphabet_t>
 double
 negative_log_likelihood_symmetric(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
                                   std::vector<alphabet_t> &sequence) {
