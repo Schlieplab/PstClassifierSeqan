@@ -5,13 +5,24 @@ COPY seqan3 /PstClassifierSeqan/seqan3
 COPY robin-hood-hashing /PstClassifierSeqan/robin-hood-hashing
 COPY HighFive /PstClassifierSeqan/HighFive
 COPY eigen /PstClassifierSeqan/eigen
+COPY kmc-vlmc-copy /PstClassifierSeqan/kmc-vlmc
 COPY python-package/ /PstClassifierSeqan/python-package/
+COPY kmc-vlmc-copy /PstClassifierSeqan/python-package/kmc-vlmc
 COPY python-package/libvlmc /PstClassifierSeqan/python-package/libvlmc
 COPY python-package/setup.py /PstClassifierSeqan/python-package/setup.py
 COPY python-package/CMakeLists.txt /PstClassifierSeqan/python-package/CMakeLists.txt
 COPY python-package/dev-requirements.txt /PstClassifierSeqan/python-package/dev-requirements.txt
 
-RUN apt-get update -y && apt-get install -y cmake ninja-build
+RUN apt-get update -y && apt-get install -y cmake ninja-build libhdf5-dev libeigen3-dev libtbb-dev libgomp1 doxygen
+
+RUN echo 'deb http://deb.debian.org/debian testing main' >> /etc/apt/sources.list
+RUN apt update -y
+RUN apt install -y gcc g++
+
+WORKDIR /PstClassifierSeqan/python-package/
+
+RUN python3.9 -m pip install -r dev-requirements.txt
+RUN python3.9 setup.py bdist_wheel
 
 FROM python:3.8-buster as python38
 
@@ -20,13 +31,18 @@ COPY seqan3 /PstClassifierSeqan/seqan3
 COPY robin-hood-hashing /PstClassifierSeqan/robin-hood-hashing
 COPY HighFive /PstClassifierSeqan/HighFive
 COPY eigen /PstClassifierSeqan/eigen
+COPY kmc-vlmc-copy /PstClassifierSeqan/kmc-vlmc
 COPY python-package/ /PstClassifierSeqan/python-package/
 COPY python-package/libvlmc /PstClassifierSeqan/python-package/libvlmc
 COPY python-package/setup.py /PstClassifierSeqan/python-package/setup.py
 COPY python-package/CMakeLists.txt /PstClassifierSeqan/python-package/CMakeLists.txt
 COPY python-package/dev-requirements.txt /PstClassifierSeqan/python-package/dev-requirements.txt
 
-RUN apt-get update -y && apt-get install -y cmake ninja-build
+RUN apt-get update -y && apt-get install -y cmake ninja-build libhdf5-dev libeigen3-dev libtbb-dev libgomp1 doxygen
+
+RUN echo 'deb http://deb.debian.org/debian testing main' >> /etc/apt/sources.list
+RUN apt update -y
+RUN apt install -y gcc g++
 
 WORKDIR /PstClassifierSeqan/python-package/
 
@@ -40,12 +56,17 @@ COPY seqan3 /PstClassifierSeqan/seqan3
 COPY robin-hood-hashing /PstClassifierSeqan/robin-hood-hashing
 COPY HighFive /PstClassifierSeqan/HighFive
 COPY eigen /PstClassifierSeqan/eigen
+COPY kmc-vlmc-copy /PstClassifierSeqan/kmc-vlmc
 COPY python-package/libvlmc /PstClassifierSeqan/python-package/libvlmc
 COPY python-package/setup.py /PstClassifierSeqan/python-package/setup.py
 COPY python-package/CMakeLists.txt /PstClassifierSeqan/python-package/CMakeLists.txt
 COPY python-package/dev-requirements.txt /PstClassifierSeqan/python-package/dev-requirements.txt
 
-RUN apt-get update -y && apt-get install -y cmake ninja-build
+RUN apt-get update -y && apt-get install -y cmake ninja-build libhdf5-dev libeigen3-dev  libtbb-dev libgomp1 doxygen
+
+RUN echo 'deb http://deb.debian.org/debian testing main' >> /etc/apt/sources.list
+RUN apt update -y
+RUN apt install -y gcc g++
 
 WORKDIR /PstClassifierSeqan/python-package/
 
@@ -60,11 +81,17 @@ COPY seqan3 /PstClassifierSeqan/seqan3
 COPY robin-hood-hashing /PstClassifierSeqan/robin-hood-hashing
 COPY HighFive /PstClassifierSeqan/HighFive
 COPY eigen /PstClassifierSeqan/eigen
+COPY kmc-vlmc-copy /PstClassifierSeqan/kmc-vlmc
 COPY python-package/libvlmc /PstClassifierSeqan/python-package/libvlmc
 COPY python-package/setup.py /PstClassifierSeqan/python-package/setup.py
 COPY python-package/CMakeLists.txt /PstClassifierSeqan/python-package/CMakeLists.txt
 COPY python-package/dev-requirements.txt /PstClassifierSeqan/python-package/dev-requirements.txt
-RUN apt-get update -y && apt-get install -y cmake ninja-build
+
+RUN apt-get update -y && apt-get install -y cmake ninja-build libhdf5-dev libeigen3-dev libtbb-dev libgomp1 doxygen
+
+RUN echo 'deb http://deb.debian.org/debian testing main' >> /etc/apt/sources.list
+RUN apt update -y
+RUN apt install -y gcc g++
 
 WORKDIR /PstClassifierSeqan/python-package/
 

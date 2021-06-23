@@ -8,25 +8,47 @@ From: debian:buster
     eigen /PstClassifierSeqan/eigen
     HighFive /PstClassifierSeqan/HighFive
     robin-hood-hashing /PstClassifierSeqan/robin-hood-hashing
+    kmc-vlmc /PstClassifierSeqan/kmc-vlmc
     CMakeLists.txt /PstClassifierSeqan/CMakeLists.txt
+    ../kmc /kmc
 
 %post
-    apt-get update -y && apt-get install -y cmake build-essential g++ git gcc libhdf5-dev libeigen3-dev
+    apt-get update -y && apt-get install -y cmake build-essential g++ git gcc libhdf5-dev libeigen3-dev libtbb-dev libgomp1 doxygen libboost-all-dev
+
+    echo 'deb http://deb.debian.org/debian testing main' >> /etc/apt/sources.list
+    apt update -y
+    apt install -y gcc g++
 
     mkdir /PstClassifierSeqan/build
     cd /PstClassifierSeqan/build
 
     cmake -DCMAKE_BUILD_TYPE=Release ..
-    make pst-classifier pst-batch-training pst-score-sequences
+    make bic pst-classifier pst-score-sequences
+
+    cp /kmc/KMC3.linux/kmc /kmc/KMC3.linux/kmc_tools /PstClassifierSeqan/build/src/
+
 
 %environment
     export PATH="/PstClassifierSeqan/build/src/:$PATH"
 
 %test
-    cd /PstClassifierSeqan/build/tests
+    #cd /PstClassifierSeqan/build/tests
     echo "Running tests"
+    bic -h
     pst-classifier -h
+    pst-score-sequnces -h
 
-%runscript
+
+
+%apprun bic
+    cd /PstClassifierSeqan/build/src/
+    /PstClassifierSeqan/build/src/bic $*
+
+%apprun score
+    cd /PstClassifierSeqan/build/src/
+    /PstClassifierSeqan/build/src/pst-score-sequences $*
+
+%apprun build
+    cd /PstClassifierSeqan/build/src/
     /PstClassifierSeqan/build/src/pst-classifier $*
 

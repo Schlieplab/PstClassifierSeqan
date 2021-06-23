@@ -12,6 +12,7 @@ RUN apt-get update -y && \
 
 WORKDIR /PstClassifierSeqan
 
+COPY kmc-vlmc kmc-vlmc
 COPY seqan3 seqan3
 COPY eigen eigen
 COPY robin-hood-hashing robin-hood-hashing
@@ -24,12 +25,12 @@ COPY CMakeLists.txt CMakeLists.txt
 WORKDIR /PstClassifierSeqan/build
 
 RUN cmake -DCMAKE_BUILD_TYPE=Release ..
-RUN make pst-classifier pst-batch-training pst-score-sequences
+RUN make pst-classifier pst-batch-training pst-score-sequences bic
 
 WORKDIR /PstClassifierSeqan/build/bin
 
-RUN cp ../src/pst-classifier ../src/pst-batch-training ../src/pst-score-sequences /PstClassifierSeqan/build/bin
+RUN cp ../src/pst-classifier ../src/pst-batch-training ../src/pst-score-sequences ../src/bic /PstClassifierSeqan/build/bin
 
 ENV PATH /PstClassifierSeqan/build/bin:$PATH
 
-ENTRYPOINT ["pst-classifier"]
+ENTRYPOINT ["bic"]
