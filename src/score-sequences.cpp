@@ -35,11 +35,12 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
                                   "set of sequences for a set of signatures.";
 
   parser.add_option(arguments.filepath, 'p', "path",
-                    "Path to hdf5 file where PSTs are stored.");
+                    "Path to hdf5 or .tree file where PSTs are stored.");
   parser.add_option(arguments.outpath, 'o', "out-path",
                     "Path to hdf5 file where scores will be stored.");
   parser.add_option(arguments.sequence_list, 's', "sequence-list",
-                    "Path to a file with paths to sequences.");
+                    "Path to a file with paths to sequences or a fasta file "
+                    "to be scored.");
   parser.add_option(arguments.background_order, 'b', "background-order",
                     "Length of background for log-likelihood.");
 
@@ -69,44 +70,42 @@ std::vector<tree_t> get_trees(HighFive::File &file) {
   return trees;
 }
 
-void score_slice(
-    size_t start_index, size_t stop_index, std::vector<double> &scores,
-    std::vector<tree_t> &trees, std::vector<seqan3::dna5> &sequence,
-    const std::function<float(tree_t &, std::vector<seqan3::dna5> &)> &fun) {
-
-  for (size_t i = start_index; i < stop_index; i++) {
-    scores[i] = fun(trees[i], sequence);
-  }
-}
-
-std::vector<std::vector<double>>
+std::tuple<std::vector<std::vector<double>>, std::vector<std::string>>
 score_sequences_paths(std::vector<tree_t> &trees,
                       std::vector<std::string> &sequence_list,
                       size_t background_order) {
-  std::vector<std::vector<double>> scores{};
+  std::vector<std::vector<double>> all_scores{};
+  std::vector<std::string> ids{};
 
   size_t sequence_idx = 0;
 
   for (auto &path : sequence_list) {
     seqan3::sequence_file_input file_in{std::ifstream{path},
                                         seqan3::format_fasta{}};
+    std::vector<seqan3::dna5_vector> sequences{};
     for (auto &[seq, id, qual] : file_in) {
-      std::vector<double> scores_row(trees.size());
-
-      auto fun = [&](size_t start_index, size_t stop_index) {
-        score_slice(
-            start_index, stop_index, std::ref(scores_row), std::ref(trees),
-            std::ref(seq),
-            pst::distances::negative_log_likelihood_symmetric<seqan3::dna5>);
-      };
-
-      pst::parallelize::parallelize(trees.size(), fun);
-
-      scores.push_back(scores_row);
+      ids.push_back(std::move(id));
+      sequences.push_back(std::move(seq));
     }
+    std::vector<std::vector<double>> scores(sequences.size(),
+                                            std::vector<double>(trees.size()));
+
+    auto fun = [&](size_t start_index, size_t stop_index) {
+      pst::score_sequences_slice(
+          start_index, stop_index, std::ref(scores), std::ref(trees),
+          std::ref(sequences),
+          [&](tree_t &tree, std::vector<seqan3::dna5> &sequence) -> double {
+            return pst::distances::negative_log_likelihood<seqan3::dna5>(
+                tree, sequence);
+          });
+    };
+
+    pst::parallelize::parallelize(sequences.size(), fun);
+
+    std::move(scores.begin(), scores.end(), std::back_inserter(all_scores));
   }
 
-  return scores;
+  return {all_scores, ids};
 }
 
 int main(int argc, char *argv[]) {
@@ -125,14 +124,21 @@ int main(int argc, char *argv[]) {
     trees = std::vector<tree_t>{std::move(tree)};
   }
 
-  std::ifstream infile(arguments.sequence_list);
-  std::string path;
   std::vector<std::string> sequence_list{};
-  while (std::getline(infile, path)) {
-    sequence_list.push_back(path);
+
+  if (arguments.sequence_list.extension() == ".fasta" ||
+      arguments.sequence_list.extension() == ".fna" ||
+      arguments.sequence_list.extension() == ".fa") {
+    sequence_list.push_back(arguments.sequence_list);
+  } else if (arguments.sequence_list.extension() == ".txt") {
+    std::ifstream infile(arguments.sequence_list);
+    std::string path;
+    while (std::getline(infile, path)) {
+      sequence_list.push_back(path);
+    }
   }
 
-  auto scores =
+  auto [scores, ids] =
       score_sequences_paths(trees, sequence_list, arguments.background_order);
 
   HighFive::File out_file{arguments.outpath,
@@ -144,8 +150,13 @@ int main(int argc, char *argv[]) {
     out_file.createDataSet<double>("scores", HighFive::DataSpace(dims));
   }
   auto scores_dataset = out_file.getDataSet("scores");
-
   scores_dataset.write(scores);
+
+  if (!out_file.exist("ids")) {
+    out_file.createDataSet<std::string>("ids", HighFive::DataSpace::From(ids));
+  }
+  auto ids_dataset = out_file.getDataSet("ids");
+  ids_dataset.write(ids);
 
   return EXIT_SUCCESS;
 }
