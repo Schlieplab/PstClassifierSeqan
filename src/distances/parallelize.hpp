@@ -8,12 +8,14 @@
 
 namespace pst::parallelize {
 
+enum ExecutionStrategy { parallel, sequential };
+
 std::vector<std::tuple<size_t, size_t>> get_bounds(size_t size) {
-  const auto processor_count = std::thread::hardware_concurrency();
+  const size_t processor_count = std::thread::hardware_concurrency();
   std::vector<std::tuple<size_t, size_t>> bounds_per_thread{};
   float values_per_thread = float(size) / processor_count;
 
-  for (size_t i = 0; i < processor_count; i++) {
+  for (size_t i = 0; i < std::min(processor_count, size); i++) {
     size_t start_index = std::floor(values_per_thread * i);
     size_t stop_index = std::ceil(values_per_thread * (i + 1.0));
     if (i == (processor_count - 1)) {

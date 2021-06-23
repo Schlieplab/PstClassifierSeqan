@@ -16,14 +16,30 @@ namespace pst {
 
 using tree_t = pst::ProbabilisticSuffixTreeMap<seqan3::dna5>;
 
-void score_slices(
+void score_trees_slice(
     size_t start_index, size_t stop_index,
     std::vector<std::vector<double>> &scores, std::vector<tree_t> &trees,
-    std::vector<std::vector<seqan3::dna5>> &sequences,
+    std::vector<seqan3::dna5_vector> &sequences,
     const std::function<float(tree_t &, std::vector<seqan3::dna5> &)> &fun) {
 
+  std::cout << "Sizes: " << trees.size() << " " << sequences.size()
+            << std::endl;
   for (size_t j = 0; j < sequences.size(); j++) {
     for (size_t i = start_index; i < stop_index; i++) {
+      std::cout << i << " " << j << std::endl;
+      scores[j][i] = fun(trees[i], sequences[j]);
+    }
+  }
+}
+
+void score_sequences_slice(
+    size_t start_index, size_t stop_index,
+    std::vector<std::vector<double>> &scores, std::vector<tree_t> &trees,
+    std::vector<seqan3::dna5_vector> &sequences,
+    const std::function<double(tree_t &, std::vector<seqan3::dna5> &)> &fun) {
+
+  for (size_t i = 0; i < trees.size(); i++) {
+    for (size_t j = start_index; j < stop_index; j++) {
       scores[j][i] = fun(trees[i], sequences[j]);
     }
   }
@@ -45,7 +61,7 @@ score_sequences(std::vector<tree_t> &trees, std::vector<std::string> &sequences,
   }
 
   auto fun = [&](size_t start_index, size_t stop_index) {
-    score_slices(
+    score_trees_slice(
         start_index, stop_index, std::ref(scores), std::ref(trees),
         std::ref(dna_sequences),
         pst::distances::negative_log_likelihood_symmetric<seqan3::dna5>);
