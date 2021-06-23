@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
   } else if (arguments.filepath.extension() == ".tree") {
     pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree{arguments.filepath};
 
-    trees = std::vector<tree_t>{tree};
+    trees = std::vector<tree_t>{std::move(tree)};
   }
 
   std::ifstream infile(arguments.sequence_list);
