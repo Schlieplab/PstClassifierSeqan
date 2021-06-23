@@ -22,6 +22,7 @@ using tree_t = pst::ProbabilisticSuffixTreeMap<seqan3::dna5>;
 
 struct input_arguments {
   size_t background_order{0};
+  bool score_both_sequence_directions{false};
   std::filesystem::path filepath{};
   std::filesystem::path outpath{};
   std::filesystem::path sequence_list{};
@@ -43,6 +44,10 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
                     "to be scored.");
   parser.add_option(arguments.background_order, 'b', "background-order",
                     "Length of background for log-likelihood.");
+  parser.add_flag(arguments.score_both_sequence_directions, 'r',
+                  "score-forward-and-reverse",
+                  "Flag to signify that the scoring function should score both "
+                  "the forward and the reverse complement of the sequence.");
 
   try {
     parser.parse();
@@ -73,7 +78,8 @@ std::vector<tree_t> get_trees(HighFive::File &file) {
 std::tuple<std::vector<std::vector<double>>, std::vector<std::string>>
 score_sequences_paths(std::vector<tree_t> &trees,
                       std::vector<std::string> &sequence_list,
-                      size_t background_order) {
+                      size_t background_order,
+                      bool score_both_sequence_directions) {
   std::vector<std::vector<double>> all_scores{};
   std::vector<std::string> ids{};
 
@@ -91,13 +97,20 @@ score_sequences_paths(std::vector<tree_t> &trees,
                                             std::vector<double>(trees.size()));
 
     auto fun = [&](size_t start_index, size_t stop_index) {
-      pst::score_sequences_slice(
-          start_index, stop_index, std::ref(scores), std::ref(trees),
-          std::ref(sequences),
-          [&](tree_t &tree, std::vector<seqan3::dna5> &sequence) -> double {
-            return pst::distances::negative_log_likelihood<seqan3::dna5>(
-                tree, sequence);
-          });
+      if (score_both_sequence_directions) {
+        pst::score_sequences_slice(
+            start_index, stop_index, std::ref(scores), std::ref(trees),
+            std::ref(sequences),
+            pst::distances::negative_log_likelihood_symmetric<seqan3::dna5>);
+      } else {
+        pst::score_sequences_slice(
+            start_index, stop_index, std::ref(scores), std::ref(trees),
+            std::ref(sequences),
+            [&](tree_t &tree, std::vector<seqan3::dna5> &sequence) -> double {
+              return pst::distances::negative_log_likelihood<seqan3::dna5>(
+                  tree, sequence);
+            });
+      }
     };
 
     pst::parallelize::parallelize(sequences.size(), fun);
@@ -139,7 +152,8 @@ int main(int argc, char *argv[]) {
   }
 
   auto [scores, ids] =
-      score_sequences_paths(trees, sequence_list, arguments.background_order);
+      score_sequences_paths(trees, sequence_list, arguments.background_order,
+                            arguments.score_both_sequence_directions);
 
   HighFive::File out_file{arguments.outpath,
                           HighFive::File::ReadWrite | HighFive::File::Create};
