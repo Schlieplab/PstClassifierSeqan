@@ -80,9 +80,9 @@ get_composition_vectors(std::vector<tree_t> &trees, size_t order,
   std::transform(
       trees.begin(), trees.end(), std::back_inserter(vectors),
       [&](tree_t &tree) -> std::vector<double> {
-        Eigen::VectorXd vector =
-            pst::distances::composition_vector_state_probability_scaled<
-                seqan3::dna5>(tree, contexts, background_order);
+        Eigen::VectorXd vector = pst::distances::details::
+            composition_vector_state_probability_scaled<seqan3::dna5>(
+                tree, contexts, background_order);
 
         std::vector<double> vec(vector.size());
         for (size_t i = 0; i < vector.size(); i++) {

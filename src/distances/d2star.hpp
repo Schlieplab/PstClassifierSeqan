@@ -43,4 +43,12 @@ inline double d2star(ProbabilisticSuffixTreeMap<alphabet_t> &left,
                                           background_order);
 }
 
+double d2star_cpp(std::string left_tree_string, std::string right_tree_string,
+                  int background_order) {
+  pst::ProbabilisticSuffixTreeMap<seqan3::dna5> left_tree{left_tree_string};
+  pst::ProbabilisticSuffixTreeMap<seqan3::dna5> right_tree{right_tree_string};
+
+  return d2star<seqan3::dna5>(left_tree, right_tree, background_order);
+}
+
 } // namespace pst::distances

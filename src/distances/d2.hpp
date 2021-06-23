@@ -38,4 +38,11 @@ inline double d2(ProbabilisticSuffixTreeMap<alphabet_t> &left,
   return details::core_d2<alphabet_t>(left, right, contexts);
 }
 
+double d2_cpp(std::string left_tree_string, std::string right_tree_string) {
+  pst::ProbabilisticSuffixTreeMap<seqan3::dna5> left_tree{left_tree_string};
+  pst::ProbabilisticSuffixTreeMap<seqan3::dna5> right_tree{right_tree_string};
+
+  return d2<seqan3::dna5>(left_tree, right_tree);
+}
+
 } // namespace pst::distances

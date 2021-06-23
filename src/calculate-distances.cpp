@@ -104,7 +104,7 @@ parse_distance_function(input_arguments &arguments) {
     return {fun, "d2star-" + std::to_string(arguments.background_order)};
   } else if (arguments.distance_name == "d2") {
     auto fun = [&](auto &left, auto &right) {
-      return pst::distances::d2star<seqan3::dna5>(left, right);
+      return pst::distances::d2<seqan3::dna5>(left, right);
     };
     return {fun, "d2"};
   }

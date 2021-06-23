@@ -42,7 +42,7 @@ static void CompositionVector(benchmark::State &state) {
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(
-        pst::distances::composition_vector(first, contexts, 2));
+        pst::distances::details::composition_vector(first, contexts, 2));
   }
 }
 BENCHMARK(CompositionVector);
