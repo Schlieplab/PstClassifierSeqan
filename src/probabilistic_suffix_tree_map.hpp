@@ -11,6 +11,7 @@
 #include <iostream>
 #include <mutex>
 #include <queue>
+#include <random>
 #include <shared_mutex>
 #include <sstream>
 #include <stack>
@@ -65,7 +66,7 @@ using vec_t =
  *
  **
  */
-template <seqan3::alphabet alphabet_t>
+template <seqan3::alphabet alphabet_t = seqan3::dna5>
 class ProbabilisticSuffixTreeMap : public lst::LazySuffixTree<alphabet_t> {
 public:
   ProbabilisticSuffixTreeMap() = default;
@@ -121,12 +122,7 @@ public:
    * \param[in] id The id of the model.
    * \param[in] sequence The text to construct from.
    */
-  ProbabilisticSuffixTreeMap(std::filesystem::path &filename) {
-    std::ifstream input(filename);
-    if (!input.is_open()) {
-      throw std::invalid_argument{"Failed to open file."};
-    }
-
+  ProbabilisticSuffixTreeMap(const std::filesystem::path &filename) {
     auto characters = this->get_valid_characters();
     for (auto &c : characters) {
       auto char_rank = seqan3::to_rank(c);
@@ -134,8 +130,39 @@ public:
       valid_character_chars.push_back(c.to_char());
     }
 
-    for (std::string line; std::getline(input, line, '\n');) {
-      parse_line(line, characters);
+    if (filename.extension() == ".tree") {
+      std::ifstream input(filename);
+      if (!input.is_open()) {
+        throw std::invalid_argument{"Failed to open file."};
+      }
+
+      for (std::string line; std::getline(input, line, '\n');) {
+        parse_line(line, characters);
+      }
+    } else if (filename.extension() == ".bintree") {
+      std::ifstream file_stream(filename, std::ios::binary);
+      cereal::BinaryInputArchive iarchive(file_stream);
+
+      vlmc::VLMCKmer kmer{};
+
+      while (file_stream.peek() != EOF) {
+        try {
+          iarchive(kmer);
+
+          this->counts[kmer.to_string()] = {
+              kmer.count,
+              {double(kmer.next_symbol_counts[0]) / double(kmer.count),
+               double(kmer.next_symbol_counts[1]) / double(kmer.count),
+               double(kmer.next_symbol_counts[2]) / double(kmer.count), 0,
+               double(kmer.next_symbol_counts[3]) / double(kmer.count)},
+              true};
+
+        } catch (const cereal::Exception &e) {
+          std::cout << (file_stream.peek() == EOF) << std::endl;
+          std::cout << e.what() << std::endl;
+        }
+      }
+      file_stream.close();
     }
   }
 
@@ -300,6 +327,46 @@ public:
     return nodes;
   }
 
+  std::string generate_sequence(size_t length) {
+    std::random_device rd;
+    std::mt19937 gen = std::mt19937{rd()};
+
+    using seqan3::operator""_dna5;
+
+    static constexpr char char_codes[4] = {'A', 'C', 'G', 'T'};
+
+    std::uniform_int_distribution<> distrib(0, 3);
+
+    size_t order_max = this->get_max_order();
+    std::stringstream ss;
+
+    std::string subsequence{};
+    subsequence.resize(order_max);
+    for (size_t i = 0; i < length; i++) {
+      size_t start_index = i - order_max;
+      size_t end_index = i;
+      if (order_max > i) {
+        start_index = 0;
+        end_index = i;
+      }
+
+      auto context = this->get_closest_state(subsequence);
+      auto probs = std::get<1>(this->counts[context]);
+      std::discrete_distribution<> d({probs[0], probs[1], probs[2], probs[4]});
+      auto rand = d(gen);
+
+      char c = char_codes[rand];
+
+      ss << c;
+      subsequence.push_back(c);
+      if (subsequence.length() > order_max) {
+        subsequence.erase(0, 1);
+      }
+    }
+
+    return ss.str();
+  }
+
   /**! \brief Iterates over the nodes in the PST.
    *
    * \param start_index Index of the node to start iteration at.
@@ -307,8 +374,7 @@ public:
    */
   void pst_breadth_first_iteration(
       const std::function<bool(const std::string, size_t)> &f) {
-    std::string root{""};
-    pst_breadth_first_iteration(root, 0, f);
+    pst_breadth_first_iteration("", 0, f);
   }
 
   /**! \brief Iterates over the nodes in the PST.
@@ -369,7 +435,7 @@ public:
       auto &[label, level] = queue.front();
 
       std::vector<std::string> children{};
-      this->iterate_pst_children(label, [&](const std::string child_label) {
+      this->iterate_pst_children(label, [&](std::string child_label) {
         if (this->is_included(child_label)) {
           children.emplace_back(std::move(child_label));
         }
@@ -420,24 +486,49 @@ public:
     return label.substr(1);
   }
 
+  /**! \brief Remove nodes that are less frequent that min_count and longer than
+   * max_depth.
+   *
+   * For any effect, the new settings have to be more stringent than the
+   * previous settings.
+   *
+   * \param min_count_ new min count setting.
+   * \param max_depth_ new max depth setting.
+   */
+  void reprune_support(size_t min_count_, int max_depth_) {
+    this->pst_breadth_first_iteration(
+        [&](const std::string context, size_t level) -> bool {
+          if (this->get_count(context) < min_count_ || level > max_depth_) {
+            std::get<2>(this->counts[context]) = false;
+          }
+          return true;
+        });
+  }
+
   std::string get_closest_state(const std::string &label) {
     if (label.empty()) {
       return label;
     }
 
+    auto sublabel = label;
     for (size_t i = 0; i < label.size(); i++) {
-      auto sublabel = label.substr(i);
       if (this->is_included(sublabel)) {
         return sublabel;
       }
+      sublabel.erase(0, 1);
     }
 
     return "";
   }
 
   double get_transition_probability(const std::string &label,
-                                    size_t char_rank) {
-    return std::get<1>(this->counts[label])[char_rank];
+                                    const size_t &char_rank) {
+    if (this->valid_characters.find(char_rank) ==
+        this->valid_characters.end()) {
+      return 0.0;
+    } else {
+      return std::get<1>(this->counts[label])[char_rank];
+    }
   }
 
   double get_transition_probability(const std::string &label,
@@ -1113,7 +1204,7 @@ public:
    * \param f function to call on every child.
    */
   void iterate_pst_children(const std::string &label,
-                            const std::function<void(const std::string)> &f) {
+                            const std::function<void(std::string)> &f) {
     for (auto char_rank : this->valid_characters) {
       alphabet_t c = seqan3::assign_rank_to(char_rank, alphabet_t{});
 

@@ -96,8 +96,18 @@ public:
    * \param[in] id The id of the model.
    * \param[in] sequence The text to construct from.
    */
-  explicit KullbackLieblerTreeMap(std::filesystem::path &filename)
+  explicit KullbackLieblerTreeMap(const std::filesystem::path &filename)
       : ProbabilisticSuffixTreeMap<alphabet_t>(filename), cutoff_value(3.9075) {
+  }
+
+  /**! \brief Prune nodes with new Kullback-Leibler threshold.  New setting has
+   * to be larger than previous one for any effect.
+   *
+   * \param threshold_ new threshold setting.
+   */
+  void reprune_similarity(double threshold_) {
+    this->cutoff_value = threshold_;
+    cutoff_prune();
   }
 
 protected:
