@@ -97,20 +97,30 @@ score_sequences_paths(std::vector<tree_t> &trees,
                                             std::vector<double>(trees.size()));
 
     auto fun = [&](size_t start_index, size_t stop_index) {
-      if (score_both_sequence_directions) {
-        pst::score_sequences_slice(
-            start_index, stop_index, std::ref(scores), std::ref(trees),
-            std::ref(sequences),
-            pst::distances::negative_log_likelihood_symmetric<seqan3::dna5>);
+      std::function<double(tree_t &, std::vector<seqan3::dna5> &)> score_fun;
+
+      if (sequences.size() == 1) {
+        if (score_both_sequence_directions) {
+          score_fun =
+              pst::distances::negative_log_likelihood_symmetric_p<seqan3::dna5>;
+        } else {
+          score_fun = pst::distances::negative_log_likelihood_p<seqan3::dna5>;
+        }
       } else {
-        pst::score_sequences_slice(
-            start_index, stop_index, std::ref(scores), std::ref(trees),
-            std::ref(sequences),
-            [&](tree_t &tree, std::vector<seqan3::dna5> &sequence) -> double {
-              return pst::distances::negative_log_likelihood<seqan3::dna5>(
-                  tree, sequence);
-            });
+        if (score_both_sequence_directions) {
+          score_fun =
+              pst::distances::negative_log_likelihood_symmetric<seqan3::dna5>;
+        } else {
+          score_fun = [&](tree_t &tree,
+                          std::vector<seqan3::dna5> &sequence) -> double {
+            return pst::distances::negative_log_likelihood<seqan3::dna5>(
+                tree, sequence);
+          };
+        }
       }
+      pst::score_sequences_slice(start_index, stop_index, std::ref(scores),
+                                 std::ref(trees), std::ref(sequences),
+                                 score_fun);
     };
 
     pst::parallelize::parallelize(sequences.size(), fun);

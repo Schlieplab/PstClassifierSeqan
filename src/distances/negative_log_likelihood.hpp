@@ -96,7 +96,6 @@ double log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 template <seqan3::alphabet alphabet_t>
 double log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
                       std::string &sequence) {
-
   auto bounds = pst::parallelize::get_bounds(sequence.size());
   std::vector<std::future<double>> part_futures{};
 
@@ -130,6 +129,12 @@ double log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
     log_likelihood += f.get();
   }
   return log_likelihood;
+}
+
+template <seqan3::alphabet alphabet_t>
+double negative_log_likelihood_p(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
+                                 std::vector<alphabet_t> &sequence_dna) {
+  return -log_likelihood(tree, sequence_dna) / sequence_dna.size();
 }
 
 template <seqan3::alphabet alphabet_t>
@@ -241,4 +246,18 @@ negative_log_likelihood_symmetric(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
   return std::min(negative_log_likelihood<alphabet_t>(tree, sequence),
                   negative_log_likelihood<alphabet_t>(tree, reverse_sequence));
 }
+
+template <seqan3::alphabet alphabet_t>
+double
+negative_log_likelihood_symmetric_p(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
+                                  std::vector<alphabet_t> &sequence) {
+
+  std::vector<alphabet_t> reverse_sequence =
+      sequence | std::views::reverse | seqan3::views::complement |
+          seqan3::views::to<std::vector<alphabet_t>>;
+
+  return std::min(negative_log_likelihood_p<alphabet_t>(tree, sequence),
+                  negative_log_likelihood_p<alphabet_t>(tree, reverse_sequence));
+}
+
 } // namespace pst::distances
