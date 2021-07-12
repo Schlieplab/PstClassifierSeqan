@@ -1,16 +1,16 @@
 [submodule "seqan3"]
 	path = seqan3
-	url = git@github.com:seqan/seqan3.git
+	url = https://github.com/seqan/seqan3.git
 	branch = master
 [submodule "HighFive"]
 	path = HighFive
-	url = git@github.com:BlueBrain/HighFive.git
+	url = https://github.com/BlueBrain/HighFive.git
 	branch = master
 [submodule "robin-hood-hashing"]
 	path = robin-hood-hashing
-	url = git@github.com:martinus/robin-hood-hashing
+	url = https://github.com/martinus/robin-hood-hashing.git
 	branch = master
 [submodule "eigen"]
 	path = eigen
-	url = git@gitlab.com:libeigen/eigen.git
+	url = https://gitlab.com/libeigen/eigen.git
 	branch = 3.3
