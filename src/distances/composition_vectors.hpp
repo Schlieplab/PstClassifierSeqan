@@ -130,12 +130,11 @@ inline Eigen::VectorXd
 word_frequency_vector(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
                       std::vector<std::string> &contexts) {
 
-  size_t number_of_entries = contexts.size() * tree.valid_characters.size();
+  size_t number_of_entries = contexts.size();
   Eigen::VectorXd components(number_of_entries);
 
   size_t i = 0;
   for (auto &context : contexts) {
-
     const double prob = likelihood_context<alphabet_t>(
         tree, context,
         [](ProbabilisticSuffixTreeMap<alphabet_t> &tree,
