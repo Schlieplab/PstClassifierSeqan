@@ -258,6 +258,12 @@ std::vector<int> determine_min_counts(const int min_min_count,
   return min_counts;
 }
 
+double g() {
+  static double kl = 1.2;
+  kl += 0.1;
+  return kl;
+}
+
 std::tuple<int, int, double> find_best_parameters(
     const std::filesystem::path &fasta_path, const int min_max_depth,
     const int max_max_depth, const int min_min_count, const int max_min_count,
@@ -274,31 +280,40 @@ std::tuple<int, int, double> find_best_parameters(
   Result best_bic_result{
       0, 0, 0.0, std::numeric_limits<double>::max(), 0.0, 0.0, 0.0, 0, 0};
 
-  std::vector<double> thresholds{start_threshold};
+  std::vector<double> thresholds(100);
+  std::generate(thresholds.begin(), thresholds.end(), g);
   std::sort(thresholds.begin(), thresholds.end());
 
   std::vector<int> min_counts =
       determine_min_counts(min_min_count, max_min_count);
 
+  std::cout << "running kmc" << std::endl;
   auto kmc_db_path = vlmc::run_kmc(fasta_path, max_max_depth + 1, tmp_path,
                                    in_or_out_of_core, 2);
+  std::cout << "building vlmc" << std::endl;
 
   vlmc::build_vlmc_from_kmc_db(fasta_path, max_max_depth, min_min_count,
                                thresholds[0], tree_path, tmp_path,
                                in_or_out_of_core, kmc_db_path);
-  vlmc::remove_kmc_files(kmc_db_path);
 
   for (auto threshold : thresholds) {
     for (auto min_count : min_counts) {
+      std::cout << "parsing tree" << std::endl;
       pst::KullbackLieblerTreeMap<seqan3::dna5> tree{tree_path};
+      tree.multi_core = false;
       for (int max_depth = max_max_depth; max_depth >= min_max_depth;
            max_depth--) {
         // Prune for parameter settings
+        std::cout << "pruning tree support" << std::endl;
         tree.reprune_support(min_count, max_depth);
+        std::cout << "pruning tree similarity" << std::endl;
         tree.reprune_similarity(threshold);
+
+        std::cout << "computing bic" << std::endl;
 
         auto res = bic_score(tree, sequence, min_count, max_depth, threshold);
 
+        std::cout << "finding min" << std::endl;
         if (res.bic_score < best_bic_result.bic_score) {
           best_bic_result = res;
         }
@@ -311,8 +326,10 @@ std::tuple<int, int, double> find_best_parameters(
           best_aicc_result = res;
         }
 
+        std::cout << "pushing back" << std::endl;
         results.push_back(res);
 
+        std::cout << "writing to stdout" << std::endl;
         res.output_result();
       }
     }
@@ -349,6 +366,8 @@ std::tuple<int, int, double> find_best_parameters(
   best_aic_result.output_result();
   std::cout << "---------- Best AICc ----------" << std::endl;
   best_aicc_result.output_result();
+
+  vlmc::remove_kmc_files(kmc_db_path);
 
   return {best_bic_result.max_depth, best_bic_result.min_count,
           best_bic_result.threshold};
