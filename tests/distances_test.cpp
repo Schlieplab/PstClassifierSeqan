@@ -112,6 +112,15 @@ TEST_F(DistancesTest, d2Snapshots) {
   EXPECT_FLOAT_EQ(expected_similar, pst::distances::d2(first, second));
 }
 
+TEST_F(DistancesTest, d2Identity) {
+  EXPECT_FLOAT_EQ(0, pst::distances::d2(first, first));
+}
+
+TEST_F(DistancesTest, d2Symmetry) {
+  EXPECT_FLOAT_EQ(pst::distances::d2(second, first),
+                  pst::distances::d2(first, second));
+}
+
 TEST_F(DistancesTest, AllContexts) {
   auto contexts = pst::distances::details::get_all_contexts<seqan3::dna5>(
       2, first.valid_characters);

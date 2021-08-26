@@ -306,10 +306,14 @@ public:
    * \return vector of all terminal nodes, sorted.
    */
   std::vector<std::string> get_terminal_nodes() {
-    static std::mutex terminal_mutex{};
+    static std::shared_mutex terminal_mutex{};
+    terminal_mutex.lock_shared();
     if (terminal_nodes.size() > 0) {
+      terminal_mutex.unlock_shared();
       return terminal_nodes;
     }
+    terminal_mutex.unlock_shared();
+
 
     std::vector<std::string> nodes{};
     for (const auto &[child_label, v] : this->counts) {

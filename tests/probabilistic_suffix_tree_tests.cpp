@@ -13,9 +13,6 @@
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
-#include <seqan3/range/container/bitcompressed_vector.hpp>
-#include <seqan3/range/views/to.hpp>
-#include <seqan3/range/views/to_char.hpp>
 
 #include "random_sequence.hpp"
 #include "test_utils.hpp"

@@ -13,10 +13,10 @@
 
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
+#include <seqan3/alphabet/views/to_char.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
-#include <seqan3/range/views/to.hpp>
-#include <seqan3/range/views/to_char.hpp>
 #include <seqan3/std/filesystem>
+#include <seqan3/std/ranges>
 
 class ProbabilisticSuffixTreeTestMap : public ::testing::Test {
 protected:
@@ -333,4 +333,31 @@ TEST_F(ProbabilisticSuffixTreeTestMap, CorrectCounts) {
 
   correct_counts(tree, long_sequence);
   correct_counts(parallel_tree, long_sequence);
+}
+
+TEST_F(ProbabilisticSuffixTreeTestMap, GenerateSequence) {
+  size_t max_depth = 1;
+  size_t min_count = 1;
+  float threshold = 3.9075;
+
+  lst::details::sequence_t<seqan3::dna5> train_sequence{};
+  pst::KullbackLieblerTreeMap<seqan3::dna5> tree{
+      "1-order", train_sequence, max_depth, min_count, threshold, false, 1};
+
+  tree.counts[""] = {8, {0.3, 0.2, 0.0, 0.3, 0.2}, true};
+  tree.counts["A"] = {3, {0.8, 0.05, 0.05, 0.0, 0.1}, true};
+  tree.counts["T"] = {5, {0.05, 0.05, 0.2, 0.0, 0.7}, true};
+
+  auto sequence = tree.generate_sequence(50000);
+
+  std::filesystem::path path{"moc.fasta"};
+  std::ofstream out{path};
+  out << ">MOC\n";
+  for (int i = 0; i < 50000 / 80; i++) {
+    auto subseq = sequence.substr(i * 80, 80);
+    out << subseq << "\n";
+  }
+  out.close();
+
+  std::cout << sequence << std::endl;
 }

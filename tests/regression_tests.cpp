@@ -15,8 +15,6 @@
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
-#include <seqan3/range/views/to.hpp>
-#include <seqan3/range/views/to_char.hpp>
 
 #include "../src/kl_tree.hpp"
 #include "../src/kl_tree_map.hpp"

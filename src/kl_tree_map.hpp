@@ -201,17 +201,11 @@ protected:
     }
 
     const std::string parent_label = this->get_pst_parent(node_label);
-    std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>,
-               bool>
-        node_counts{};
-    std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>,
-               bool>
-        parent_counts{};
-    {
-      std::shared_lock lock{remove_mutex};
-      node_counts = this->counts[node_label];
-      parent_counts = this->counts[parent_label];
-    }
+    remove_mutex.lock_shared();
+    auto node_counts = this->counts[node_label];
+    auto parent_counts = this->counts[parent_label];
+    remove_mutex.unlock_shared();
+
     return calculate_delta(node_counts, parent_counts);
   }
 
@@ -236,8 +230,7 @@ protected:
   }
 
   double calculate_delta(
-      std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>,
-                 bool> &node_counts,
+      std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>, bool> &node_counts,
       std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>,
                  bool> &parent_counts) {
     double delta = 0.0;
