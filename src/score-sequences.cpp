@@ -151,7 +151,8 @@ int main(int argc, char *argv[]) {
 
     HighFive::File file{arguments.filepath, HighFive::File::ReadOnly};
     trees = get_trees(file);
-  } else if (arguments.filepath.extension() == ".tree") {
+  } else if (arguments.filepath.extension() == ".tree" ||
+             arguments.filepath.extension() == ".bintree") {
     pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree{arguments.filepath};
 
     trees = std::vector<tree_t>{std::move(tree)};

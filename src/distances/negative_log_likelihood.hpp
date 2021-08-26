@@ -142,6 +142,13 @@ double log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 }
 
 template <seqan3::alphabet alphabet_t>
+double log_likelihood_part_string(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
+                                  std::string &sequence, size_t start,
+                                  size_t end) {
+  return log_likelihood_part(tree, sequence, start, end);
+}
+
+template <seqan3::alphabet alphabet_t>
 double likelihood_context(
     ProbabilisticSuffixTreeMap<alphabet_t> &tree, std::string &sequence,
     const std::function<double(ProbabilisticSuffixTreeMap<alphabet_t> &,
@@ -273,7 +280,7 @@ double log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 
   for (auto &[start_index, stop_index] : bounds) {
     part_futures.push_back(std::async(
-        std::launch::async, details::log_likelihood_part<alphabet_t>,
+        std::launch::async, details::log_likelihood_part_string<alphabet_t>,
         std::ref(tree), std::ref(sequence), start_index, stop_index));
   }
 
