@@ -29,6 +29,8 @@ struct input_arguments {
   size_t order{6};
   size_t background_order{2};
   std::filesystem::path filepath{""};
+  std::filesystem::path filepath_to{""};
+  std::filesystem::path scores{""};
 };
 
 input_arguments parse_cli_arguments(int argc, char *argv[]) {
@@ -41,6 +43,13 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
 
   parser.add_option(arguments.filepath, 'p', "path",
                     "Path to hdf5 file where PSTs are stored.");
+
+  parser.add_option(arguments.filepath_to, 'y', "path-to",
+                    "Path to hdf5 file where PSTs are stored.");
+
+  parser.add_option(arguments.scores, 's', "scores-path",
+                    "Path to hdf5 file where scores will be stored.");
+
   parser.add_option(
       arguments.distance_name, 'n', "distance-name",
       "Name of distance function.  Must be one of 'cv' and 'cv-estimation'");
@@ -72,13 +81,19 @@ void calculate_vector_slice(
 }
 
 void calculate_slice(size_t start_index, size_t stop_index, matrix_t &distances,
-                     std::vector<tree_t> &trees,
+                     std::vector<tree_t> &trees, std::vector<tree_t> &trees_to,
                      const std::function<float(tree_t &, tree_t &)> &fun) {
   for (size_t i = start_index; i < stop_index; i++) {
-    for (size_t j = 0; j < trees.size(); j++) {
-      distances(i, j) = fun(trees[i], trees[j]);
+    for (size_t j = 0; j < trees_to.size(); j++) {
+      distances(i, j) = fun(trees[i], trees_to[j]);
     }
   }
+}
+
+void calculate_slice(size_t start_index, size_t stop_index, matrix_t &distances,
+                     std::vector<tree_t> &trees,
+                     const std::function<float(tree_t &, tree_t &)> &fun) {
+  calculate_slice(start_index, stop_index, distances, trees, trees, fun);
 }
 
 std::tuple<std::function<float(tree_t &, tree_t &)>, std::string>
@@ -130,12 +145,13 @@ std::vector<Eigen::VectorXd> get_composition_vectors(std::vector<tree_t> &trees,
 }
 
 matrix_t calculate_distances(
-    std::vector<tree_t> &trees, input_arguments &arguments,
+    std::vector<tree_t> &trees, std::vector<tree_t> &trees_to,
+    input_arguments &arguments,
     const std::function<float(tree_t &, tree_t &)> &distance_fun) {
   std::cout << "calculating distances... " << trees.size() << " x "
-            << trees.size() << std::endl;
+            << trees_to.size() << std::endl;
 
-  matrix_t distances(trees.size(), trees.size());
+  matrix_t distances(trees.size(), trees_to.size());
 
   if (arguments.distance_name == "cv-estimation") {
     std::vector<Eigen::VectorXd> vectors{};
@@ -150,7 +166,7 @@ matrix_t calculate_distances(
   } else {
     auto fun = [&](size_t start_index, size_t stop_index) {
       calculate_slice(start_index, stop_index, std::ref(distances),
-                      std::ref(trees), distance_fun);
+                      std::ref(trees), std::ref(trees_to), distance_fun);
     };
     pst::parallelize::parallelize(trees.size(), fun);
   }
@@ -180,25 +196,63 @@ int main(int argc, char *argv[]) {
   const auto [distance_fun, distance_name_with_args] =
       parse_distance_function(arguments);
 
-  HighFive::File file{arguments.filepath, HighFive::File::ReadWrite};
+  std::vector<tree_t> trees;
+  std::vector<tree_t> trees_to;
 
-  auto trees = get_trees(file);
-  matrix_t distances = calculate_distances(trees, arguments, distance_fun);
+  if (arguments.filepath.extension() == ".h5" ||
+      arguments.filepath.extension() == ".hdf5") {
+    HighFive::File file{arguments.filepath, HighFive::File::ReadOnly};
+    trees = get_trees(file);
+  } else if (arguments.filepath.extension() == ".tree" ||
+             arguments.filepath.extension() == ".bintree") {
+    pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree{arguments.filepath};
+
+    trees = std::vector<tree_t>{std::move(tree)};
+  }
+
+  if (arguments.filepath_to.empty()) {
+    trees_to = trees;
+  } else if (arguments.filepath_to.extension() == ".h5" ||
+             arguments.filepath_to.extension() == ".hdf5") {
+    HighFive::File file{arguments.filepath_to, HighFive::File::ReadOnly};
+    trees_to = get_trees(file);
+  } else if (arguments.filepath_to.extension() == ".tree" ||
+             arguments.filepath_to.extension() == ".bintree") {
+    pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree{arguments.filepath_to};
+
+    trees_to = std::vector<tree_t>{std::move(tree)};
+  }
+
+  matrix_t distances =
+      calculate_distances(trees, trees_to, arguments, distance_fun);
 
   std::cout << "done with distances" << std::endl;
-  if (!file.exist("distances")) {
-    file.createGroup("distances");
-  }
-  auto distance_group = file.getGroup("distances");
 
-  if (!distance_group.exist(distance_name_with_args)) {
-    std::vector<size_t> dims{trees.size(), trees.size()};
-    distance_group.createDataSet<float>(distance_name_with_args,
-                                        HighFive::DataSpace(dims));
-  }
+  if (arguments.scores.empty()) {
+    for (int i = 0; i < trees.size(); i++) {
+      for (int j = 0; j < trees.size(); j++) {
+        std::cout << distances(i, j) << " ";
+      }
+      std::cout << std::endl;
+    }
+  } else if (arguments.scores.extension() == ".h5" ||
+             arguments.scores.extension() == ".hdf5") {
+    HighFive::File file{arguments.scores, HighFive::File::ReadOnly};
 
-  auto distance_data_set = distance_group.getDataSet(distance_name_with_args);
-  distance_data_set.write(distances);
+    if (!file.exist("distances")) {
+      file.createGroup("distances");
+    }
+    auto distance_group = file.getGroup("distances");
+
+    if (!distance_group.exist(distance_name_with_args)) {
+      std::vector<size_t> dims{trees.size(), trees.size()};
+      distance_group.createDataSet<float>(distance_name_with_args,
+                                          HighFive::DataSpace(dims));
+    }
+
+    auto distance_data_set = distance_group.getDataSet(distance_name_with_args);
+    distance_data_set.write(distances);
+  }
 
   return EXIT_SUCCESS;
 }
