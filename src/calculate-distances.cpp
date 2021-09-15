@@ -237,7 +237,8 @@ int main(int argc, char *argv[]) {
     }
   } else if (arguments.scores.extension() == ".h5" ||
              arguments.scores.extension() == ".hdf5") {
-    HighFive::File file{arguments.scores, HighFive::File::ReadOnly};
+    HighFive::File file{arguments.scores,
+                        HighFive::File::ReadWrite | HighFive::File::Create};
 
     if (!file.exist("distances")) {
       file.createGroup("distances");
