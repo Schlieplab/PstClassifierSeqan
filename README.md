@@ -23,7 +23,7 @@ algorithms, depending on parameter selection.
 
 ## Citation
 
-Publication pending...
+Published in [BMC bioinformatics](https://doi.org/10.1186/s12859-021-04387-y).
 
 ## Usage
 
