@@ -120,7 +120,7 @@ double log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 
   for (auto &[start_index, stop_index] : bounds) {
     part_futures.push_back(std::async(
-        std::launch::async, details::log_likelihood_part_dna<alphabet_t>,
+        std::launch::async, log_likelihood_part_dna<alphabet_t>,
         std::ref(tree), std::ref(sequence_dna), start_index, stop_index));
   }
 
