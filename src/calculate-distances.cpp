@@ -31,6 +31,7 @@ struct input_arguments {
   std::filesystem::path filepath{""};
   std::filesystem::path filepath_to{""};
   std::filesystem::path scores{""};
+  double pseudo_count_amount{1.0};
 };
 
 input_arguments parse_cli_arguments(int argc, char *argv[]) {
@@ -49,6 +50,10 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
 
   parser.add_option(arguments.scores, 's', "scores-path",
                     "Path to hdf5 file where scores will be stored.");
+
+  parser.add_option(arguments.pseudo_count_amount, 'm', "pseudo-count-amount",
+                    "Size of pseudo count for probability estimation. See e.g. "
+                    "https://en.wikipedia.org/wiki/Additive_smoothing .");
 
   parser.add_option(
       arguments.distance_name, 'n', "distance-name",
@@ -174,7 +179,8 @@ matrix_t calculate_distances(
   return distances;
 }
 
-std::vector<tree_t> get_trees(HighFive::File &file) {
+std::vector<tree_t> get_trees(HighFive::File &file,
+                              const double pseudo_count_amount) {
   const std::string DATASET_NAME("signatures");
 
   HighFive::DataSet dataset = file.getDataSet(DATASET_NAME);
@@ -186,7 +192,9 @@ std::vector<tree_t> get_trees(HighFive::File &file) {
   std::cout << "parsing trees..." << std::endl;
   std::transform(result_string_list.begin(), result_string_list.end(),
                  std::back_inserter(trees),
-                 [](std::string &tree) -> tree_t { return tree_t{tree}; });
+                 [&pseudo_count_amount](std::string &tree) -> tree_t {
+                   return tree_t{tree, pseudo_count_amount};
+                 });
 
   return trees;
 }
@@ -202,10 +210,11 @@ int main(int argc, char *argv[]) {
   if (arguments.filepath.extension() == ".h5" ||
       arguments.filepath.extension() == ".hdf5") {
     HighFive::File file{arguments.filepath, HighFive::File::ReadOnly};
-    trees = get_trees(file);
+    trees = get_trees(file, arguments.pseudo_count_amount);
   } else if (arguments.filepath.extension() == ".tree" ||
              arguments.filepath.extension() == ".bintree") {
-    pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree{arguments.filepath};
+    pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree{
+        arguments.filepath, arguments.pseudo_count_amount};
 
     trees = std::vector<tree_t>{std::move(tree)};
   }
@@ -215,10 +224,11 @@ int main(int argc, char *argv[]) {
   } else if (arguments.filepath_to.extension() == ".h5" ||
              arguments.filepath_to.extension() == ".hdf5") {
     HighFive::File file{arguments.filepath_to, HighFive::File::ReadOnly};
-    trees_to = get_trees(file);
+    trees_to = get_trees(file, arguments.pseudo_count_amount);
   } else if (arguments.filepath_to.extension() == ".tree" ||
              arguments.filepath_to.extension() == ".bintree") {
-    pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree{arguments.filepath_to};
+    pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree{
+        arguments.filepath_to, arguments.pseudo_count_amount};
 
     trees_to = std::vector<tree_t>{std::move(tree)};
   }

@@ -30,6 +30,7 @@ struct input_arguments {
   bool multi_core{false};
   int parallel_depth{1};
   std::filesystem::path out_path{""};
+  double pseudo_count_amount{1.0};
 };
 
 struct my_traits : seqan3::sequence_file_input_default_traits_dna {
@@ -87,6 +88,11 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
                     "k-mers in a hashmap, or 'tree' which will store "
                     "the k-mers in a tree and requires suffix links.");
 
+  parser.add_option(arguments.pseudo_count_amount, 'j', "pseudo-count-amount",
+                    "Size of pseudo count for probability estimation, only "
+                    "works for algorithm-method=='hashmap'. See e.g. "
+                    "https://en.wikipedia.org/wiki/Additive_smoothing .");
+
   // Multiprocessing
   parser.add_flag(arguments.multi_core, 'm', "multi-core",
                   "Enable Multi-core utilisation.");
@@ -123,7 +129,8 @@ std::string train(lst::details::sequence_t<seqan3::dna5> sequence,
                   std::string id, size_t max_depth, size_t min_count,
                   float threshold, size_t number_of_parameters,
                   std::string pruning_method, std::string algorithm,
-                  std::string estimator, bool multi_core, int parallel_depth) {
+                  std::string estimator, bool multi_core, int parallel_depth,
+                  const double pseudo_count_amount) {
 
   if (estimator == "KL" && algorithm == "hashmap") {
     pst::KullbackLieblerTreeMap<seqan3::dna5> pst{id,
@@ -134,7 +141,8 @@ std::string train(lst::details::sequence_t<seqan3::dna5> sequence,
                                                   number_of_parameters,
                                                   pruning_method,
                                                   multi_core,
-                                                  parallel_depth};
+                                                  parallel_depth,
+                                                  pseudo_count_amount};
     pst.construct_tree();
     return pst.to_tree();
   } else if (estimator == "KL") {
@@ -161,7 +169,8 @@ int main(int argc, char *argv[]) {
       arguments.sequence, arguments.id, arguments.max_depth,
       arguments.min_count, arguments.threshold, arguments.number_of_parameters,
       arguments.pruning_method, arguments.algorithm_method, arguments.estimator,
-      arguments.multi_core, arguments.parallel_depth);
+      arguments.multi_core, arguments.parallel_depth,
+      arguments.pseudo_count_amount);
 
   if (arguments.out_path == "") {
     std::cout << tree << std::endl;

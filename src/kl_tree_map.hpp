@@ -86,10 +86,11 @@ public:
                          size_t max_depth, size_t freq, double cutoff_value_,
                          size_t number_of_parameters,
                          const std::string &pruning_method,
-                         bool multi_core = true, int parallel_depth = 2)
+                         bool multi_core = true, int parallel_depth = 2,
+                         const double pseudo_count_amount = 1.0)
       : ProbabilisticSuffixTreeMap<alphabet_t>(
             id, sequence, max_depth, freq, number_of_parameters, pruning_method,
-            multi_core, parallel_depth),
+            multi_core, parallel_depth, pseudo_count_amount),
         cutoff_value(cutoff_value_) {}
 
   /*!\brief Reads a tree form a file.
@@ -230,7 +231,8 @@ protected:
   }
 
   double calculate_delta(
-      std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>, bool> &node_counts,
+      std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>,
+                 bool> &node_counts,
       std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>,
                  bool> &parent_counts) {
     double delta = 0.0;

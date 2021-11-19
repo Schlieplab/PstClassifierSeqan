@@ -41,6 +41,11 @@
 namespace pst {
 
 template <seqan3::alphabet alphabet_t>
+using hashmap_value =
+    std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>,
+               bool>;
+
+template <seqan3::alphabet alphabet_t>
 using vec_t =
     std::deque<std::tuple<std::string, size_t,
                           lst::details::alphabet_array<size_t, alphabet_t>>>;
@@ -101,11 +106,13 @@ public:
                              size_t max_depth_, size_t freq_,
                              size_t number_of_parameters_,
                              std::string pruning_method_,
-                             bool multi_core_ = true, int parallel_depth = 2)
+                             bool multi_core_ = true, int parallel_depth = 2,
+                             const double pseudo_count_amount_ = 1.0)
       : lst::LazySuffixTree<alphabet_t>(sequence_, multi_core_, parallel_depth),
         id(std::move(id_)), freq(freq_), max_depth(max_depth_),
         number_of_parameters(number_of_parameters_),
-        pruning_method(std::move(pruning_method_)) {
+        pruning_method(std::move(pruning_method_)),
+        pseudo_count_amount(pseudo_count_amount_) {
     auto characters = this->get_valid_characters();
     for (auto &c : characters) {
       auto char_rank = seqan3::to_rank(c);
@@ -122,7 +129,9 @@ public:
    * \param[in] id The id of the model.
    * \param[in] sequence The text to construct from.
    */
-  ProbabilisticSuffixTreeMap(const std::filesystem::path &filename) {
+  ProbabilisticSuffixTreeMap(const std::filesystem::path &filename,
+                             const double pseudo_count_amount_ = 1.0)
+      : pseudo_count_amount(pseudo_count_amount_) {
     auto characters = this->get_valid_characters();
     for (auto &c : characters) {
       auto char_rank = seqan3::to_rank(c);
@@ -148,13 +157,20 @@ public:
       while (file_stream.peek() != EOF) {
         try {
           iarchive(kmer);
-
+          double child_count = std::accumulate(kmer.next_symbol_counts.begin(),
+                                               kmer.next_symbol_counts.end(),
+                                               pseudo_count_amount_ * 4);
           this->counts[kmer.to_string()] = {
               kmer.count,
-              {double(kmer.next_symbol_counts[0]) / double(kmer.count),
-               double(kmer.next_symbol_counts[1]) / double(kmer.count),
-               double(kmer.next_symbol_counts[2]) / double(kmer.count), 0,
-               double(kmer.next_symbol_counts[3]) / double(kmer.count)},
+              {(double(kmer.next_symbol_counts[0]) + pseudo_count_amount_) /
+                   child_count,
+               (double(kmer.next_symbol_counts[1]) + pseudo_count_amount_) /
+                   child_count,
+               (double(kmer.next_symbol_counts[2]) + pseudo_count_amount_) /
+                   child_count,
+               0,
+               (double(kmer.next_symbol_counts[3]) + pseudo_count_amount_) /
+                   child_count},
               true};
 
         } catch (const cereal::Exception &e) {
@@ -169,7 +185,9 @@ public:
   /*!\brief Reads a from the tree format.
    * \param[in] sequence The text to construct from.
    */
-  ProbabilisticSuffixTreeMap(std::string &tree) {
+  ProbabilisticSuffixTreeMap(std::string &tree,
+                             const double pseudo_count_amount_)
+      : pseudo_count_amount(pseudo_count_amount_) {
     auto characters = this->get_valid_characters();
 
     for (auto &c : characters) {
@@ -308,12 +326,11 @@ public:
   std::vector<std::string> get_terminal_nodes() {
     static std::shared_mutex terminal_mutex{};
     terminal_mutex.lock_shared();
-    if (terminal_nodes.size() > 0) {
+    if (!terminal_nodes.empty()) {
       terminal_mutex.unlock_shared();
       return terminal_nodes;
     }
     terminal_mutex.unlock_shared();
-
 
     std::vector<std::string> nodes{};
     for (const auto &[child_label, v] : this->counts) {
@@ -327,6 +344,36 @@ public:
 
     std::lock_guard terminal_lock{terminal_mutex};
     terminal_nodes = nodes;
+
+    return nodes;
+  }
+
+  std::vector<std::string> sorted_contexts{};
+  /**! \brief Get the terminal nodes in the tree.
+   *
+   * \return vector of all terminal nodes, sorted.
+   */
+  std::vector<std::string> get_sorted_contexts() {
+    static std::shared_mutex context_mutex{};
+    context_mutex.lock_shared();
+    if (!sorted_contexts.empty()) {
+      context_mutex.unlock_shared();
+      return sorted_contexts;
+    }
+    context_mutex.unlock_shared();
+
+    std::vector<std::string> nodes{};
+    for (const auto &[child_label, v] : this->counts) {
+      bool included = std::get<2>(v);
+      if (included) {
+        nodes.push_back(child_label);
+      }
+    }
+
+    std::sort(nodes.begin(), nodes.end());
+
+    std::lock_guard terminal_lock{context_mutex};
+    sorted_contexts = nodes;
 
     return nodes;
   }
@@ -548,6 +595,10 @@ public:
   }
 
   size_t get_max_order() {
+    if (this->max_order != max_size) {
+      return this->max_order;
+    }
+
     size_t max_order_ = 0;
     for (const auto &[label, v] : this->counts) {
       bool included = std::get<2>(v);
@@ -595,11 +646,7 @@ public:
 
   std::string id;
 
-  robin_hood::unordered_map<
-      std::string,
-      std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>,
-                 bool>>
-      counts{};
+  robin_hood::unordered_map<std::string, hashmap_value<alphabet_t>> counts{};
 
   robin_hood::unordered_set<size_t> valid_characters{};
   std::vector<char> valid_character_chars{};
@@ -609,6 +656,8 @@ public:
   size_t freq;
   size_t max_depth;
   size_t number_of_parameters;
+
+  double pseudo_count_amount = 1.0;
 
   std::string pruning_method;
 
@@ -752,7 +801,7 @@ public:
    * \param[in] label
    */
   void assign_node_probabilities(const std::string &label) {
-    auto child_counts = this->get_child_counts(label, true);
+    auto child_counts = this->get_child_counts(label);
 
     double child_sum =
         std::accumulate(child_counts.begin(), child_counts.end(), 0.0);
@@ -851,11 +900,10 @@ public:
   /**! \brief Finds the counts of all (forward) children for the node.
    *
    * \param label std::string to get child counts for.
-   * \param with_pseudo_counts Flag for if pseudo counts should be used.
    * \return Array of counts for each children.
    */
   std::array<size_t, seqan3::alphabet_size<alphabet_t>>
-  get_child_counts(const std::string &label, bool with_pseudo_counts) {
+  get_child_counts(const std::string &label) {
     std::array<size_t, seqan3::alphabet_size<alphabet_t>> child_counts{};
 
     std::string child_label = label + ' ';
@@ -865,13 +913,7 @@ public:
       child_label[child_label.size() - 1] = c.to_char();
 
       auto count = this->get_count(child_label);
-      child_counts[char_rank] = count;
-    }
-
-    if (with_pseudo_counts) {
-      for (auto char_rank : this->valid_characters) {
-        child_counts[char_rank] += 1;
-      }
+      child_counts[char_rank] = count + this->pseudo_count_amount;
     }
 
     return child_counts;
@@ -899,7 +941,6 @@ public:
   /**! \brief Finds the counts of all (forward) children for the node.
    *
    * \param label std::string to get child counts for.
-   * \param with_pseudo_counts Flag for if pseudo counts should be used.
    * \return Array of counts for each children.
    */
   std::array<size_t, seqan3::alphabet_size<alphabet_t>>
@@ -907,10 +948,10 @@ public:
     std::array<size_t, seqan3::alphabet_size<alphabet_t>> child_counts{};
 
     auto &[count, probs, included] = this->counts[label];
-    size_t count_with_pseudo = count + 4;
+    size_t count_with_pseudo = count + 4 * this->pseudo_count_amount;
     for (auto char_rank : this->valid_characters) {
-      child_counts[char_rank] =
-          std::round(probs[char_rank] * count_with_pseudo);
+      child_counts[char_rank] = std::round(
+          probs[char_rank] * count_with_pseudo - this->pseudo_count_amount);
     }
 
     return child_counts;
@@ -1287,11 +1328,14 @@ public:
   void convert_counts_to_probabilities(std::string &node_label) {
     double child_sum =
         std::accumulate(std::get<1>(this->counts[node_label]).begin(),
-                        std::get<1>(this->counts[node_label]).end(), 0.0);
+                        std::get<1>(this->counts[node_label]).end(),
+                        this->pseudo_count_amount * 4);
 
     for (size_t i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
       std::get<1>(this->counts[node_label])[i] =
-          double(std::get<1>(this->counts[node_label])[i]) / child_sum;
+          (double(std::get<1>(this->counts[node_label])[i]) +
+           this->pseudo_count_amount) /
+          child_sum;
     }
   }
 
