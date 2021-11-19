@@ -13,18 +13,44 @@
 #include "composition_vectors.hpp"
 
 namespace pst::distances::details {
+
+template <seqan3::alphabet alphabet_t>
+std::tuple<Eigen::VectorXd, Eigen::VectorXd>
+get_d2_vectors(ProbabilisticSuffixTreeMap<alphabet_t> &left,
+               ProbabilisticSuffixTreeMap<alphabet_t> &right) {
+  size_t number_of_entries = left.counts.size() * left.valid_characters.size();
+  Eigen::VectorXd left_vector(number_of_entries);
+  Eigen::VectorXd right_vector(number_of_entries);
+
+  Eigen::Index i = 0;
+  iterate_included_in_both(
+      left, right, [&](auto context, auto left_v, auto right_v) {
+        for (auto &char_rank : left.valid_characters) {
+          left_vector(i) = std::get<1>(left_v)[char_rank];
+          right_vector(i) = std::get<1>(right_v)[char_rank];
+          i++;
+        }
+      });
+
+  return {left_vector.head(i), right_vector.head(i)};
+}
+
 template <seqan3::alphabet alphabet_t>
 inline double core_d2(ProbabilisticSuffixTreeMap<alphabet_t> &left,
-                      ProbabilisticSuffixTreeMap<alphabet_t> &right,
-                      std::vector<std::string> &contexts) {
-  Eigen::VectorXd left_vector = word_frequency_vector(left, contexts);
-  Eigen::VectorXd right_vector = word_frequency_vector(right, contexts);
+                      ProbabilisticSuffixTreeMap<alphabet_t> &right) {
+  auto [left_vector, right_vector] = get_d2_vectors(left, right);
 
-  double D2 = left_vector.dot(right_vector) /
-              (left_vector.norm() * right_vector.norm());
+  auto left_norm = left_vector.norm();
+  auto right_norm = right_vector.norm();
 
-  double d2 = 0.5 * (1 - D2);
-  return d2;
+  if (left_norm == 0 || right_norm == 0) {
+    return 1.0;
+  } else {
+    double D2 = left_vector.dot(right_vector) / (left_norm * right_norm);
+
+    double d2 = 0.5 * (1 - D2);
+    return d2;
+  }
 }
 
 } // namespace pst::distances::details
@@ -34,8 +60,7 @@ namespace pst::distances {
 template <seqan3::alphabet alphabet_t>
 inline double d2(ProbabilisticSuffixTreeMap<alphabet_t> &left,
                  ProbabilisticSuffixTreeMap<alphabet_t> &right) {
-  auto contexts = details::get_shared_contexts(left, right);
-  return details::core_d2<alphabet_t>(left, right, contexts);
+  return details::core_d2<alphabet_t>(left, right);
 }
 
 double d2_cpp(std::string left_tree_string, std::string right_tree_string) {

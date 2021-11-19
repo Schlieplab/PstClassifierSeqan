@@ -1,11 +1,25 @@
 #include <benchmark/benchmark.h>
 
 #include "../src/distances/cv.hpp"
+#include "../src/distances/d2.hpp"
+#include "../src/distances/d2star.hpp"
 #include "../src/distances/negative_log_likelihood.hpp"
 #include "../src/kl_tree.hpp"
 #include "../src/kl_tree_map.hpp"
 
 #include "random_sequence.hpp"
+
+class D2StarBenchmarks : public benchmark::Fixture {
+public:
+  void SetUp(const ::benchmark::State &state) override {
+    sakai = pst::KullbackLieblerTreeMap<seqan3::dna5>{sakai_path};
+    ed1a = pst::KullbackLieblerTreeMap<seqan3::dna5>{ed1a_path};
+  }
+  std::filesystem::path sakai_path{"./../trees/Sakai.bintree"};
+  std::filesystem::path ed1a_path{"./../trees/ED1a.bintree"};
+  pst::KullbackLieblerTreeMap<seqan3::dna5> sakai;
+  pst::KullbackLieblerTreeMap<seqan3::dna5> ed1a;
+};
 
 static void CV(benchmark::State &state) {
   std::filesystem::path first_path{"./../trees/CM008035.1.tree"};
@@ -18,6 +32,234 @@ static void CV(benchmark::State &state) {
   }
 }
 BENCHMARK(CV);
+
+static void D2(benchmark::State &state) {
+  std::filesystem::path first_path{"./../trees/CM008035.1.tree"};
+  std::filesystem::path second_path{"./../trees/NC_009067.tree"};
+  pst::KullbackLieblerTreeMap<seqan3::dna5> first{first_path};
+  pst::KullbackLieblerTreeMap<seqan3::dna5> second{second_path};
+
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(pst::distances::d2(first, second));
+  }
+}
+BENCHMARK(D2);
+
+BENCHMARK_F(D2StarBenchmarks, D2star)
+(benchmark::State &state) {
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(pst::distances::d2star(sakai, ed1a));
+  }
+}
+
+BENCHMARK_DEFINE_F(D2StarBenchmarks, D2starCore)
+(benchmark::State &state) {
+  auto background_order = state.range(0);
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(pst::distances::details::core_d2star<seqan3::dna5>(
+        sakai, ed1a, background_order));
+  }
+}
+BENCHMARK_REGISTER_F(D2StarBenchmarks, D2starCore)->DenseRange(0, 3, 1);
+
+BENCHMARK_DEFINE_F(D2StarBenchmarks, D2starVector)
+(benchmark::State &state) {
+  auto background_order = state.range(0);
+
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(pst::distances::details::get_d2star_vectors(
+        sakai, ed1a, background_order));
+  }
+}
+BENCHMARK_REGISTER_F(D2StarBenchmarks, D2starVector)->DenseRange(0, 3, 1);
+
+BENCHMARK_F(D2StarBenchmarks, D2starIterateVectors)
+(benchmark::State &state) {
+  size_t number_of_entries =
+      sakai.counts.size() * sakai.valid_characters.size();
+  Eigen::VectorXd sakai_vector(number_of_entries);
+  Eigen::VectorXd ed1a_vector(number_of_entries);
+
+  for (auto _ : state) {
+    Eigen::Index i = 0;
+    pst::distances::details::iterate_included_in_both(
+        sakai, ed1a, [&](auto &context, auto &sakai_v, auto &ed1a_v) {
+          const auto background_context =
+              pst::distances::details::get_background_context(context, 0);
+          auto sakai_background_v = sakai.counts[background_context];
+          auto ed1a_background_v = ed1a.counts[background_context];
+
+          for (auto &char_rank : sakai.valid_characters) {
+            sakai_vector(i) = pst::distances::details::get_component(
+                sakai, sakai_v, context, sakai_background_v, char_rank);
+
+            ed1a_vector(i) = pst::distances::details::get_component(
+                ed1a, ed1a_v, context, ed1a_background_v, char_rank);
+            i++;
+          }
+        });
+  }
+}
+
+BENCHMARK_F(D2StarBenchmarks, D2starDotProduct)
+(benchmark::State &state) {
+
+  for (auto _ : state) {
+    size_t number_of_entries =
+        sakai.counts.size() * sakai.valid_characters.size();
+    Eigen::VectorXd sakai_vector(number_of_entries);
+    Eigen::VectorXd ed1a_vector(number_of_entries);
+    Eigen::Index i = 0;
+    pst::distances::details::iterate_included_in_both(
+        sakai, ed1a, [&](auto &context, auto &sakai_v, auto &ed1a_v) {
+          const auto background_context =
+              pst::distances::details::get_background_context(context, 0);
+          auto sakai_background_v = sakai.counts[background_context];
+          auto ed1a_background_v = ed1a.counts[background_context];
+
+          for (auto &char_rank : sakai.valid_characters) {
+            sakai_vector(i) = pst::distances::details::get_component(
+                sakai, sakai_v, context, sakai_background_v, char_rank);
+
+            ed1a_vector(i) = pst::distances::details::get_component(
+                ed1a, ed1a_v, context, ed1a_background_v, char_rank);
+            i++;
+          }
+        });
+    benchmark::DoNotOptimize(sakai_vector.dot(ed1a_vector));
+  }
+}
+
+BENCHMARK_F(D2StarBenchmarks, D2starDirectDotProduct)
+(benchmark::State &state) {
+  for (auto _ : state) {
+    double dot_product = 0.0;
+
+    double sakai_norm = 0.0;
+    double ed1a_norm = 0.0;
+
+    pst::distances::details::iterate_included_in_both(
+        sakai, ed1a, [&](auto &context, auto &sakai_v, auto &ed1a_v) {
+          const auto background_context =
+              pst::distances::details::get_background_context(context, 0);
+
+          auto sakai_background_v = sakai.counts[background_context];
+          auto ed1a_background_v = ed1a.counts[background_context];
+
+          for (auto &char_rank : sakai.valid_characters) {
+            double sakai_component_value =
+                pst::distances::details::get_component(
+                    sakai, sakai_v, context, sakai_background_v, char_rank);
+
+            double ed1a_component_value =
+                pst::distances::details::get_component(
+                    ed1a, ed1a_v, context, ed1a_background_v, char_rank);
+
+            dot_product += sakai_component_value * ed1a_component_value;
+            sakai_norm += std::pow(sakai_component_value, 2.0);
+            ed1a_norm += std::pow(ed1a_component_value, 2.0);
+          }
+        });
+
+    sakai_norm = std::sqrt(sakai_norm);
+    ed1a_norm = std::sqrt(ed1a_norm);
+  }
+}
+
+BENCHMARK_F(D2StarBenchmarks, D2starIterateInclude)
+(benchmark::State &state) {
+  for (auto _ : state) {
+    size_t i = 0;
+    pst::distances::details::iterate_included_in_both(
+        sakai, ed1a, [&](auto &context, auto &left_v, auto &right_v) {
+          for (auto &char_rank : sakai.valid_characters) {
+            benchmark::DoNotOptimize(i++);
+          }
+        });
+  }
+}
+
+BENCHMARK_F(D2StarBenchmarks, D2starInclude)
+(benchmark::State &state) {
+  std::string context{"ACTAGA"};
+  auto left_v = sakai.counts[context];
+  for (auto _ : state) {
+    size_t i = 0;
+    pst::distances::details::is_included_in_both(sakai, ed1a, context, left_v);
+  }
+}
+
+BENCHMARK_F(D2StarBenchmarks, D2starIterateOneLookup)
+(benchmark::State &state) {
+  for (auto _ : state) {
+    size_t i = 0;
+    pst::distances::details::iterate_included_in_both(
+        sakai, ed1a, [&](auto &context, auto &left_v, auto &right_v) {
+          for (auto &char_rank : sakai.valid_characters) {
+            std::get<1>(sakai.counts[context])[char_rank];
+            std::get<1>(ed1a.counts[context])[char_rank];
+            i++;
+          }
+        });
+  }
+}
+
+BENCHMARK_F(D2StarBenchmarks, D2starHead)
+(benchmark::State &state) {
+  Eigen::VectorXd vector(100000);
+
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(vector.head(10000));
+  }
+}
+
+BENCHMARK_DEFINE_F(D2StarBenchmarks, D2starComponent)
+(benchmark::State &state) {
+  auto background_order = state.range(0);
+
+  std::string context{"ACTAGA"};
+  auto right_v = sakai.counts[context];
+  bool right_included = std::get<2>(right_v);
+
+  const auto background_context =
+      pst::distances::details::get_background_context(context,
+                                                      background_order);
+
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(pst::distances::details::get_component(
+        sakai, right_v, context, background_context, 0));
+  }
+}
+BENCHMARK_REGISTER_F(D2StarBenchmarks, D2starComponent)->DenseRange(0, 3, 1);
+
+BENCHMARK_DEFINE_F(D2StarBenchmarks, D2starBackgroundState)
+(benchmark::State &state) {
+  auto shared_contexts =
+      pst::distances::details::get_shared_contexts(sakai, ed1a);
+  auto background_order = state.range(0);
+
+  auto vector = pst::distances::details::adjusted_transition_frequency_vector(
+      sakai, shared_contexts, background_order);
+
+  for (auto _ : state) {
+    for (auto &context : shared_contexts) {
+      benchmark::DoNotOptimize(pst::distances::details::get_background_context(
+          context, background_order));
+    }
+  }
+}
+BENCHMARK_REGISTER_F(D2StarBenchmarks, D2starBackgroundState)
+    ->DenseRange(0, 3, 1);
+
+BENCHMARK_F(D2StarBenchmarks, D2starSingleIsIncluded)
+(benchmark::State &state) {
+  auto shared_contexts =
+      pst::distances::details::get_shared_contexts(sakai, ed1a);
+
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(sakai.is_included(shared_contexts[0]));
+  }
+}
 
 static void SharedContexts(benchmark::State &state) {
   std::filesystem::path first_path{"./../trees/CM008035.1.tree"};

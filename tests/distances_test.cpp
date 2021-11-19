@@ -89,26 +89,43 @@ TEST_F(DistancesTest, CVIdentity) {
 }
 
 TEST_F(DistancesTest, CVSnapshots) {
-  float expected_dissimilar = 0.49773079;
+  float expected_dissimilar = 0.38293463;
   EXPECT_FLOAT_EQ(expected_dissimilar, pst::distances::cv(first, third));
 
-  float expected_similar = 0.063189894;
+  float expected_similar = 0.00085686141;
   EXPECT_FLOAT_EQ(expected_similar, pst::distances::cv(first, second, 2));
 }
 
+TEST_F(DistancesTest, included_in_both) {
+  std::vector<std::string> contexts{};
+  pst::distances::details::iterate_included_in_both(
+      first, second,
+      [&](auto context, auto l, auto r) { contexts.push_back(context); });
+
+  auto shared_contexts =
+      pst::distances::details::get_shared_contexts(first, second);
+
+  std::sort(contexts.begin(), contexts.end());
+
+  EXPECT_EQ(contexts.size(), shared_contexts.size());
+  //  for (int i = 0; i < contexts.size(); i++) {
+  //    EXPECT_EQ(contexts[i], shared_contexts[i]);
+  //  }
+}
+
 TEST_F(DistancesTest, d2starSnapshots) {
-  float expected_dissimilar = 0.39811176;
+  float expected_dissimilar = 0.015304013;
   EXPECT_FLOAT_EQ(expected_dissimilar, pst::distances::d2star(first, third, 0));
 
-  float expected_similar = 0.027195284;
+  float expected_similar = 6.4066444e-05;
   EXPECT_FLOAT_EQ(expected_similar, pst::distances::d2star(first, second, 0));
 }
 
 TEST_F(DistancesTest, d2Snapshots) {
-  float expected_dissimilar = 0.038134564;
+  float expected_dissimilar = 0.025940413;
   EXPECT_FLOAT_EQ(expected_dissimilar, pst::distances::d2(first, third));
 
-  float expected_similar = 0.00020619819;
+  float expected_similar = 0.00013733006;
   EXPECT_FLOAT_EQ(expected_similar, pst::distances::d2(first, second));
 }
 
@@ -149,12 +166,12 @@ TEST_F(DistancesTest, BackgroudState) {
   std::string c3{"ACG"};
   std::string c4{"CG"};
   std::string c5{"G"};
-  EXPECT_EQ(pst::distances::details::get_background_state(c1, 2), "CG");
-  EXPECT_EQ(pst::distances::details::get_background_state(c2, 3), "ACG");
-  EXPECT_EQ(pst::distances::details::get_background_state(c2, 1), "G");
-  EXPECT_EQ(pst::distances::details::get_background_state(c3, 2), "CG");
-  EXPECT_EQ(pst::distances::details::get_background_state(c4, 2), "CG");
-  EXPECT_EQ(pst::distances::details::get_background_state(c5, 2), "G");
+  EXPECT_EQ(pst::distances::details::get_background_context(c1, 2), "CG");
+  EXPECT_EQ(pst::distances::details::get_background_context(c2, 3), "ACG");
+  EXPECT_EQ(pst::distances::details::get_background_context(c2, 1), "G");
+  EXPECT_EQ(pst::distances::details::get_background_context(c3, 2), "CG");
+  EXPECT_EQ(pst::distances::details::get_background_context(c4, 2), "CG");
+  EXPECT_EQ(pst::distances::details::get_background_context(c5, 2), "G");
 }
 
 TEST_F(DistancesTest, ScoringHangs) {
@@ -205,8 +222,9 @@ TEST_F(DistancesTest, LogLikelighoodHandCrafted0Order) {
       "0-order", sequence, max_depth, min_count, threshold, false, 1};
   tree.counts[""] = {8, {0.8, 0.0, 0.0, 0.0, 0.2}, true};
 
-  double log_likelihood = pst::distances::details::log_likelihood_part(
-      tree, binary_seq, 0, binary_seq.size());
+  auto [log_likelihood, length] = pst::distances::details::log_likelihood_part(
+      tree, binary_seq, 0, binary_seq.size(),
+      pst::distances::details::scoring::log_transition_prob<seqan3::dna5>);
   double log_likelihood_manual = std::log(0.8) * 434 + std::log(0.2) * 42;
 
   EXPECT_FLOAT_EQ(log_likelihood, log_likelihood_manual);

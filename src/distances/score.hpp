@@ -22,11 +22,8 @@ void score_trees_slice(
     std::vector<seqan3::dna5_vector> &sequences,
     const std::function<float(tree_t &, std::vector<seqan3::dna5> &)> &fun) {
 
-  std::cout << "Sizes: " << trees.size() << " " << sequences.size()
-            << std::endl;
   for (size_t j = 0; j < sequences.size(); j++) {
     for (size_t i = start_index; i < stop_index; i++) {
-      std::cout << i << " " << j << std::endl;
       scores[j][i] = fun(trees[i], sequences[j]);
     }
   }
