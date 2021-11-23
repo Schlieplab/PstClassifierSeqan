@@ -12,7 +12,9 @@
 #include "../src/distances/cv.hpp"
 #include "../src/distances/d2.hpp"
 #include "../src/distances/d2star.hpp"
+#include "../src/distances/dvstar.hpp"
 #include "../src/distances/score.hpp"
+#include "../src/distances/sliding_windows.hpp"
 #include "../src/kl_tree_map.hpp"
 #include "../src/probabilistic_suffix_tree_map.hpp"
 
@@ -113,11 +115,19 @@ TEST_F(DistancesTest, included_in_both) {
   //  }
 }
 
-TEST_F(DistancesTest, d2starSnapshots) {
+TEST_F(DistancesTest, dvstarSnapshots) {
   float expected_dissimilar = 0.015304013;
-  EXPECT_FLOAT_EQ(expected_dissimilar, pst::distances::d2star(first, third, 0));
+  EXPECT_FLOAT_EQ(expected_dissimilar, pst::distances::dvstar(first, third, 0));
 
   float expected_similar = 6.4066444e-05;
+  EXPECT_FLOAT_EQ(expected_similar, pst::distances::dvstar(first, second, 0));
+}
+
+TEST_F(DistancesTest, d2starSnapshots) {
+  float expected_dissimilar = 0.18603753;
+  EXPECT_FLOAT_EQ(expected_dissimilar, pst::distances::d2star(first, third, 0));
+
+  float expected_similar = 0.00023658283;
   EXPECT_FLOAT_EQ(expected_similar, pst::distances::d2star(first, second, 0));
 }
 

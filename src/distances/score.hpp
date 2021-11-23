@@ -83,26 +83,4 @@ score_cpp(std::vector<std::string> tree_strings,
   return scores;
 }
 
-static std::vector<std::vector<double>>
-sliding_windows_cpp(std::string tree_string, std::string sequence,
-                    std::vector<int> window_sizes) {
-  tree_t tree{tree_string};
-
-  auto scores = pst::distances::sliding_windows(tree, sequence, window_sizes);
-
-  return scores;
-}
-
-static std::vector<std::vector<double>>
-sliding_windows_background_cpp(std::string tree_string, std::string sequence,
-                               std::vector<int> window_sizes,
-                               int background_order) {
-  tree_t tree{tree_string};
-
-  auto scores = pst::distances::sliding_windows_background(
-      tree, sequence, window_sizes, background_order);
-
-  return scores;
-}
-
 } // namespace pst

@@ -18,6 +18,7 @@
 #include "distances/cv.hpp"
 #include "distances/d2.hpp"
 #include "distances/d2star.hpp"
+#include "distances/dvstar.hpp"
 #include "distances/parallelize.hpp"
 #include "probabilistic_suffix_tree_map.hpp"
 
@@ -55,9 +56,9 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
                     "Size of pseudo count for probability estimation. See e.g. "
                     "https://en.wikipedia.org/wiki/Additive_smoothing .");
 
-  parser.add_option(
-      arguments.distance_name, 'n', "distance-name",
-      "Name of distance function.  Must be one of 'cv' and 'cv-estimation'");
+  parser.add_option(arguments.distance_name, 'n', "distance-name",
+                    "Name of distance function.  Must be one of 'd2', "
+                    "'d2star', 'dvstar', 'cv' and 'cv-estimation'");
   parser.add_option(arguments.order, 'o', "order",
                     "Length of contexts in some distance calculations.");
   parser.add_option(arguments.background_order, 'b', "background-order",
@@ -116,6 +117,12 @@ parse_distance_function(input_arguments &arguments) {
     };
     return {fun, "cv-estimation-" + std::to_string(arguments.order) + "-" +
                      std::to_string(arguments.background_order)};
+  } else if (arguments.distance_name == "dvstar") {
+    auto fun = [&](auto &left, auto &right) {
+      return pst::distances::dvstar<seqan3::dna5>(left, right,
+                                                  arguments.background_order);
+    };
+    return {fun, "dvstar-" + std::to_string(arguments.background_order)};
   } else if (arguments.distance_name == "d2star") {
     auto fun = [&](auto &left, auto &right) {
       return pst::distances::d2star<seqan3::dna5>(left, right,
