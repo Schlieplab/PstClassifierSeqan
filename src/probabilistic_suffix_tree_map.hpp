@@ -185,8 +185,8 @@ public:
   /*!\brief Reads a from the tree format.
    * \param[in] sequence The text to construct from.
    */
-  ProbabilisticSuffixTreeMap(std::string &tree,
-                             const double pseudo_count_amount_)
+  ProbabilisticSuffixTreeMap(const std::string &tree,
+                             const double pseudo_count_amount_ = 1.0)
       : pseudo_count_amount(pseudo_count_amount_) {
     auto characters = this->get_valid_characters();
 
@@ -199,7 +199,7 @@ public:
     std::stringstream tree_stream{tree};
 
     for (std::string line; std::getline(tree_stream, line, '\n');) {
-      parse_line(line, characters);
+      this->parse_line(line, characters);
     }
   }
 
