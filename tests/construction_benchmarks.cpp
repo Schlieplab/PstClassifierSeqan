@@ -5,7 +5,6 @@
 
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
-#include <seqan3/range/container/bitcompressed_vector.hpp>
 
 #include "../src/kl_tree_map.hpp"
 #include "../src/probabilistic_suffix_tree_map.hpp"

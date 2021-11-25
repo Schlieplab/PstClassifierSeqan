@@ -216,7 +216,7 @@ BENCHMARK_DEFINE_F(D2StarBenchmarks, DvstarComponent)
                                                       background_order);
 
   for (auto _ : state) {
-    benchmark::DoNotOptimize(pst::distances::details::get_component(
+    benchmark::DoNotOptimize(pst::distances::details::dvstar::get_component(
         sakai, right_v, context, background_context, 0));
   }
 }
