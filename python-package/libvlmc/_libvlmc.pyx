@@ -61,6 +61,9 @@ cpdef str train(str name, str sequence, int max_depth, int min_count, int thresh
 cdef extern from "../../src/distances/score.hpp" namespace "pst":
     vector[vector[double]] score_cpp(vector[string] tree_strings, vector[string] sequence_list)
 
+cdef extern from "../../src/distances/sliding_windows.hpp" namespace "pst":
+    vector[vector[double]] sliding_windows_cpp(string tree_string, string sequence, vector[int] window_sizes)
+    vector[vector[double]] sliding_windows_background_cpp(string tree_string, string sequence, vector[int] window_sizes, int background_order)
 
 cpdef vector[vector[double]] score_sequences_cython(list trees, list sequence_list):
     cdef vector[string] trees_ = [tree.encode() for tree in trees]
@@ -68,8 +71,73 @@ cpdef vector[vector[double]] score_sequences_cython(list trees, list sequence_li
 
     return score_cpp(trees_, arr)
 
+cpdef vector[vector[double]] sliding_windows_cython(str tree, str sequence, list window_sizes):
+    cdef string tree_ = tree.encode()
+    cdef string sequence_ = sequence.encode()
+    cdef vector[int] window_sizes_ = window_sizes
+
+    return sliding_windows_cpp(tree_, sequence_, window_sizes_)
+
+cpdef vector[vector[double]] sliding_windows_background_cython(str tree, str sequence, list window_sizes, int background_order):
+    cdef string tree_ = tree.encode()
+    cdef string sequence_ = sequence.encode()
+    cdef vector[int] window_sizes_ = window_sizes
+    cdef int background_order_ = background_order
+
+    return sliding_windows_background_cpp(tree_, sequence_, window_sizes_, background_order_)
+
 
 cpdef score_sequences(trees, sequence_list):
     import numpy as np
 
     return np.array(score_sequences_cython(trees, sequence_list))
+
+
+cpdef sliding_windows(tree, sequence, window_sizes):
+    import numpy as np
+
+    return np.array(sliding_windows_cython(tree, sequence, window_sizes))
+
+
+cpdef sliding_windows_background(tree, sequence, window_sizes, background_order):
+    import numpy as np
+
+    return np.array(sliding_windows_background_cython(tree, sequence, window_sizes, background_order))
+
+
+cdef extern from "../../src/distances/d2.hpp" namespace "pst::distances":
+    double d2_cpp(string left_string, string right_string)
+
+cdef extern from "../../src/distances/d2star.hpp" namespace "pst::distances":
+    double d2star_cpp(string left_string, string right_string, int background_order)
+
+cdef extern from "../../src/distances/dvstar.hpp" namespace "pst::distances":
+    double dvstar_cpp(string left_string, string right_string, int background_order)
+
+cdef extern from "../../src/distances/cv.hpp" namespace "pst::distances":
+    double cv_cpp(string left_string, string right_string, int background_order)
+
+cpdef double d2(str left_tree, str right_tree):
+    cdef string left = left_tree.encode()
+    cdef string right = right_tree.encode()
+
+    return d2_cpp(left, right)
+
+cpdef double d2star(str left_tree, str right_tree, int background_order):
+    cdef string left = left_tree.encode()
+    cdef string right = right_tree.encode()
+
+    return d2star_cpp(left, right, background_order)
+
+
+cpdef double dvstar(str left_tree, str right_tree, int background_order):
+    cdef string left = left_tree.encode()
+    cdef string right = right_tree.encode()
+
+    return dvstar_cpp(left, right, background_order)
+
+cpdef double cv(str left_tree, str right_tree, int background_order):
+    cdef string left = left_tree.encode()
+    cdef string right = right_tree.encode()
+
+    return cv_cpp(left, right, background_order)

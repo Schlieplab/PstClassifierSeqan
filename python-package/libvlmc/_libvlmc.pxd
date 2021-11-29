@@ -13,6 +13,15 @@ cpdef str train(str name, str sequence, int max_depth, int min_count, int thresh
 
 cdef vector[vector[double]] score_cpp(vector[string] tree_strings, vector[string] sequence_list)
 
-cpdef vector[vector[double]] score_sequences_cython(list hdf5_path, list sequence_list)
+cpdef vector[vector[double]] score_sequences_cython(list trees, list sequence_list)
+cpdef score_sequences(trees, sequence_list)
 
-cpdef score_sequences(hdf5_path, sequence_list)
+cpdef vector[vector[double]] sliding_windows_cython(str tree, str sequence, list window_sizes)
+cpdef vector[vector[double]] sliding_windows_background_cython(str tree, str sequence, list window_sizes, int background_order)
+
+cpdef sliding_windows(tree, sequence, window_sizes)
+cpdef sliding_windows_background(tree, sequence, window_sizes, background_order)
+
+cpdef double d2(str left_tree, str right_tree)
+cpdef double d2star(str left_tree, str right_tree, int background_order)
+cpdef double cv(str left_tree, str right_tree, int background_order)

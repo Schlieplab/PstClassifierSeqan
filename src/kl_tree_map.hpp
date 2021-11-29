@@ -253,4 +253,47 @@ protected:
     return delta;
   }
 };
+
+class KullbackLieblerTreeMap5 : public KullbackLieblerTreeMap<seqan3::dna5> {
+public:
+  KullbackLieblerTreeMap5() = default;
+  KullbackLieblerTreeMap5(KullbackLieblerTreeMap5 const &) = default;
+  ~KullbackLieblerTreeMap5() = default;
+
+  KullbackLieblerTreeMap5(const std::string &id,
+                          lst::details::sequence_t<seqan3::dna5> &sequence,
+                          size_t max_depth, size_t freq, double cutoff_value_,
+                          size_t number_of_parameters,
+                          const std::string &pruning_method,
+                          bool multi_core = true, int parallel_depth = 2)
+      : KullbackLieblerTreeMap<seqan3::dna5>(
+            id, sequence, max_depth, freq, cutoff_value_, number_of_parameters,
+            pruning_method, multi_core, parallel_depth, 1.0) {}
+};
+
+lst::details::sequence_t<seqan3::dna5>
+convert_to_dna(const std::string &sequence_) {
+  return sequence_ | seqan3::views::char_to<seqan3::dna5> |
+         seqan3::views::to<lst::details::sequence_t<seqan3::dna5>>;
+}
+
+KullbackLieblerTreeMap5
+create_kl_map(const std::string &id, const std::string &sequence,
+              size_t max_depth, size_t freq, double cutoff_value_,
+              size_t number_of_parameters, const std::string &pruning_method,
+              bool multi_core = true, int parallel_depth = 2) {
+  auto seq = convert_to_dna(sequence);
+  KullbackLieblerTreeMap5 t{id,
+                            seq,
+                            max_depth,
+                            freq,
+                            cutoff_value_,
+                            number_of_parameters,
+                            pruning_method,
+                            multi_core,
+                            parallel_depth};
+  t.construct_tree();
+  return t;
+}
+
 } // namespace pst
