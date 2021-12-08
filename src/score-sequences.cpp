@@ -136,6 +136,15 @@ int main(int argc, char *argv[]) {
 
   std::vector<tree_t> trees;
 
+  if (!std::filesystem::exists(arguments.filepath)) {
+    std::cerr << "Error: " << arguments.filepath << " is not a file.";
+    return EXIT_FAILURE;
+  }
+  if (!std::filesystem::exists(arguments.sequence_list)) {
+    std::cerr << "Error: " << arguments.sequence_list << " is not a file.";
+    return EXIT_FAILURE;
+  }
+
   if (arguments.filepath.extension() == ".h5" ||
       arguments.filepath.extension() == ".hdf5") {
 
@@ -145,6 +154,10 @@ int main(int argc, char *argv[]) {
     pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree{arguments.filepath};
 
     trees = std::vector<tree_t>{std::move(tree)};
+  } else {
+    std::cerr << "Error: " << arguments.filepath
+              << " has invalid extension, and can't be parsed.";
+    return EXIT_FAILURE;
   }
 
   std::vector<std::string> sequence_list{};
@@ -159,28 +172,43 @@ int main(int argc, char *argv[]) {
     while (std::getline(infile, path)) {
       sequence_list.push_back(path);
     }
+  } else {
+    std::cerr << "Error: " << arguments.sequence_list
+              << " has invalid extension, and can't be parsed.";
+    return EXIT_FAILURE;
   }
 
   auto [scores, ids] =
       score_sequences_paths(trees, sequence_list, arguments.background_order,
                             arguments.score_both_sequence_directions);
 
-  HighFive::File out_file{arguments.outpath,
-                          HighFive::File::ReadWrite | HighFive::File::Create};
 
-  if (!out_file.exist("scores")) {
-    std::vector<size_t> dims{scores.size(),
-                             static_cast<size_t>(scores[0].size())};
-    out_file.createDataSet<double>("scores", HighFive::DataSpace(dims));
-  }
-  auto scores_dataset = out_file.getDataSet("scores");
-  scores_dataset.write(scores);
+  if (arguments.outpath.empty()) {
+    for (int i = 0; i < ids.size(); i++) {
+      for (int j = 0; j < trees.size(); j++) {
+        std::cout << ids[i] << "\t" << trees[j].id << "\t" << scores[i][j] << std::endl;
+      }
+    }
+  } else if (arguments.outpath.extension() == ".h5" ||
+             arguments.outpath.extension() == ".hdf5") {
+    HighFive::File out_file{arguments.outpath,
+                            HighFive::File::ReadWrite | HighFive::File::Create};
 
-  if (!out_file.exist("ids")) {
-    out_file.createDataSet<std::string>("ids", HighFive::DataSpace::From(ids));
+    if (!out_file.exist("scores")) {
+      std::vector<size_t> dims{scores.size(),
+                               static_cast<size_t>(scores[0].size())};
+      out_file.createDataSet<double>("scores", HighFive::DataSpace(dims));
+    }
+    auto scores_dataset = out_file.getDataSet("scores");
+    scores_dataset.write(scores);
+
+    if (!out_file.exist("ids")) {
+      out_file.createDataSet<std::string>("ids",
+                                          HighFive::DataSpace::From(ids));
+    }
+    auto ids_dataset = out_file.getDataSet("ids");
+    ids_dataset.write(ids);
   }
-  auto ids_dataset = out_file.getDataSet("ids");
-  ids_dataset.write(ids);
 
   return EXIT_SUCCESS;
 }

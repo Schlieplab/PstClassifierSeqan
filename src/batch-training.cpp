@@ -134,18 +134,22 @@ int main(int argc, char *argv[]) {
     trees.push_back(tree);
   }
 
-  HighFive::File file{arguments.h5_path,
-                      HighFive::File::OpenOrCreate | HighFive::File::ReadWrite};
+  if (arguments.h5_path.empty()) {
+    std::cerr << "Error: the output path (parameter -o/--path) "
+              << arguments.h5_path << " needs to be specified.";
+    return EXIT_FAILURE;
+  } else {
+    HighFive::File file{arguments.h5_path, HighFive::File::OpenOrCreate |
+                                               HighFive::File::ReadWrite};
 
-  if (!file.exist("signatures")) {
-    file.createDataSet<std::string>("signatures",
-                                    HighFive::DataSpace::From(trees));
+    if (!file.exist("signatures")) {
+      file.createDataSet<std::string>("signatures",
+                                      HighFive::DataSpace::From(trees));
+    }
+
+    auto signatures_dataset = file.getDataSet("signatures");
+    signatures_dataset.write(trees);
   }
-
-  auto signatures_dataset = file.getDataSet("signatures");
-  signatures_dataset.write(trees);
-
-  std::cout << "done training" << std::endl;
 
   return EXIT_SUCCESS;
 }

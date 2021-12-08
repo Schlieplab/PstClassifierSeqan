@@ -51,15 +51,25 @@ int main() {
 }
 ```
 
-This will train a PST on `sequence` with a depth of `15`, and include `k`-mers that occur at least `15` times.
+This will train a PST on `sequence` with a depth of `3`, and include `k`-mers that occur at least `2` times.
 
 We also provide a cli, which can be used as follows:
 
-```cpp
-./pst-classifier CP007136.1.fa --min-count 100 --max-depth 15 --estimator "KL" --theshold 3.9075 --multi-core --parallel-depth 2
+```shell
+./pst-classifier CP007136.1.fa --min-count 100 --max-depth 15 --threshold 3.9075 --multi-core --parallel-depth 2 > CP007136.1.tree
+
+./pst-score-sequences -p CP007136.1.tree -s CP007136.1.fa
 ```
 
 Where the first argument is a path to a fasta file. For details on the arguments, run `./pst-classifier --help`.
+
+Equivalently, if `CP007136.1.fa` was a multi-fasta file,
+
+```shell
+./pst-batch-training CP007136.1.fa --min-count 100 --max-depth 15  --threshold 3.9075 --multi-core --parallel-depth 2 -o trees.h5
+
+./pst-score-sequences -p trees.h5 -s CP007136.1.fa
+```
 
 ## Installation
 
@@ -75,10 +85,10 @@ reproducibility and usage.
 
 Dependencies (debian packages in parentheses):
 
-* GCC >= 7 (g++)
-* CMake (cmake)
-* HDF5 (libhdf5-dev), optional, needed for `pst-batch-training` and `pst-score-sequences`
-* Eigen (libeigen3-dev), optional, needed for `pst-batch-training` and `pst-score-sequences`
+- GCC >= 7 (g++)
+- CMake (cmake)
+- HDF5 (libhdf5-dev), optional, needed for `pst-batch-training` and `pst-score-sequences`
+- Eigen (libeigen3-dev), optional, needed for `pst-batch-training` and `pst-score-sequences`
 
 Fetch the source code via git, or download the latest release.
 
@@ -105,10 +115,10 @@ make pst-classifier pst-batch-training pst-score-sequences
 
 This should yield three files in the `build/src` directory:
 
-* `pst-classifier` which provides a command line interface to the PST/VLMC training.
-* `pst-batch-training` which trains a VLMC for every sequence in a multi-fasta file, and saves the output to a hdf5
+- `pst-classifier` which provides a command line interface to the PST/VLMC training.
+- `pst-batch-training` which trains a VLMC for every sequence in a multi-fasta file, and saves the output to a hdf5
   file.
-* `pst-score-sequences` which takes the signatures from the output of `pst-batch-training` or `pst-classifier` and
+- `pst-score-sequences` which takes the signatures from the output of `pst-batch-training` or `pst-classifier` and
   computes the negative log-likelihood of as set of sequences, and saves the result to a hdf5 file.
 
 Or for tests, build all everything:
@@ -123,10 +133,10 @@ make
 
 Dependencies (homebrew packages in parentheses):
 
-* GCC >= 7 (gcc)
-* CMake (cmake)
-* HDF5 (hdf5), optional, needed for `pst-batch-training` and `pst-score-sequences`
-* Eigen (eigen), optional, needed for `pst-batch-training` and `pst-score-sequences`
+- GCC >= 7 (gcc)
+- CMake (cmake)
+- HDF5 (hdf5), optional, needed for `pst-batch-training` and `pst-score-sequences`
+- Eigen (eigen), optional, needed for `pst-batch-training` and `pst-score-sequences`
 
 Other than the different packages, the instructions for Linux should work.
 
