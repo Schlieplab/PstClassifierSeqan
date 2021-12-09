@@ -47,7 +47,7 @@ Equivalently, if `CP007136.1.fa` was a multi-fasta file,
 ./pst-score-sequences -p trees.h5 -s CP007136.1.fa
 ```
 
-To use the VLMC in a c++ project, copy the corresponding header files, make sure SeQan3 is installed. Example usage:
+To use the VLMC in a c++ project, copy the corresponding header files, make sure SeqAn3 is installed. Example usage:
 
 ```cpp
 #include "probabilistic_suffix_tree.hpp"
