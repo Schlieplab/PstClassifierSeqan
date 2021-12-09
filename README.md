@@ -27,7 +27,27 @@ Published in [BMC bioinformatics](https://doi.org/10.1186/s12859-021-04387-y).
 
 ## Usage
 
-Example:
+Pre-complied binaries for linux are available on GitHub under the [releases](https://github.com/Schlieplab/PstClassifierSeqan/releases).
+
+The CLI can be used as follows. To train a VLMC on the file `CP007136.1.fa`, and compute the length-normalised negative log-likelihood:
+
+```sh
+./pst-classifier CP007136.1.fa --min-count 100 --max-depth 15 --threshold 3.9075 --multi-core --parallel-depth 2 > CP007136.1.tree
+
+./pst-score-sequences -p CP007136.1.tree -s CP007136.1.fa
+```
+
+Where the first argument is a path to a fasta file. For details on the arguments, run e.g. `./pst-classifier --help`.
+
+Equivalently, if `CP007136.1.fa` was a multi-fasta file,
+
+```sh
+./pst-batch-training CP007136.1.fa --min-count 100 --max-depth 15  --threshold 3.9075 --multi-core --parallel-depth 2 -o trees.h5
+
+./pst-score-sequences -p trees.h5 -s CP007136.1.fa
+```
+
+To use the VLMC in a c++ project, copy the corresponding header files, make sure SeQan3 is installed. Example usage:
 
 ```cpp
 #include "probabilistic_suffix_tree.hpp"
@@ -51,25 +71,7 @@ int main() {
 }
 ```
 
-This will train a PST on `sequence` with a depth of `3`, and include `k`-mers that occur at least `2` times.
-
-We also provide a cli, which can be used as follows:
-
-```shell
-./pst-classifier CP007136.1.fa --min-count 100 --max-depth 15 --threshold 3.9075 --multi-core --parallel-depth 2 > CP007136.1.tree
-
-./pst-score-sequences -p CP007136.1.tree -s CP007136.1.fa
-```
-
-Where the first argument is a path to a fasta file. For details on the arguments, run `./pst-classifier --help`.
-
-Equivalently, if `CP007136.1.fa` was a multi-fasta file,
-
-```shell
-./pst-batch-training CP007136.1.fa --min-count 100 --max-depth 15  --threshold 3.9075 --multi-core --parallel-depth 2 -o trees.h5
-
-./pst-score-sequences -p trees.h5 -s CP007136.1.fa
-```
+This will train a PST on `sequence` with a depth of `3`, and include `k`-mers that occur at least `2` times, and then compute the length-normalised negative log-likelihood.
 
 ## Installation
 
