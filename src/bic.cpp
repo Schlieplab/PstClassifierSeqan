@@ -127,7 +127,11 @@ size_t percentile_frequency(pst::ProbabilisticSuffixTreeMap<seqan3::dna5> &tree,
   std::sort(counts.begin(), counts.end());
 
   size_t percentile_edge = counts.size() * percentile;
-  return counts[percentile_edge];
+  if (counts.size() == 0) {
+    return 0;
+  } else {
+    return counts[percentile_edge];
+  }
 }
 
 Result bic_score(pst::KullbackLieblerTreeMap<seqan3::dna5> &tree,
