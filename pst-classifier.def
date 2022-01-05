@@ -14,20 +14,17 @@ From: debian:bullseye
     ../kmc /kmc
 
 %post
-    apt-get update -y && apt-get install -y cmake build-essential g++ git gcc libhdf5-dev libeigen3-dev libtbb-dev libgomp1 doxygen libboost-all-dev
+    apt-get update -y && apt-get install -y cmake build-essential g++ git gcc
 
-    echo 'deb http://deb.debian.org/debian testing main' >> /etc/apt/sources.list
-    apt update -y
-    apt install -y gcc g++
+    apt-get install -y libhdf5-dev libeigen3-dev libtbb-dev libgomp1 doxygen libboost-all-dev
 
     mkdir /PstClassifierSeqan/build
     cd /PstClassifierSeqan/build
 
     cmake -DCMAKE_BUILD_TYPE=Release ..
-    make bic pst-classifier pst-score-sequences
+    make bic pst-batch-training pst-classifier pst-score-sequences calculate-distances
 
     cp /kmc/KMC3.linux/kmc /kmc/KMC3.linux/kmc_tools /PstClassifierSeqan/build/src/
-
 
 %environment
     export PATH="/PstClassifierSeqan/build/src/:$PATH"

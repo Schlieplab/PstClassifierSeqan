@@ -11,6 +11,8 @@
 
 #include <seqan3/std/filesystem>
 
+#include <vlmc_from_kmers/build_vlmc.hpp>
+
 #include "kl_tree.hpp"
 #include "kl_tree_map.hpp"
 #include "probabilistic_suffix_tree_map.hpp"
@@ -25,12 +27,13 @@ struct input_arguments {
   std::string algorithm_method{"hashmap"};
   std::string pruning_method{"cutoff"};
   std::string estimator{"KL"};
-  lst::details::sequence_t<seqan3::dna5> sequence{};
-  std::string id{};
+  std::filesystem::path fasta_path{};
   bool multi_core{false};
   int parallel_depth{1};
   std::filesystem::path out_path{""};
   double pseudo_count_amount{1.0};
+  std::filesystem::path tmp_path{"./tmp"};
+  std::string in_or_out_of_core{"internal"};
 };
 
 struct my_traits : seqan3::sequence_file_input_default_traits_dna {
@@ -40,20 +43,21 @@ struct my_traits : seqan3::sequence_file_input_default_traits_dna {
 };
 
 input_arguments parse_cli_arguments(int argc, char *argv[]) {
-  std::filesystem::path filename{};
-
   input_arguments arguments{};
 
   seqan3::argument_parser parser{"Pst-Classifier", argc, argv,
                                  seqan3::update_notifications::off};
   parser.info.short_description = "Build PST/VLMC on the given fasta file.";
 
-  parser.add_positional_option(filename, "path to fasta file.");
+  parser.add_positional_option(arguments.fasta_path, "path to fasta file.");
 
-  parser.add_option(
-      arguments.out_path, 'o', "out-path",
-      "Name of output file.  The suffix '.tree' will be added if not present. "
-      "Will write to stdout if not specified.");
+  parser.add_option(arguments.out_path, 'o', "out-path",
+                    "Name of output file.  The suffix '.tree' or '.bintree' "
+                    "will be added if not present. ");
+
+  parser.add_option(arguments.tmp_path, 't', "tmp-path",
+                    "Path to temporary directory.  Required for the 'kmers' "
+                    "method. Defaults to './tmp'.");
 
   parser.add_option(arguments.max_depth, 'd', "max-depth",
                     "Max depth of the built probabilistic suffix tree.  "
@@ -84,13 +88,19 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
                     "a certain number of parameters have been reached.");
 
   parser.add_option(arguments.algorithm_method, 'a', "algorithm-method",
-                    "Algorithm to use. Either 'hashmap', which stores the "
-                    "k-mers in a hashmap, or 'tree' which will store "
-                    "the k-mers in a tree and requires suffix links.");
+                    "Algorithm for construction of the VLMC."
+                    "Either 'kmers' which builds the VLMC from kmers, "
+                    "'hashmap', which stores the k-mers in a hashmap, "
+                    "or 'tree' which will store "
+                    "the k-mers in a lazy suffix tree.");
+
+  parser.add_option(arguments.in_or_out_of_core, 'i', "in-or-out-of-core",
+                    "For the 'kmers' method, specifies if the algorithm should "
+                    "RAM ('internal') or disk ('external').");
 
   parser.add_option(arguments.pseudo_count_amount, 'j', "pseudo-count-amount",
-                    "Size of pseudo count for probability estimation, only "
-                    "works for algorithm-method=='hashmap'. See e.g. "
+                    "Size of pseudo count for probability estimation, does "
+                    "not work for algorithm-method=='tree'. See e.g. "
                     "https://en.wikipedia.org/wiki/Additive_smoothing .");
 
   // Multiprocessing
@@ -110,27 +120,29 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
     return arguments;
   }
 
-  seqan3::sequence_file_input<my_traits> file_in{filename};
-
-  for (auto &[seq, id, qual] : file_in) {
-    std::move(seq.begin(), seq.end(), std::back_inserter(arguments.sequence));
-    arguments.sequence.push_back('N'_dna5);
-
-    arguments.id += id;
-    arguments.id += "|";
-  }
-  arguments.id.pop_back();
-  arguments.sequence.pop_back();
-
   return arguments;
 }
 
-std::string train(lst::details::sequence_t<seqan3::dna5> sequence,
-                  std::string id, size_t max_depth, size_t min_count,
-                  float threshold, size_t number_of_parameters,
-                  std::string pruning_method, std::string algorithm,
-                  std::string estimator, bool multi_core, int parallel_depth,
-                  const double pseudo_count_amount) {
+std::string train(const std::filesystem::path &fasta_path, size_t max_depth,
+                  size_t min_count, float threshold,
+                  size_t number_of_parameters, std::string pruning_method,
+                  std::string algorithm, std::string estimator, bool multi_core,
+                  int parallel_depth, const double pseudo_count_amount) {
+
+  lst::details::sequence_t<seqan3::dna5> sequence{};
+  std::string id{};
+
+  seqan3::sequence_file_input<my_traits> file_in{fasta_path};
+
+  for (auto &[seq, id_, qual] : file_in) {
+    std::move(seq.begin(), seq.end(), std::back_inserter(sequence));
+    sequence.push_back('N'_dna5);
+
+    id += id_;
+    id += "|";
+  }
+  id.pop_back();
+  sequence.pop_back();
 
   if (estimator == "KL" && algorithm == "hashmap") {
     pst::KullbackLieblerTreeMap<seqan3::dna5> pst{id,
@@ -165,23 +177,57 @@ std::string train(lst::details::sequence_t<seqan3::dna5> sequence,
 int main(int argc, char *argv[]) {
   input_arguments arguments = parse_cli_arguments(argc, argv);
 
-  std::string tree = train(
-      arguments.sequence, arguments.id, arguments.max_depth,
-      arguments.min_count, arguments.threshold, arguments.number_of_parameters,
-      arguments.pruning_method, arguments.algorithm_method, arguments.estimator,
-      arguments.multi_core, arguments.parallel_depth,
-      arguments.pseudo_count_amount);
+  if (arguments.algorithm_method == "kmers") {
 
-  if (arguments.out_path == "") {
-    std::cout << tree << std::endl;
-  } else {
-    if (!arguments.out_path.has_extension()) {
-      arguments.out_path.replace_extension(".tree");
+    vlmc::Core core;
+    if (arguments.in_or_out_of_core == "internal") {
+      core = vlmc::Core::in;
+    } else if (arguments.in_or_out_of_core == "external") {
+      core = vlmc::Core::out;
+    } else {
+      std::cerr << "--in-or-out-of-core parameter given invalid value.  Only "
+                   "'internal' or 'external' is allowed."
+                << std::endl;
+      return EXIT_FAILURE;
+    }
+    std::filesystem::path out_path = arguments.out_path;
+    if (out_path == "") {
+      out_path = std::filesystem::path(".tmp.bintree");
+    } else if (!out_path.has_extension()) {
+      out_path.replace_extension(".bintree");
+    } else if (out_path.extension() != ".bintree") {
+      std::cerr << "out path has invalid extension, should be '.bintree'."
+                << std::endl;
+      return EXIT_FAILURE;
     }
 
-    std::ofstream ofs{arguments.out_path, std::ios::out};
-    ofs << tree << std::endl;
-    ofs.close();
+    vlmc::build_vlmc(arguments.fasta_path, arguments.max_depth,
+                     arguments.min_count, arguments.threshold, out_path,
+                     arguments.tmp_path, core, arguments.pseudo_count_amount);
+
+    if (arguments.out_path == "") {
+      vlmc::dump_path(out_path, std::filesystem::path{});
+    }
+  } else {
+
+    std::string tree =
+        train(arguments.fasta_path, arguments.max_depth, arguments.min_count,
+              arguments.threshold, arguments.number_of_parameters,
+              arguments.pruning_method, arguments.algorithm_method,
+              arguments.estimator, arguments.multi_core,
+              arguments.parallel_depth, arguments.pseudo_count_amount);
+
+    if (arguments.out_path == "") {
+      std::cout << tree << std::endl;
+    } else {
+      if (!arguments.out_path.has_extension()) {
+        arguments.out_path.replace_extension(".tree");
+      }
+
+      std::ofstream ofs{arguments.out_path, std::ios::out};
+      ofs << tree << std::endl;
+      ofs.close();
+    }
   }
 
   return EXIT_SUCCESS;
