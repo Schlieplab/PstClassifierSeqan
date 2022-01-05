@@ -361,3 +361,7 @@ TEST_F(ProbabilisticSuffixTreeTestMap, GenerateSequence) {
 
   std::cout << sequence << std::endl;
 }
+
+TEST_F(ProbabilisticSuffixTreeTestMap, CreateKlTree) {
+  auto t = pst::create_kl_map("TEST", long_sequence, 15, 4, 3.9075, 24601, "cutoff", true, 1);
+}

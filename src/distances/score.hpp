@@ -1,8 +1,14 @@
 #include <algorithm>
+#include <chrono>
 #include <functional>
 #include <iostream>
+#include <mutex>
 #include <string>
 #include <thread>
+
+#include <indicators/cursor_control.hpp>
+#include <indicators/dynamic_progress.hpp>
+#include <indicators/progress_bar.hpp>
 
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/argument_parser/argument_parser.hpp>
@@ -12,9 +18,44 @@
 #include "negative_log_likelihood.hpp"
 #include "parallelize.hpp"
 
+std::mutex bars_mutex{};
+
 namespace pst {
 
 using tree_t = pst::ProbabilisticSuffixTreeMap<seqan3::dna5>;
+
+void score_trees_slice_with_progress(
+    size_t start_index, size_t stop_index,
+    std::vector<std::vector<double>> &scores, std::vector<tree_t> &trees,
+    std::vector<seqan3::dna5_vector> &sequences,
+    const std::function<float(tree_t &, std::vector<seqan3::dna5> &)> &fun,
+    indicators::DynamicProgress<indicators::ProgressBar> &bars) {
+
+  std::stringstream ss;
+  ss << "\"Computing negative log likelihood of trees from " << start_index
+     << " to " << stop_index << "...";
+
+  indicators::ProgressBar bar{
+      indicators::option::BarWidth{stop_index - start_index},
+      indicators::option::PrefixText{ss.str()},
+      indicators::option::ShowElapsedTime{true},
+      indicators::option::ShowRemainingTime{true}};
+
+  int bars_i = 0;
+  {
+    std::lock_guard lock{bars_mutex};
+    bars_i = bars.push_back(bar);
+  }
+
+  for (size_t j = 0; j < sequences.size(); j++) {
+    for (size_t i = start_index; i < stop_index; i++) {
+      scores[j][i] = fun(trees[i], sequences[j]);
+      bars[bars_i].tick();
+    }
+  }
+
+  bars[bars_i].mark_as_completed();
+}
 
 void score_trees_slice(
     size_t start_index, size_t stop_index,
@@ -27,6 +68,38 @@ void score_trees_slice(
       scores[j][i] = fun(trees[i], sequences[j]);
     }
   }
+}
+
+void score_sequences_slice_with_progress(
+    size_t start_index, size_t stop_index,
+    std::vector<std::vector<double>> &scores, std::vector<tree_t> &trees,
+    std::vector<seqan3::dna5_vector> &sequences,
+    const std::function<double(tree_t &, std::vector<seqan3::dna5> &)> &fun,
+    indicators::DynamicProgress<indicators::ProgressBar> &bars) {
+  std::stringstream ss;
+  ss << "\"Computing negative log likelihood of sequences from " << start_index
+     << " to " << stop_index << " sequences for all trees... ";
+
+  indicators::ProgressBar bar{
+      indicators::option::BarWidth{stop_index - start_index},
+      indicators::option::PrefixText{ss.str()},
+      indicators::option::ShowElapsedTime{true},
+      indicators::option::ShowRemainingTime{true}};
+
+  int bars_i = 0;
+  {
+    std::lock_guard lock{bars_mutex};
+    bars_i = bars.push_back(bar);
+  }
+
+  for (size_t i = 0; i < trees.size(); i++) {
+    for (size_t j = start_index; j < stop_index; j++) {
+      scores[j][i] = fun(trees[i], sequences[j]);
+      bars[bars_i].tick();
+    }
+  }
+
+  bars[bars_i].mark_as_completed();
 }
 
 void score_sequences_slice(
@@ -57,14 +130,21 @@ score_sequences(std::vector<tree_t> &trees, std::vector<std::string> &sequences,
     dna_sequences[sequence_idx] = seq;
   }
 
+  indicators::DynamicProgress<indicators::ProgressBar> bars{};
+  bars.set_option(indicators::option::HideBarWhenComplete{true});
+
   auto fun = [&](size_t start_index, size_t stop_index) {
-    score_trees_slice(
+    score_trees_slice_with_progress(
         start_index, stop_index, std::ref(scores), std::ref(trees),
         std::ref(dna_sequences),
-        pst::distances::negative_log_likelihood_symmetric<seqan3::dna5>);
+        pst::distances::negative_log_likelihood_symmetric<seqan3::dna5>,
+        std::ref(bars));
   };
 
+  // Hide cursor
+  indicators::show_console_cursor(false);
   pst::parallelize::parallelize(trees.size(), fun);
+  indicators::show_console_cursor(true);
 
   return scores;
 }
@@ -76,7 +156,9 @@ score_cpp(std::vector<std::string> tree_strings,
 
   std::transform(tree_strings.begin(), tree_strings.end(),
                  std::back_inserter(trees),
-                 [](std::string &tree) -> tree_t { return tree_t{tree}; });
+                 [](const std::string &tree) -> tree_t {
+                   return tree_t{tree, 1.0};
+                 });
 
   auto scores = score_sequences(trees, sequences, 0);
 

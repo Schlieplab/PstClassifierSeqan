@@ -4,6 +4,10 @@
 #include <string>
 #include <thread>
 
+#include <indicators/cursor_control.hpp>
+#include <indicators/dynamic_progress.hpp>
+#include <indicators/progress_bar.hpp>
+
 #include <highfive/H5File.hpp>
 
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
@@ -77,13 +81,21 @@ std::vector<tree_t> get_trees(HighFive::File &file,
   std::vector<std::string> result_string_list;
   dataset.read(result_string_list);
 
+  indicators::ProgressBar bar{
+      indicators::option::BarWidth{result_string_list.size()},
+      indicators::option::PrefixText{"Parsing trees"},
+      indicators::option::ShowElapsedTime{true},
+      indicators::option::ShowRemainingTime{true}};
+
   std::vector<tree_t> trees{};
   std::transform(result_string_list.begin(), result_string_list.end(),
                  std::back_inserter(trees),
-                 [&pseudo_count_amount](std::string &tree) -> tree_t {
+                 [&pseudo_count_amount, &bar](std::string &tree) -> tree_t {
+                   bar.tick();
                    return tree_t{tree, pseudo_count_amount};
                  });
 
+  bar.mark_as_completed();
   return trees;
 }
 
@@ -178,12 +190,14 @@ score_sequences_paths(std::vector<tree_t> &trees,
         parse_scoring_function(sequences.size(), score_both_sequence_directions,
                                background_adjusted, background_order);
 
-    auto fun = [&](size_t start_index, size_t stop_index) {
-      pst::score_sequences_slice(start_index, stop_index, std::ref(scores),
-                                 std::ref(trees), std::ref(sequences),
-                                 score_fun);
-    };
+    indicators::DynamicProgress<indicators::ProgressBar> bars{};
+    bars.set_option(indicators::option::HideBarWhenComplete{true});
 
+    auto fun = [&](size_t start_index, size_t stop_index) {
+      pst::score_sequences_slice_with_progress(
+          start_index, stop_index, std::ref(scores), std::ref(trees),
+          std::ref(sequences), score_fun, std::ref(bars));
+    };
     pst::parallelize::parallelize(sequences.size(), fun);
 
     std::move(scores.begin(), scores.end(), std::back_inserter(all_scores));

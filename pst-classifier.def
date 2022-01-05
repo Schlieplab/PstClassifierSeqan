@@ -36,9 +36,8 @@ From: debian:buster
     echo "Running tests"
     bic -h
     pst-classifier -h
-    pst-score-sequnces -h
-
-
+    pst-score-sequences -h
+    calculate-distances
 
 %apprun bic
     cd /PstClassifierSeqan/build/src/
@@ -52,3 +51,6 @@ From: debian:buster
     cd /PstClassifierSeqan/build/src/
     /PstClassifierSeqan/build/src/pst-classifier $*
 
+%apprun distances
+    cd /PstClassifierSeqan/build/src/
+    /PstClassifierSeqan/build/src/calculate-distances $*
