@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: debian:buster
+From: debian:bullseye
 
 %files
     src /PstClassifierSeqan/src
@@ -8,7 +8,8 @@ From: debian:buster
     eigen /PstClassifierSeqan/eigen
     HighFive /PstClassifierSeqan/HighFive
     robin-hood-hashing /PstClassifierSeqan/robin-hood-hashing
-    kmc-vlmc /PstClassifierSeqan/kmc-vlmc
+    indicators /PstClassifierSeqan/indicators
+    vlmc-from-kmers /PstClassifierSeqan/vlmc-from-kmers
     CMakeLists.txt /PstClassifierSeqan/CMakeLists.txt
     ../kmc /kmc
 

@@ -11,8 +11,8 @@
 
 #include <seqan3/std/filesystem>
 
-#include <build_vlmc.hpp>
-#include <kmer_container.hpp>
+#include <vlmc_from_kmers/build_vlmc.hpp>
+#include <vlmc_from_kmers/kmer_container.hpp>
 
 #include "distances/negative_log_likelihood.hpp"
 #include "kl_tree.hpp"
@@ -31,7 +31,7 @@ struct input_arguments {
   int max_min_count{5000};
   std::filesystem::path filename{};
   std::filesystem::path out_path{};
-  std::filesystem::path tmp_path{};
+  std::filesystem::path tmp_path{"test"};
 };
 
 struct my_traits : seqan3::sequence_file_input_default_traits_dna {
@@ -287,33 +287,23 @@ std::tuple<int, int, double> find_best_parameters(
   std::vector<int> min_counts =
       determine_min_counts(min_min_count, max_min_count);
 
-  std::cout << "running kmc" << std::endl;
-  auto kmc_db_path = vlmc::run_kmc(fasta_path, max_max_depth + 1, tmp_path,
-                                   in_or_out_of_core, 2);
-  std::cout << "building vlmc" << std::endl;
+  std::cout << "Building vlmc" << std::endl;
+  vlmc::build_vlmc(fasta_path, max_max_depth, min_min_count, thresholds[0],
+                   tree_path, tmp_path, in_or_out_of_core);
 
-  vlmc::build_vlmc_from_kmc_db(fasta_path, max_max_depth, min_min_count,
-                               thresholds[0], tree_path, tmp_path,
-                               in_or_out_of_core, kmc_db_path);
-
+  std::cout << "Finding min BIC" << std::endl;
   for (auto threshold : thresholds) {
     for (auto min_count : min_counts) {
-      std::cout << "parsing tree" << std::endl;
       pst::KullbackLieblerTreeMap<seqan3::dna5> tree{tree_path};
       tree.multi_core = false;
       for (int max_depth = max_max_depth; max_depth >= min_max_depth;
            max_depth--) {
         // Prune for parameter settings
-        std::cout << "pruning tree support" << std::endl;
         tree.reprune_support(min_count, max_depth);
-        std::cout << "pruning tree similarity" << std::endl;
         tree.reprune_similarity(threshold);
-
-        std::cout << "computing bic" << std::endl;
 
         auto res = bic_score(tree, sequence, min_count, max_depth, threshold);
 
-        std::cout << "finding min" << std::endl;
         if (res.bic_score < best_bic_result.bic_score) {
           best_bic_result = res;
         }
@@ -326,10 +316,8 @@ std::tuple<int, int, double> find_best_parameters(
           best_aicc_result = res;
         }
 
-        std::cout << "pushing back" << std::endl;
         results.push_back(res);
 
-        std::cout << "writing to stdout" << std::endl;
         res.output_result();
       }
     }
@@ -366,8 +354,6 @@ std::tuple<int, int, double> find_best_parameters(
   best_aic_result.output_result();
   std::cout << "---------- Best AICc ----------" << std::endl;
   best_aicc_result.output_result();
-
-  vlmc::remove_kmc_files(kmc_db_path);
 
   return {best_bic_result.max_depth, best_bic_result.min_count,
           best_bic_result.threshold};

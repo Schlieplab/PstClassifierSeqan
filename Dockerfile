@@ -12,7 +12,8 @@ RUN apt-get update -y && \
 
 WORKDIR /PstClassifierSeqan
 
-COPY kmc-vlmc kmc-vlmc
+COPY vlmc-from-kmers vlmc-from-kmers
+COPY indicators indicators
 COPY seqan3 seqan3
 COPY eigen eigen
 COPY robin-hood-hashing robin-hood-hashing

@@ -101,8 +101,10 @@ inline double dvstar(ProbabilisticSuffixTreeMap<alphabet_t> &left,
 
 double dvstar_cpp(const std::string &left_tree_string,
                   const std::string &right_tree_string, int background_order) {
-  pst::ProbabilisticSuffixTreeMap<seqan3::dna5> left_tree{left_tree_string, 1.0};
-  pst::ProbabilisticSuffixTreeMap<seqan3::dna5> right_tree{right_tree_string, 1.0};
+  pst::ProbabilisticSuffixTreeMap<seqan3::dna5> left_tree{left_tree_string,
+                                                          1.0};
+  pst::ProbabilisticSuffixTreeMap<seqan3::dna5> right_tree{right_tree_string,
+                                                           1.0};
 
   return dvstar<seqan3::dna5>(left_tree, right_tree, background_order);
 }

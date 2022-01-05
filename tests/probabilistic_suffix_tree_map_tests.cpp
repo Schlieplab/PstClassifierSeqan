@@ -363,5 +363,6 @@ TEST_F(ProbabilisticSuffixTreeTestMap, GenerateSequence) {
 }
 
 TEST_F(ProbabilisticSuffixTreeTestMap, CreateKlTree) {
-  auto t = pst::create_kl_map("TEST", long_sequence, 15, 4, 3.9075, 24601, "cutoff", true, 1);
+  auto t = pst::create_kl_map("TEST", long_sequence, 15, 4, 3.9075, 24601,
+                              "cutoff", true, 1);
 }

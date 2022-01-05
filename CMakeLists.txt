@@ -31,7 +31,10 @@ set(HIGHFIVE_EXAMPLES FALSE)
 find_package(HDF5 REQUIRED COMPONENTS CXX)
 add_subdirectory("${CMAKE_SOURCE_DIR}/HighFive")
 
-add_subdirectory("${CMAKE_SOURCE_DIR}/kmc-vlmc")
+add_subdirectory("${CMAKE_SOURCE_DIR}/vlmc-from-kmers")
+include_directories("${CountVLMC_INCLUDE_DIRS}")
+
+include_directories("${CMAKE_SOURCE_DIR}/indicators/include/")
 
 # apply STXXL CXXFLAGS to our configuration
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${STXXL_CXX_FLAGS}")

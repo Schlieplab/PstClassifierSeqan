@@ -1,6 +1,8 @@
 cmake_minimum_required (VERSION 3.4...3.12)
 project(pst-classifier)
 
+list(APPEND CMAKE_MODULE_PATH "/usr/share/cmake/Modules/") # For debian in singularity
+
 find_package(PythonExtensions REQUIRED)
 find_package(Cython REQUIRED)
 find_package(Threads REQUIRED)

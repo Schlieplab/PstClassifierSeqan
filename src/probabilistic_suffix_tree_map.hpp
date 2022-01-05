@@ -33,7 +33,8 @@
 
 #include <cereal/archives/binary.hpp>
 #include <cereal/cereal.hpp>
-#include <kmer.hpp>
+
+#include <vlmc_from_kmers/kmer.hpp>
 
 #include "search/lazy_suffix_tree.hpp"
 #include "search/lazy_suffix_tree/iteration.hpp"
