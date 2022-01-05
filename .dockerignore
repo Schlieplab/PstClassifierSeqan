@@ -2,3 +2,5 @@ python-package/_skbuild/
 fasta/
 build*
 *.sif
+*/performance-evaluation
+*.zst
