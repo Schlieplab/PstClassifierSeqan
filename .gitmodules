@@ -19,4 +19,4 @@
 	url = https://github.com/p-ranav/indicators.git
 [submodule "vlmc-from-kmers"]
 	path = vlmc-from-kmers
-	url = git@gitlab.com:genomic-signatures/vlmc-from-kmers.git
+	url = https://github.com/Schlieplab/VLMC-from-kmers.git
