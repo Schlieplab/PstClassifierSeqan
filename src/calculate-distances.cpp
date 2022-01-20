@@ -211,6 +211,17 @@ matrix_t calculate_distances(
   return distances;
 }
 
+std::vector<tree_t> get_trees(const std::filesystem::path &directory,
+                              const double pseudo_count_amount) {
+  std::vector<tree_t> trees{};
+  std::cout << "parsing trees..." << std::endl;
+  for (auto const &dir_entry : std::filesystem::directory_iterator{directory}) {
+    trees.push_back(tree_t{dir_entry.path(), pseudo_count_amount});
+  }
+
+  return trees;
+}
+
 std::vector<tree_t> get_trees(HighFive::File &file,
                               const double pseudo_count_amount) {
   const std::string DATASET_NAME("signatures");
@@ -249,6 +260,8 @@ int main(int argc, char *argv[]) {
         arguments.filepath, arguments.pseudo_count_amount};
 
     trees = std::vector<tree_t>{std::move(tree)};
+  } else if (std::filesystem::is_directory(arguments.filepath)) {
+    trees = get_trees(arguments.filepath, arguments.pseudo_count_amount);
   }
 
   if (arguments.filepath_to.empty()) {
@@ -263,13 +276,21 @@ int main(int argc, char *argv[]) {
         arguments.filepath_to, arguments.pseudo_count_amount};
 
     trees_to = std::vector<tree_t>{std::move(tree)};
+  } else if (std::filesystem::is_directory(arguments.filepath_to)) {
+    trees_to = get_trees(arguments.filepath_to, arguments.pseudo_count_amount);
   }
 
   matrix_t distances =
       calculate_distances(trees, trees_to, arguments, distance_fun);
   std::cout << "Done with distances" << std::endl;
 
-  std::cout << "done with distances" << std::endl;
+  std::vector<std::string> ids{};
+  std::transform(trees.begin(), trees.end(), std::back_inserter(ids),
+                 [](tree_t &tree) -> std::string { return tree.id; });
+
+  std::vector<std::string> ids_to{};
+  std::transform(trees_to.begin(), trees_to.end(), std::back_inserter(ids),
+                 [](tree_t &tree) -> std::string { return tree.id; });
 
   if (arguments.scores.empty()) {
     for (int i = 0; i < trees.size(); i++) {
@@ -280,8 +301,22 @@ int main(int argc, char *argv[]) {
     }
   } else if (arguments.scores.extension() == ".h5" ||
              arguments.scores.extension() == ".hdf5") {
+    std::cout << "Writing to file..." << std::endl;
     HighFive::File file{arguments.scores,
                         HighFive::File::ReadWrite | HighFive::File::Create};
+
+    if (!file.exist("ids")) {
+      file.createDataSet<std::string>("ids", HighFive::DataSpace::From(ids));
+    }
+    auto ids_dataset = file.getDataSet("ids");
+    ids_dataset.write(ids);
+
+    if (!file.exist("ids_to")) {
+      file.createDataSet<std::string>("ids_to",
+                                      HighFive::DataSpace::From(ids_to));
+    }
+    auto ids_to_dataset = file.getDataSet("ids_to");
+    ids_to_dataset.write(ids_to);
 
     if (!file.exist("distances")) {
       file.createGroup("distances");
