@@ -15,6 +15,10 @@
 
 #include <seqan3/std/filesystem>
 
+#include <indicators/cursor_control.hpp>
+#include <indicators/dynamic_progress.hpp>
+#include <indicators/progress_bar.hpp>
+
 #include "distances/cv.hpp"
 #include "distances/d2.hpp"
 #include "distances/d2star.hpp"
@@ -26,9 +30,9 @@ using tree_t = pst::ProbabilisticSuffixTreeMap<seqan3::dna5>;
 using matrix_t = Eigen::MatrixXd;
 
 struct input_arguments {
-  std::string distance_name{"cv"};
+  std::string distance_name{"dvstar"};
   size_t order{6};
-  size_t background_order{2};
+  size_t background_order{0};
   std::filesystem::path filepath{""};
   std::filesystem::path filepath_to{""};
   std::filesystem::path scores{""};
@@ -89,11 +93,29 @@ void calculate_vector_slice(
 void calculate_slice(size_t start_index, size_t stop_index, matrix_t &distances,
                      std::vector<tree_t> &trees, std::vector<tree_t> &trees_to,
                      const std::function<float(tree_t &, tree_t &)> &fun) {
+
   for (size_t i = start_index; i < stop_index; i++) {
     for (size_t j = 0; j < trees_to.size(); j++) {
       distances(i, j) = fun(trees[i], trees_to[j]);
     }
   }
+}
+
+void calculate_slice_with_progress(
+    size_t start_index, size_t stop_index, matrix_t &distances,
+    std::vector<tree_t> &trees, std::vector<tree_t> &trees_to,
+    const std::function<float(tree_t &, tree_t &)> &fun,
+    indicators::DynamicProgress<indicators::ProgressBar> &bars, int bars_i) {
+
+  for (size_t i = start_index; i < stop_index; i++) {
+    for (size_t j = 0; j < trees_to.size(); j++) {
+      distances(i, j) = fun(trees[i], trees_to[j]);
+    }
+    float progress = float(i - start_index) / float(stop_index - start_index);
+    bars[bars_i].set_progress(progress * 100);
+  }
+
+  bars[bars_i].mark_as_completed();
 }
 
 void calculate_slice(size_t start_index, size_t stop_index, matrix_t &distances,
@@ -176,11 +198,14 @@ matrix_t calculate_distances(
     pst::parallelize::parallelize(trees.size(), fun);
 
   } else {
-    auto fun = [&](size_t start_index, size_t stop_index) {
-      calculate_slice(start_index, stop_index, std::ref(distances),
-                      std::ref(trees), std::ref(trees_to), distance_fun);
+    auto fun = [&](size_t start_index, size_t stop_index,
+                   indicators::DynamicProgress<indicators::ProgressBar> &bars,
+                   int bar_i) {
+      calculate_slice_with_progress(
+          start_index, stop_index, std::ref(distances), std::ref(trees),
+          std::ref(trees_to), distance_fun, bars, bar_i);
     };
-    pst::parallelize::parallelize(trees.size(), fun);
+    pst::parallelize::parallelize_with_progress(trees.size(), fun);
   }
 
   return distances;
@@ -242,12 +267,13 @@ int main(int argc, char *argv[]) {
 
   matrix_t distances =
       calculate_distances(trees, trees_to, arguments, distance_fun);
+  std::cout << "Done with distances" << std::endl;
 
   std::cout << "done with distances" << std::endl;
 
   if (arguments.scores.empty()) {
     for (int i = 0; i < trees.size(); i++) {
-      for (int j = 0; j < trees.size(); j++) {
+      for (int j = 0; j < trees_to.size(); j++) {
         std::cout << distances(i, j) << " ";
       }
       std::cout << std::endl;
@@ -263,7 +289,7 @@ int main(int argc, char *argv[]) {
     auto distance_group = file.getGroup("distances");
 
     if (!distance_group.exist(distance_name_with_args)) {
-      std::vector<size_t> dims{trees.size(), trees.size()};
+      std::vector<size_t> dims{trees.size(), trees_to.size()};
       distance_group.createDataSet<float>(distance_name_with_args,
                                           HighFive::DataSpace(dims));
     }
