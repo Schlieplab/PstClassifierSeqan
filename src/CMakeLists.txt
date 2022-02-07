@@ -62,8 +62,3 @@ target_link_libraries(calculate-distances HighFive)
 target_link_libraries(calculate-distances ${HDF5_LIBRARIES})
 target_link_libraries(calculate-distances CountVLMC::CountVLMC)
 
-add_executable(frequency_differences frequency_differences.cpp)
-target_link_libraries(frequency_differences seqan3::seqan3)
-target_link_libraries(frequency_differences Threads::Threads)
-target_link_libraries(frequency_differences ${HDF5_LIBRARIES})
-target_link_libraries(frequency_differences CountVLMC::CountVLMC)
