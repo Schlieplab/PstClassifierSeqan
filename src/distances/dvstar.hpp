@@ -56,7 +56,8 @@ inline double core_dvstar(ProbabilisticSuffixTreeMap<alphabet_t> &left,
   pst::distances::details::iterate_included_in_both(
       left, right, [&](auto &context, auto &left_v, auto &right_v) {
         const auto background_context =
-            pst::distances::details::get_background_context(context, 0);
+            pst::distances::details::get_background_context(context,
+                                                            background_order);
 
         auto left_background_v = left.counts[background_context];
         auto right_background_v = right.counts[background_context];
