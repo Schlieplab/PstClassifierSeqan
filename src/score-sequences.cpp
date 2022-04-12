@@ -107,13 +107,9 @@ parse_scoring_function(size_t n_sequences, bool score_both_sequence_directions,
           pst::distances::details::scoring::log_transition_prob<seqan3::dna5>;
 
   if (background_adjusted) {
-    transition_score_fun =
-        [background_order](pst::ProbabilisticSuffixTreeMap<seqan3::dna5> &tree,
-                           const std::string &context, char char_) {
-          return pst::distances::details::scoring::
-              background_log_transition_prob<seqan3::dna5>(tree, context, char_,
-                                                           background_order);
-        };
+    transition_score_fun = pst::distances::details::scoring::
+        specialise_background_log_transition_prob<seqan3::dna5>(
+            background_order);
   }
 
   std::function<double(tree_t &, std::vector<seqan3::dna5> &)> score_fun;

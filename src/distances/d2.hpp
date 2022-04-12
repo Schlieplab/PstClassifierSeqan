@@ -23,11 +23,11 @@ get_d2_vectors(ProbabilisticSuffixTreeMap<alphabet_t> &left,
   Eigen::VectorXd right_vector(number_of_entries);
 
   Eigen::Index i = 0;
-  iterate_included_in_both(
+  iterate_included_in_both<alphabet_t>(
       left, right, [&](auto context, auto left_v, auto right_v) {
         for (auto &char_rank : left.valid_characters) {
-          left_vector(i) = std::get<1>(left_v)[char_rank];
-          right_vector(i) = std::get<1>(right_v)[char_rank];
+          left_vector(i) = left_v.next_symbol_probabilities[char_rank];
+          right_vector(i) = right_v.next_symbol_probabilities[char_rank];
           i++;
         }
       });

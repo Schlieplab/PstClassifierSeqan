@@ -35,8 +35,8 @@ double get_component(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
   if (background_likelihood == 0.0) {
     return 0.0;
   } else {
-    const double prob = std::get<1>(v)[char_rank];
-    const double count = std::get<0>(v);
+    const double prob = v.next_symbol_probabilities[char_rank];
+    const double count = v.count;
 
     const double frequency = count * prob;
 
@@ -56,10 +56,10 @@ inline double core_d2star(ProbabilisticSuffixTreeMap<alphabet_t> &left,
   double left_norm = 0.0;
   double right_norm = 0.0;
 
-  double left_root_count = std::get<0>(left.counts[""]);
-  double right_root_count = std::get<0>(right.counts[""]);
+  double left_root_count = left.counts[""].count;
+  double right_root_count = right.counts[""].count;
 
-  pst::distances::details::iterate_included_in_both(
+  pst::distances::details::iterate_included_in_both<alphabet_t>(
       left, right, [&](auto &context, auto &left_v, auto &right_v) {
         const auto background_context =
             pst::distances::details::get_background_context(context, 0);

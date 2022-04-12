@@ -18,7 +18,7 @@ namespace pst::distances::details {
 template <seqan3::alphabet alphabet_t>
 std::vector<std::vector<double>>
 sliding_window_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                    std::string &sequence, std::vector<int> &window_sizes,
+                    std::string &sequence, const std::vector<int> &window_sizes,
                     const scoring::score_signature<alphabet_t> &score_fun,
                     size_t start, size_t end) {
 
@@ -42,9 +42,9 @@ sliding_window_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
         sequence.substr(start_index, std::min(i, order_max));
 
     char char_ = sequence[i];
-    auto context = tree.get_closest_state(subsequence);
+    auto [context, val] = tree.get_closest_state(subsequence);
 
-    double score = score_fun(tree, context, char_);
+    double score = score_fun(tree, context, val, char_);
     scores.push_back(score);
     if (scores.size() > max_window_size) {
       scores.pop_front();
@@ -77,7 +77,7 @@ sliding_window_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 template <seqan3::alphabet alphabet_t>
 std::vector<std::vector<double>>
 sliding_windows_(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                 std::string &sequence, std::vector<int> &window_sizes,
+                 std::string &sequence, const std::vector<int> &window_sizes,
                  const scoring::score_signature<alphabet_t> &score_fun) {
 
   std::vector<std::vector<double>> log_likelihoods(window_sizes.size());
@@ -114,25 +114,17 @@ sliding_windows(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
                 std::string &sequence, std::vector<int> &window_sizes) {
   return details::sliding_windows_<alphabet_t>(
       tree, sequence, window_sizes,
-      [](ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-         const std::string &context, char char_) -> double {
-        return details::scoring::log_transition_prob<alphabet_t>(tree, context,
-                                                                 char_);
-      });
+      details::scoring::log_transition_prob<alphabet_t>);
 }
 
 template <seqan3::alphabet alphabet_t>
 std::vector<std::vector<double>> sliding_windows_background(
     ProbabilisticSuffixTreeMap<alphabet_t> &tree, std::string &sequence,
-    std::vector<int> &window_sizes, int background_order) {
+    const std::vector<int> &window_sizes, int background_order) {
 
   return details::sliding_windows_<alphabet_t>(
       tree, sequence, window_sizes,
-      [&](ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-          const std::string &context, char char_) -> double {
-        return details::scoring::background_log_transition_prob<alphabet_t>(
-            tree, context, char_, background_order);
-      });
+      details::scoring::specialise_background_log_transition_prob<alphabet_t>(background_order));
 }
 
 template <seqan3::alphabet alphabet_t>
@@ -165,7 +157,7 @@ sliding_windows_cpp(std::string tree_string, std::string sequence,
 
 static std::vector<std::vector<double>>
 sliding_windows_background_cpp(std::string tree_string, std::string sequence,
-                               std::vector<int> window_sizes,
+                               const std::vector<int>& window_sizes,
                                int background_order) {
   tree_t tree{tree_string};
 

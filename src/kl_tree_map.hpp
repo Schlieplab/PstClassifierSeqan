@@ -173,7 +173,7 @@ protected:
           // These are the only cases with conflicts
           remove_mutex.lock();
         }
-        std::get<2>(this->counts[node_label]) = false;
+        this->counts[node_label].is_included = false;
 
         auto parent_label = this->get_pst_parent(node_label);
         if (this->is_pst_leaf(parent_label)) {
@@ -230,17 +230,14 @@ protected:
     return calculate_delta(node_counts, parent_counts);
   }
 
-  double calculate_delta(
-      std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>,
-                 bool> &node_counts,
-      std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>,
-                 bool> &parent_counts) {
+  double calculate_delta(hashmap_value<alphabet_t> &node_counts,
+                         hashmap_value<alphabet_t> &parent_counts) {
     double delta = 0.0;
     for (auto char_rank : this->valid_characters) {
       double prob, parent_prob;
 
-      prob = std::get<1>(node_counts)[char_rank];
-      parent_prob = std::get<1>(parent_counts)[char_rank];
+      prob = node_counts.next_symbol_probabilities[char_rank];
+      parent_prob = parent_counts.next_symbol_probabilities[char_rank];
 
       if (parent_prob == 0.0 || prob == 0.0) {
         continue;
@@ -248,7 +245,7 @@ protected:
 
       delta += prob * std::log(prob / parent_prob);
     }
-    delta *= std::get<0>(node_counts);
+    delta *= node_counts.count;
 
     return delta;
   }

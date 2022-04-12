@@ -16,6 +16,7 @@
 #include <sstream>
 #include <stack>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <tuple>
 #include <utility>
@@ -42,9 +43,11 @@
 namespace pst {
 
 template <seqan3::alphabet alphabet_t>
-using hashmap_value =
-    std::tuple<size_t, std::array<double, seqan3::alphabet_size<alphabet_t>>,
-               bool>;
+struct hashmap_value {
+  size_t count;
+  std::array<double, seqan3::alphabet_size<alphabet_t>> next_symbol_probabilities;
+  bool is_included;
+};
 
 template <seqan3::alphabet alphabet_t>
 using vec_t =
@@ -150,6 +153,7 @@ public:
         parse_line(line, characters);
       }
     } else if (filename.extension() == ".bintree") {
+      this->id = filename.stem().string();
       std::ifstream file_stream(filename, std::ios::binary);
       cereal::BinaryInputArchive iarchive(file_stream);
 
@@ -181,6 +185,7 @@ public:
       }
       file_stream.close();
     }
+    this->set_root_state();
   }
 
   /*!\brief Reads a from the tree format.
@@ -202,6 +207,7 @@ public:
     for (std::string line; std::getline(tree_stream, line, '\n');) {
       this->parse_line(line, characters);
     }
+    this->set_root_state();
   }
 
   /*! \brief Construct tree
@@ -214,6 +220,7 @@ public:
     }
     this->support_pruning();
     this->similarity_pruning();
+    this->set_root_state();
   }
 
   /*!\brief Debug printing
@@ -310,7 +317,7 @@ public:
     std::atomic<size_t> n_terminal_nodes = 0;
 
     for (auto &[node, v] : this->counts) {
-      bool included = std::get<2>(v);
+      bool included = v.is_included;
       if (included && this->is_terminal(node)) {
         n_terminal_nodes += 1;
       }
@@ -335,7 +342,7 @@ public:
 
     std::vector<std::string> nodes{};
     for (const auto &[child_label, v] : this->counts) {
-      bool included = std::get<2>(v);
+      bool included = v.is_included;
       if (included && this->is_terminal(child_label)) {
         nodes.push_back(child_label);
       }
@@ -365,7 +372,7 @@ public:
 
     std::vector<std::string> nodes{};
     for (const auto &[child_label, v] : this->counts) {
-      bool included = std::get<2>(v);
+      bool included = v.is_included;
       if (included) {
         nodes.push_back(child_label);
       }
@@ -402,8 +409,8 @@ public:
         end_index = i;
       }
 
-      auto context = this->get_closest_state(subsequence);
-      auto probs = std::get<1>(this->counts[context]);
+      auto [_context, val] = this->get_closest_state(subsequence);
+      auto probs = val.next_symbol_probabilities;
       std::discrete_distribution<> d({probs[0], probs[1], probs[2], probs[4]});
       auto rand = d(gen);
 
@@ -551,49 +558,80 @@ public:
     this->pst_breadth_first_iteration(
         [&](const std::string context, size_t level) -> bool {
           if (this->get_count(context) < min_count_ || level > max_depth_) {
-            std::get<2>(this->counts[context]) = false;
+            this->counts[context].is_included = false;
           }
           return true;
         });
   }
 
-  std::string get_closest_state(const std::string &label) {
-    if (label.empty()) {
-      return label;
+
+  std::tuple<std::string, hashmap_value<alphabet_t>&> get_closest_state(const std::string_view &label) {
+    if (this->root_state.count == 0) {
+      this->set_root_state();
     }
 
-    auto sublabel = label;
+    if (label.empty()) {
+      return {"", this->root_state};
+    }
+
+    std::string sublabel{label};
     for (size_t i = 0; i < label.size(); i++) {
-      if (this->is_included(sublabel)) {
-        return sublabel;
+      auto [is_included, val] = this->is_included_get_state(sublabel);
+      if (is_included) {
+        return {sublabel, val};
       }
       sublabel.erase(0, 1);
     }
 
-    return "";
+    return {"", this->root_state};
+  }
+
+  std::tuple<std::string, hashmap_value<alphabet_t>&> get_closest_state(const std::string &label) {
+    if (this->root_state.count == 0) {
+      this->set_root_state();
+    }
+
+    if (label.empty()) {
+      return {"", this->root_state};
+    }
+
+    auto sublabel = label;
+    for (size_t i = 0; i < label.size(); i++) {
+      auto [is_included, val] = this->is_included_get_state(sublabel);
+      if (is_included) {
+        return {sublabel, val};
+      }
+      sublabel.erase(0, 1);
+    }
+
+    return {"", this->root_state};
+  }
+
+  double get_transition_probability(const hashmap_value<alphabet_t> &val,
+                                    const size_t &char_rank) {
+    return val.next_symbol_probabilities[char_rank];
   }
 
   double get_transition_probability(const std::string &label,
                                     const size_t &char_rank) {
-    if (this->valid_characters.find(char_rank) ==
-        this->valid_characters.end()) {
-      return 0.0;
-    } else {
-      return std::get<1>(this->counts[label])[char_rank];
-    }
+    return this->counts[label].next_symbol_probabilities[char_rank];
+  }
+
+
+  double get_transition_probability(const hashmap_value<alphabet_t> &val,
+                                    const char &character) {
+    auto c = seqan3::assign_char_to(character, alphabet_t{});
+    auto char_rank = c.to_rank();
+    return val.next_symbol_probabilities[char_rank];
   }
 
   double get_transition_probability(const std::string &label,
                                     const char &character) {
     auto c = seqan3::assign_char_to(character, alphabet_t{});
     auto char_rank = c.to_rank();
-    if (this->valid_characters.find(char_rank) ==
-        this->valid_characters.end()) {
-      return 0.0;
-    } else {
-      return std::get<1>(this->counts[label])[char_rank];
-    }
+    return this->counts[label].next_symbol_probabilities[char_rank];
   }
+
 
   size_t get_max_order() {
     if (this->max_order != max_size) {
@@ -602,7 +640,7 @@ public:
 
     size_t max_order_ = 0;
     for (const auto &[label, v] : this->counts) {
-      bool included = std::get<2>(v);
+      bool included = v.is_included;
       if (included) {
         max_order_ = std::max(label.size(), max_order_);
       }
@@ -648,6 +686,7 @@ public:
   std::string id;
 
   robin_hood::unordered_map<std::string, hashmap_value<alphabet_t>> counts{};
+  hashmap_value<alphabet_t> root_state{};
 
   robin_hood::unordered_set<size_t> valid_characters{};
   std::vector<char> valid_character_chars{};
@@ -808,7 +847,7 @@ public:
         std::accumulate(child_counts.begin(), child_counts.end(), 0.0);
 
     for (size_t i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
-      std::get<1>(this->counts[label])[i] = double(child_counts[i]) / child_sum;
+      this->counts[label].next_symbol_probabilities[i] = double(child_counts[i]) / child_sum;
     }
   }
 
@@ -833,7 +872,7 @@ public:
 
     std::shared_lock lock{counts_mutex};
     for (auto char_rank : this->valid_characters) {
-      std::get<1>(this->counts[label])[char_rank] =
+      this->counts[label].next_symbol_probabilities[char_rank] =
           double(child_counts[char_rank] + 1) / child_sum;
     }
   }
@@ -883,7 +922,7 @@ public:
         queue.pop();
         continue;
       }
-      std::get<2>(this->counts[node_label]) = false;
+      this->counts[node_label].is_included = false;
 
       const std::string parent_label = this->get_pst_parent(node_label);
 
@@ -1028,14 +1067,25 @@ public:
     return is_terminal(node_label);
   }
 
+  std::tuple<bool, hashmap_value<alphabet_t>&> is_included_get_state(const std::string &label) {
+    auto iter = this->counts.find(label);
+    if (iter != this->counts.end()) {
+      bool is_included = iter->second.is_included;
+      return {is_included, iter->second};
+    }
+
+    hashmap_value<alphabet_t> v{};
+    return {false, v};
+  }
+
   bool is_included(const std::string &label) {
     return this->counts.find(label) != this->counts.end() &&
-           std::get<2>(this->counts[label]);
+           this->counts[label].is_included;
   }
 
   bool is_excluded(const std::string &label) {
     return this->counts.find(label) == this->counts.end() ||
-           !std::get<2>(this->counts[label]);
+           !this->counts[label].is_included;
   }
 
   /**! \brief Append string for a node to the output stream.
@@ -1312,7 +1362,7 @@ public:
           double child_count = std::stof(word);
           auto c = characters[prob_index];
           auto char_rank = seqan3::to_rank(c);
-          std::get<1>(this->counts[node_label])[char_rank] = child_count;
+          this->counts[node_label].next_symbol_probabilities[char_rank] = child_count;
           prob_index++;
         }
       }
@@ -1328,13 +1378,13 @@ public:
    */
   void convert_counts_to_probabilities(std::string &node_label) {
     double child_sum =
-        std::accumulate(std::get<1>(this->counts[node_label]).begin(),
-                        std::get<1>(this->counts[node_label]).end(),
+        std::accumulate(this->counts[node_label].next_symbol_probabilities.begin(),
+                        this->counts[node_label].next_symbol_probabilities.end(),
                         this->pseudo_count_amount * 4);
 
     for (size_t i = 0; i < seqan3::alphabet_size<alphabet_t>; i++) {
-      std::get<1>(this->counts[node_label])[i] =
-          (double(std::get<1>(this->counts[node_label])[i]) +
+      this->counts[node_label].next_symbol_probabilities[i] =
+          (double(this->counts[node_label].next_symbol_probabilities[i]) +
            this->pseudo_count_amount) /
           child_sum;
     }
@@ -1346,7 +1396,14 @@ public:
     if (search == this->counts.end()) {
       return 0;
     } else {
-      return std::get<0>(search->second);
+      return search->second.count;
+    }
+  }
+
+  void set_root_state() {
+    auto root_iter = this->counts.find("");
+    if (root_iter != this->counts.end()) {
+      this->root_state = root_iter->second;
     }
   }
 };

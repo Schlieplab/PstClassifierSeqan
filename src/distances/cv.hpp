@@ -15,6 +15,7 @@
 namespace pst::distances::details {
 
 static bool use_cache = false;
+std::mutex all_contexts_mutex{};
 
 std::vector<std::string> all_contexts{};
 
@@ -24,6 +25,8 @@ get_all_contexts(size_t order,
                  robin_hood::unordered_set<size_t> &valid_characters) {
   size_t n_valid_characters = valid_characters.size();
   size_t n_kmers = std::pow(n_valid_characters, order);
+
+  std::lock_guard guard{all_contexts_mutex};
 
   if (all_contexts.size() == n_kmers) {
     return all_contexts;

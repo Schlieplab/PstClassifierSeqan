@@ -20,11 +20,12 @@ double get_component(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
                      const std::string &context,
                      const hashmap_value<alphabet_t> &background_v,
                      const size_t char_rank) {
-  const double background_prob = std::get<1>(background_v)[char_rank];
+  const double background_prob =
+      background_v.next_symbol_probabilities[char_rank];
   if (background_prob == 0.0) {
     return 0.0;
   } else {
-    const double prob = std::get<1>(v)[char_rank];
+    const double prob = v.next_symbol_probabilities[char_rank];
     return prob / std::sqrt(background_prob);
   }
 }
@@ -34,11 +35,12 @@ double
 get_component(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
               const hashmap_value<alphabet_t> &v, const std::string &context,
               const std::string &background_context, const size_t char_rank) {
-  const double background_prob = std::get<1>(tree.counts[context])[char_rank];
+  const double background_prob =
+      tree.counts[context].next_symbol_probabilities[char_rank];
   if (background_prob == 0.0) {
     return 0.0;
   } else {
-    const double prob = std::get<1>(v)[char_rank];
+    const double prob = v.next_symbol_probabilities[char_rank];
     return prob / std::sqrt(background_prob);
   }
 }
@@ -53,8 +55,11 @@ inline double core_dvstar(ProbabilisticSuffixTreeMap<alphabet_t> &left,
   double left_norm = 0.0;
   double right_norm = 0.0;
 
-  pst::distances::details::iterate_included_in_both(
+  pst::distances::details::iterate_included_in_both<alphabet_t>(
       left, right, [&](auto &context, auto &left_v, auto &right_v) {
+        if (context.size() <= background_order) {
+          return;
+        }
         const auto background_context =
             pst::distances::details::get_background_context(context,
                                                             background_order);

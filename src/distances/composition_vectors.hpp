@@ -32,7 +32,7 @@ composition_vector(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 
   size_t i = 0;
   for (auto &context : contexts) {
-    auto state = tree.get_closest_state(context);
+    auto [state, val] = tree.get_closest_state(context);
 
     const auto background_context =
         get_background_context(state, background_order);
@@ -43,7 +43,7 @@ composition_vector(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
       if (background_prob == 0.0) {
         components(i) = 0;
       } else {
-        const double prob = tree.get_transition_probability(state, char_rank);
+        const double prob = tree.get_transition_probability(val, char_rank);
         components(i) = (prob - background_prob) / background_prob;
       }
       i++;
@@ -167,8 +167,8 @@ inline Eigen::VectorXd composition_vector_state_probability_scaled(
   for (auto &context : contexts) {
     auto state = tree.get_closest_state(context);
 
-    double state_probability = double(std::get<0>(tree.counts[state])) /
-                               double(std::get<0>(tree.counts[""]));
+    double state_probability = double(tree.counts[state].count) /
+                               double(tree.counts[""].count);
 
     const auto background_context =
         get_background_context(state, background_order);
@@ -215,11 +215,11 @@ is_included_in_both(ProbabilisticSuffixTreeMap<alphabet_t> &left,
                     ProbabilisticSuffixTreeMap<alphabet_t> &right,
                     const std::string &context,
                     const hashmap_value<alphabet_t> &left_v) {
-  bool left_included = std::get<2>(left_v);
+  bool left_included = left_v.is_included;
   if (left_included) {
     auto right_iter = right.counts.find(context);
     if (right_iter != right.counts.end()) {
-      bool right_included = std::get<2>(right_iter->second);
+      bool right_included = right_iter->second.is_included;
       return {right_included, right_iter->second};
     }
   }

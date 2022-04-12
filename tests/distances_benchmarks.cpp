@@ -3,6 +3,7 @@
 #include "../src/distances/cv.hpp"
 #include "../src/distances/d2.hpp"
 #include "../src/distances/dvstar.hpp"
+#include "../src/distances/kl_divergence.hpp"
 #include "../src/distances/negative_log_likelihood.hpp"
 #include "../src/kl_tree.hpp"
 #include "../src/kl_tree_map.hpp"
@@ -72,7 +73,7 @@ BENCHMARK_F(D2StarBenchmarks, DvstarIterateVectors)
 
   for (auto _ : state) {
     Eigen::Index i = 0;
-    pst::distances::details::iterate_included_in_both(
+    pst::distances::details::iterate_included_in_both<seqan3::dna5>(
         sakai, ed1a, [&](auto &context, auto &sakai_v, auto &ed1a_v) {
           const auto background_context =
               pst::distances::details::get_background_context(context, 0);
@@ -100,7 +101,7 @@ BENCHMARK_F(D2StarBenchmarks, DvstarDotProduct)
     Eigen::VectorXd sakai_vector(number_of_entries);
     Eigen::VectorXd ed1a_vector(number_of_entries);
     Eigen::Index i = 0;
-    pst::distances::details::iterate_included_in_both(
+    pst::distances::details::iterate_included_in_both<seqan3::dna5>(
         sakai, ed1a, [&](auto &context, auto &sakai_v, auto &ed1a_v) {
           const auto background_context =
               pst::distances::details::get_background_context(context, 0);
@@ -128,7 +129,7 @@ BENCHMARK_F(D2StarBenchmarks, DvstarDirectDotProduct)
     double sakai_norm = 0.0;
     double ed1a_norm = 0.0;
 
-    pst::distances::details::iterate_included_in_both(
+    pst::distances::details::iterate_included_in_both<seqan3::dna5>(
         sakai, ed1a, [&](auto &context, auto &sakai_v, auto &ed1a_v) {
           const auto background_context =
               pst::distances::details::get_background_context(context, 0);
@@ -160,7 +161,7 @@ BENCHMARK_F(D2StarBenchmarks, DvstarIterateInclude)
 (benchmark::State &state) {
   for (auto _ : state) {
     size_t i = 0;
-    pst::distances::details::iterate_included_in_both(
+    pst::distances::details::iterate_included_in_both<seqan3::dna5>(
         sakai, ed1a, [&](auto &context, auto &left_v, auto &right_v) {
           for (auto &char_rank : sakai.valid_characters) {
             benchmark::DoNotOptimize(i++);
@@ -175,7 +176,7 @@ BENCHMARK_F(D2StarBenchmarks, DvstarInclude)
   auto left_v = sakai.counts[context];
   for (auto _ : state) {
     size_t i = 0;
-    pst::distances::details::is_included_in_both(sakai, ed1a, context, left_v);
+    pst::distances::details::is_included_in_both<seqan3::dna5>(sakai, ed1a, context, left_v);
   }
 }
 
@@ -183,11 +184,11 @@ BENCHMARK_F(D2StarBenchmarks, DvstarIterateOneLookup)
 (benchmark::State &state) {
   for (auto _ : state) {
     size_t i = 0;
-    pst::distances::details::iterate_included_in_both(
+    pst::distances::details::iterate_included_in_both<seqan3::dna5>(
         sakai, ed1a, [&](auto &context, auto &left_v, auto &right_v) {
           for (auto &char_rank : sakai.valid_characters) {
-            std::get<1>(sakai.counts[context])[char_rank];
-            std::get<1>(ed1a.counts[context])[char_rank];
+            sakai.counts[context].next_symbol_probabilities[char_rank];
+            ed1a.counts[context].next_symbol_probabilities[char_rank];
             i++;
           }
         });
@@ -209,7 +210,7 @@ BENCHMARK_DEFINE_F(D2StarBenchmarks, DvstarComponent)
 
   std::string context{"ACTAGA"};
   auto right_v = sakai.counts[context];
-  bool right_included = std::get<2>(right_v);
+  bool right_included = right_v.is_included;
 
   const auto background_context =
       pst::distances::details::get_background_context(context,
@@ -381,20 +382,75 @@ static void HashMapScore(benchmark::State &state) {
 
 BENCHMARK(HashMapScore);
 
-static void TreeScore(benchmark::State &state) {
-  using seqan3::operator""_dna5;
-  std::vector<seqan3::dna5> sequence = random_sequence(50000);
+//static void TreeScore(benchmark::State &state) {
+//  using seqan3::operator""_dna5;
+//  std::vector<seqan3::dna5> sequence = random_sequence(50000);
+//
+//  pst::KullbackLieblerTree<seqan3::dna5> tree{"Tree", sequence, 7, 2,
+//                                              3.9075, false,    2};
+//  tree.construct_tree();
+//
+//  for (auto _ : state) {
+//    benchmark::DoNotOptimize(
+//        pst::distances::negative_log_likelihood<seqan3::dna5>(tree, sequence));
+//  }
+//}
+//
+//BENCHMARK(TreeScore);
 
-  pst::KullbackLieblerTree<seqan3::dna5> tree{"Tree", sequence, 7, 2,
-                                              3.9075, false,    2};
-  tree.construct_tree();
+static void KL_AllContexts(benchmark::State &state) {
+  std::filesystem::path first_path{"./../trees/CM008035.1.tree"};
+  pst::KullbackLieblerTreeMap<seqan3::dna5> first{first_path};
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(
-        pst::distances::negative_log_likelihood<seqan3::dna5>(tree, sequence));
+        pst::distances::details::get_all_contexts<seqan3::dna5>(
+            6, first.valid_characters));
   }
 }
+BENCHMARK(KL_AllContexts);
 
-BENCHMARK(TreeScore);
+static void KL_LikelihoodAllContexts(benchmark::State &state) {
+  std::filesystem::path first_path{"./../trees/CM008035.1.tree"};
+  pst::KullbackLieblerTreeMap<seqan3::dna5> first{first_path};
+
+  auto all_contexts = pst::distances::details::get_all_contexts<seqan3::dna5>(
+      6, first.valid_characters);
+
+  for (auto _ : state) {
+    for (auto &context : all_contexts) {
+      benchmark::DoNotOptimize(
+          pst::distances::details::likelihood_context(first, context));
+    }
+  }
+}
+BENCHMARK(KL_LikelihoodAllContexts);
+
+static void KL_LikelihoodOneContext(benchmark::State &state) {
+  std::filesystem::path first_path{"./../trees/CM008035.1.tree"};
+  pst::KullbackLieblerTreeMap<seqan3::dna5> first{first_path};
+
+  auto all_contexts = pst::distances::details::get_all_contexts<seqan3::dna5>(
+      6, first.valid_characters);
+
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(
+        pst::distances::details::likelihood_context(first, all_contexts[0]));
+  }
+}
+BENCHMARK(KL_LikelihoodOneContext);
+
+static void KL_(benchmark::State &state) {
+  std::filesystem::path first_path{"./../trees/CM008035.1.tree"};
+  std::filesystem::path second_path{"./../trees/NC_009067.tree"};
+  pst::KullbackLieblerTreeMap<seqan3::dna5> first{first_path};
+  pst::KullbackLieblerTreeMap<seqan3::dna5> second{second_path};
+
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(
+        pst::distances::kl_divergence<seqan3::dna5>(first, second, 6));
+  }
+}
+BENCHMARK(KL_);
 
 BENCHMARK_MAIN();

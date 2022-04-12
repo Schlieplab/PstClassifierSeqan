@@ -23,6 +23,7 @@
 #include "distances/d2.hpp"
 #include "distances/d2star.hpp"
 #include "distances/dvstar.hpp"
+#include "distances/kl_divergence.hpp"
 #include "distances/parallelize.hpp"
 #include "probabilistic_suffix_tree_map.hpp"
 
@@ -60,11 +61,13 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
                     "Size of pseudo count for probability estimation. See e.g. "
                     "https://en.wikipedia.org/wiki/Additive_smoothing .");
 
-  parser.add_option(arguments.distance_name, 'n', "distance-name",
-                    "Name of distance function.  Must be one of 'd2', "
-                    "'d2star', 'dvstar', 'cv' and 'cv-estimation'");
+  parser.add_option(
+      arguments.distance_name, 'n', "distance-name",
+      "Name of distance function.  Must be one of 'd2', "
+      "'d2star', 'dvstar', 'kl', 'kl-both', 'nll', 'cv' and 'cv-estimation'");
   parser.add_option(arguments.order, 'o', "order",
-                    "Length of contexts in some distance calculations.");
+                    "Length of contexts/sequence in distances 'cv-estimation', "
+                    "'nll', and 'kl'.");
   parser.add_option(arguments.background_order, 'b', "background-order",
                     "Length of background in some distance calculations.");
 
@@ -105,17 +108,30 @@ void calculate_slice_with_progress(
     size_t start_index, size_t stop_index, matrix_t &distances,
     std::vector<tree_t> &trees, std::vector<tree_t> &trees_to,
     const std::function<float(tree_t &, tree_t &)> &fun,
-    indicators::DynamicProgress<indicators::ProgressBar> &bars, int bars_i) {
+    indicators::DynamicProgress<indicators::BlockProgressBar> &bars) {
+  std::string text = "Distances from " + std::to_string(start_index) + " to " +
+                     std::to_string(stop_index);
 
+  indicators::BlockProgressBar bar{indicators::option::BarWidth{50},
+                                   indicators::option::PrefixText{text},
+                                   indicators::option::ShowElapsedTime{true},
+                                   indicators::option::ShowRemainingTime{true}};
+  //  auto bars_i = bars.push_back(bar);
+
+  double progress_per_tick =
+      1 / (float(stop_index - start_index) * trees_to.size());
+  double progress = 0;
   for (size_t i = start_index; i < stop_index; i++) {
     for (size_t j = 0; j < trees_to.size(); j++) {
       distances(i, j) = fun(trees[i], trees_to[j]);
-    }
-    float progress = float(i - start_index) / float(stop_index - start_index);
-    bars[bars_i].set_progress(progress * 100);
-  }
+      progress += progress_per_tick;
 
-  bars[bars_i].mark_as_completed();
+      if ((int(progress * 1000) % 10) == 0) {
+        //          bars[bars_i].set_progress(progress * 100);
+      }
+    }
+  }
+  //  bars[bars_i].mark_as_completed();
 }
 
 void calculate_slice(size_t start_index, size_t stop_index, matrix_t &distances,
@@ -156,6 +172,26 @@ parse_distance_function(input_arguments &arguments) {
       return pst::distances::d2<seqan3::dna5>(left, right);
     };
     return {fun, "d2"};
+  } else if (arguments.distance_name == "kl") {
+    auto fun = [&](auto &left, auto &right) {
+      return pst::distances::symmetric_kl_divergence<seqan3::dna5>(
+          left, right, arguments.order);
+    };
+    return {fun, "kl-" + std::to_string(arguments.order)};
+  } else if (arguments.distance_name == "kl-both") {
+    auto fun = [&](auto &left, auto &right) {
+      return pst::distances::symmetric_kl_divergence_both<seqan3::dna5>(left,
+                                                                        right);
+    };
+    return {fun, "kl-both"};
+  }
+
+  else if (arguments.distance_name == "nll") {
+    auto fun = [&](auto &left, auto &right) {
+      return pst::distances::negative_log_likelihood<seqan3::dna5>(
+          left, right, arguments.order);
+    };
+    return {fun, "nll-" + std::to_string(arguments.order)};
   }
 
   throw std::invalid_argument("Invalid distance function name.");
@@ -198,13 +234,13 @@ matrix_t calculate_distances(
     pst::parallelize::parallelize(trees.size(), fun);
 
   } else {
-    auto fun = [&](size_t start_index, size_t stop_index,
-                   indicators::DynamicProgress<indicators::ProgressBar> &bars,
-                   int bar_i) {
-      calculate_slice_with_progress(
-          start_index, stop_index, std::ref(distances), std::ref(trees),
-          std::ref(trees_to), distance_fun, bars, bar_i);
-    };
+    auto fun =
+        [&](size_t start_index, size_t stop_index,
+            indicators::DynamicProgress<indicators::BlockProgressBar> &bars) {
+          calculate_slice_with_progress(start_index, stop_index,
+                                        std::ref(distances), std::ref(trees),
+                                        std::ref(trees_to), distance_fun, bars);
+        };
     pst::parallelize::parallelize_with_progress(trees.size(), fun);
   }
 
@@ -282,14 +318,13 @@ int main(int argc, char *argv[]) {
 
   matrix_t distances =
       calculate_distances(trees, trees_to, arguments, distance_fun);
-  std::cout << "Done with distances" << std::endl;
 
   std::vector<std::string> ids{};
   std::transform(trees.begin(), trees.end(), std::back_inserter(ids),
                  [](tree_t &tree) -> std::string { return tree.id; });
 
   std::vector<std::string> ids_to{};
-  std::transform(trees_to.begin(), trees_to.end(), std::back_inserter(ids),
+  std::transform(trees_to.begin(), trees_to.end(), std::back_inserter(ids_to),
                  [](tree_t &tree) -> std::string { return tree.id; });
 
   if (arguments.scores.empty()) {

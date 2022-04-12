@@ -13,12 +13,13 @@
 #include "../src/distances/d2.hpp"
 #include "../src/distances/d2star.hpp"
 #include "../src/distances/dvstar.hpp"
+#include "../src/distances/kl_divergence.hpp"
 #include "../src/distances/score.hpp"
 #include "../src/distances/sliding_windows.hpp"
 #include "../src/kl_tree_map.hpp"
-#include "../src/probabilistic_suffix_tree_map.hpp"
 
 #include "../src/kl_tree.hpp"
+#include "../src/probabilistic_suffix_tree_map.hpp"
 #include "random_sequence.hpp"
 
 class DistancesTest : public ::testing::Test {
@@ -27,6 +28,7 @@ protected:
     first = pst::KullbackLieblerTreeMap<seqan3::dna5>{first_path};
     second = pst::KullbackLieblerTreeMap<seqan3::dna5>{second_path};
     third = pst::KullbackLieblerTreeMap<seqan3::dna5>{third_path};
+
     using seqan3::operator""_dna5;
     sequence = lst::details::sequence_t<seqan3::dna5>{
         "AAAAATTTTTTAAAAAATTTTTTAAAAAATTTTT"_dna5};
@@ -100,7 +102,7 @@ TEST_F(DistancesTest, CVSnapshots) {
 
 TEST_F(DistancesTest, included_in_both) {
   std::vector<std::string> contexts{};
-  pst::distances::details::iterate_included_in_both(
+  pst::distances::details::iterate_included_in_both<seqan3::dna5>(
       first, second,
       [&](auto context, auto l, auto r) { contexts.push_back(context); });
 
@@ -148,6 +150,30 @@ TEST_F(DistancesTest, d2Symmetry) {
                   pst::distances::d2(first, second));
 }
 
+TEST_F(DistancesTest, LogLikelihoodPartString) {
+
+  auto [score, len] =
+      pst::distances::details::log_likelihood_part<seqan3::dna5>(
+          second, "ACGTCA", 0, 6,
+          pst::distances::details::scoring::log_transition_prob<seqan3::dna5>,
+          6);
+
+  EXPECT_FLOAT_EQ(score, -9.9894629);
+  EXPECT_FLOAT_EQ(len, 6);
+}
+
+TEST_F(DistancesTest, LikelihoodContext) {
+  auto prob = pst::distances::details::likelihood_context<seqan3::dna5>(
+      second, "ACGTCA");
+
+  EXPECT_FLOAT_EQ(prob, 4.5880828e-05);
+}
+
+TEST_F(DistancesTest, klSymmetry) {
+  EXPECT_NE(pst::distances::kl_divergence(second, first, 3),
+            pst::distances::kl_divergence(first, second, 3));
+}
+
 TEST_F(DistancesTest, AllContexts) {
   auto contexts = pst::distances::details::get_all_contexts<seqan3::dna5>(
       2, first.valid_characters);
@@ -191,7 +217,7 @@ TEST_F(DistancesTest, ScoringHangs) {
 
   std::string seq{"ACGATCGATCGATCGATCGACACTACCAGCACATAGTAGCTAGCATGATCGACTACTAGC"
                   "ATCTACGGCTACGATCATCGATCGATCATATCAGCACTAGCACG"};
-  std::vector<std::string> sequences(2000, seq);
+  std::vector<std::string> sequences(200, seq);
 
   std::vector<pst::ProbabilisticSuffixTreeMap<seqan3::dna5>> trees(50, first);
 
@@ -254,10 +280,32 @@ TEST_F(DistancesTest, LogLikelighoodHandCrafted1Order) {
   EXPECT_FLOAT_EQ(log_likelihood, log_likelihood_manual);
 }
 
-std::unordered_map<std::string, size_t> count_2_mers(std::string &sequence) {
-  std::unordered_map<std::string, size_t> counts{};
+TEST_F(DistancesTest, LogLikelighoodParallelAndNotParallel) {
+  pst::KullbackLieblerTreeMap<seqan3::dna5> tree{
+      "1-order", sequence, max_depth, min_count, threshold, false, 1};
+  tree.counts[""] = {8, {0.8, 0.0, 0.0, 0.0, 0.2}, true};
+  tree.counts["A"] = {3, {0.9, 0.0, 0.0, 0.0, 0.1}, true};
+  tree.counts["T"] = {5, {1.0, 0.0, 0.0, 0.0, 0.0}, true};
 
-  for (size_t i = 0; i < sequence.size(); i++) {
+  auto seq = random_sequence(100000);
+  std::string sequence =
+      seq | seqan3::views::to_char | seqan3::views::to<std::string>;
+
+  double log_likelihood = pst::distances::log_likelihood(tree, sequence);
+  auto [log_likelihood_no_p, len] =
+      pst::distances::details::log_likelihood_part(tree, sequence);
+
+  EXPECT_FLOAT_EQ(log_likelihood, log_likelihood_no_p) << len;
+}
+
+std::unordered_map<std::string, size_t> count_2_mers(std::string &sequence) {
+  std::unordered_map<std::string, size_t> counts{
+      {"AA", 0}, {"AC", 0}, {"AG", 0}, {"AT", 0}, {"CA", 0}, {"CC", 0},
+      {"CG", 0}, {"CT", 0}, {"GA", 0}, {"GC", 0}, {"GG", 0}, {"GT", 0},
+      {"TA", 0}, {"TC", 0}, {"TG", 0}, {"TT", 0}};
+
+  counts[sequence.substr(0, 1)] = 1;
+  for (size_t i = 0; i < sequence.size() - 1; i++) {
     auto kmer = sequence.substr(i, 2);
     if (counts.find(kmer) != counts.end()) {
       counts[kmer] += 1;
@@ -275,7 +323,7 @@ TEST_F(DistancesTest, LogLikelighoodHandCrafted1OrderLong) {
   tree.counts["A"] = {3, {0.7, 0.1, 0.1, 0.0, 0.1}, true};
   tree.counts["T"] = {5, {0.4, 0.2, 0.1, 0.0, 0.3}, true};
 
-  auto seq = random_sequence(100000000);
+  auto seq = random_sequence(100000);
   std::string sequence =
       seq | seqan3::views::to_char | seqan3::views::to<std::string>;
 
@@ -284,22 +332,30 @@ TEST_F(DistancesTest, LogLikelighoodHandCrafted1OrderLong) {
   auto log_likelihood = pst::distances::log_likelihood(tree, sequence);
 
   double log_likelihood_manual =
-      counted_2_mers["AA"] * std::log(std::get<1>(tree.counts["A"])[0]) +
-      counted_2_mers["AC"] * std::log(std::get<1>(tree.counts["A"])[1]) +
-      counted_2_mers["AG"] * std::log(std::get<1>(tree.counts["A"])[2]) +
-      counted_2_mers["AT"] * std::log(std::get<1>(tree.counts["A"])[4]) +
-      counted_2_mers["TA"] * std::log(std::get<1>(tree.counts["T"])[0]) +
-      counted_2_mers["TC"] * std::log(std::get<1>(tree.counts["T"])[1]) +
-      counted_2_mers["TG"] * std::log(std::get<1>(tree.counts["T"])[2]) +
-      counted_2_mers["TT"] * std::log(std::get<1>(tree.counts["T"])[4]) +
-      (counted_2_mers["CA"] + counted_2_mers["GA"]) *
-          std::log(std::get<1>(tree.counts[""])[0]) +
-      (counted_2_mers["CC"] + counted_2_mers["GC"]) *
-          std::log(std::get<1>(tree.counts[""])[1]) +
-      (counted_2_mers["CG"] + counted_2_mers["GG"]) *
-          std::log(std::get<1>(tree.counts[""])[2]) +
-      (counted_2_mers["CT"] + counted_2_mers["GT"]) *
-          std::log(std::get<1>(tree.counts[""])[4]);
+      counted_2_mers["AA"] *
+          std::log(tree.counts["A"].next_symbol_probabilities[0]) +
+      counted_2_mers["AC"] *
+          std::log(tree.counts["A"].next_symbol_probabilities[1]) +
+      counted_2_mers["AG"] *
+          std::log(tree.counts["A"].next_symbol_probabilities[2]) +
+      counted_2_mers["AT"] *
+          std::log(tree.counts["A"].next_symbol_probabilities[4]) +
+      counted_2_mers["TA"] *
+          std::log(tree.counts["T"].next_symbol_probabilities[0]) +
+      counted_2_mers["TC"] *
+          std::log(tree.counts["T"].next_symbol_probabilities[1]) +
+      counted_2_mers["TG"] *
+          std::log(tree.counts["T"].next_symbol_probabilities[2]) +
+      counted_2_mers["TT"] *
+          std::log(tree.counts["T"].next_symbol_probabilities[4]) +
+      (counted_2_mers["CA"] + counted_2_mers["GA"] + counted_2_mers["A"]) *
+          std::log(tree.counts[""].next_symbol_probabilities[0]) +
+      (counted_2_mers["CC"] + counted_2_mers["GC"] + counted_2_mers["C"]) *
+          std::log(tree.counts[""].next_symbol_probabilities[1]) +
+      (counted_2_mers["CG"] + counted_2_mers["GG"] + counted_2_mers["G"]) *
+          std::log(tree.counts[""].next_symbol_probabilities[2]) +
+      (counted_2_mers["CT"] + counted_2_mers["GT"] + counted_2_mers["T"]) *
+          std::log(tree.counts[""].next_symbol_probabilities[4]);
 
   EXPECT_FLOAT_EQ(log_likelihood, log_likelihood_manual);
 }
@@ -355,3 +411,28 @@ TEST_F(DistancesTest, LogLikelihoodSame) {
   EXPECT_FLOAT_EQ(tree_nll, hash_map_nll);
 }
 
+TEST_F(DistancesTest, nllGenerateSymmetry) {
+  // Hard to test, randomly generates sequence.
+  EXPECT_NO_FATAL_FAILURE(
+      pst::distances::negative_log_likelihood(second, first, 100000));
+}
+
+
+TEST_F(DistancesTest, dvstarRegression) {
+
+  pst::KullbackLieblerTreeMap<seqan3::dna5> left{"NC_001497.bintree"};
+  pst::KullbackLieblerTreeMap<seqan3::dna5> second{"NC_028367.bintree"};
+
+  auto dist = pst::distances::dvstar(left, second, 0);
+  EXPECT_FLOAT_EQ(dist, 0.0446197);
+}
+
+
+TEST_F(DistancesTest, dvstarRegression2) {
+
+  pst::KullbackLieblerTreeMap<seqan3::dna5> left{"NC_045512.bintree"};
+  pst::KullbackLieblerTreeMap<seqan3::dna5> second{"NC_028367.bintree"};
+
+  auto dist = pst::distances::dvstar(left, second, 0);
+  EXPECT_FLOAT_EQ(dist, 0.014657059);
+}

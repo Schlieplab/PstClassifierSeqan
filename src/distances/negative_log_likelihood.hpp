@@ -15,13 +15,16 @@
 
 namespace pst::distances::details::scoring {
 template <seqan3::alphabet alphabet_t>
-using score_signature = std::function<double(
-    ProbabilisticSuffixTreeMap<alphabet_t> &, const std::string &, char)>;
+using score_signature =
+    std::function<double(ProbabilisticSuffixTreeMap<alphabet_t> &,
+                         const std::string &, const hashmap_value<alphabet_t> &,
+                         char)>;
 
 template <seqan3::alphabet alphabet_t>
 double log_transition_prob(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                           const std::string &context, char char_) {
-  double probability = tree.get_transition_probability(context, char_);
+                           const std::string &context,
+                           const hashmap_value<alphabet_t> &val, char char_) {
+  double probability = tree.get_transition_probability(val, char_);
   if (probability == 0.0) {
     return 0.0;
   } else {
@@ -30,20 +33,22 @@ double log_transition_prob(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 }
 
 template <seqan3::alphabet alphabet_t>
-double
-background_log_transition_prob(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                               const std::string &context, char char_,
-                               int background_order) {
+double background_log_transition_prob(
+    ProbabilisticSuffixTreeMap<alphabet_t> &tree, const std::string &context,
+    const hashmap_value<alphabet_t> &val, char char_, int background_order) {
 
-  std::string background_context{""};
+  std::string background_context;
+  hashmap_value<alphabet_t> background_val;
   if (background_order != 0 && background_order < context.size()) {
-    background_context = tree.get_closest_state(
+    auto [background_context_, background_val_] = tree.get_closest_state(
         context.substr(context.size() - background_order));
+    background_context = background_context_;
+    background_val = background_val_;
   }
 
-  double probability = tree.get_transition_probability(context, char_);
+  double probability = tree.get_transition_probability(val, char_);
   double background_probability =
-      tree.get_transition_probability(background_context, char_);
+      tree.get_transition_probability(background_val, char_);
 
   if (probability == 0.0 || background_probability == 0.0) {
     return 0.0;
@@ -51,6 +56,18 @@ background_log_transition_prob(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
     return std::log(probability) - std::log(std::sqrt(background_probability));
   }
 }
+
+template <seqan3::alphabet alphabet_t>
+score_signature<alphabet_t>
+specialise_background_log_transition_prob(int background_order) {
+  return [&](ProbabilisticSuffixTreeMap<alphabet_t> &tree,
+             const std::string &context, const hashmap_value<alphabet_t> &val,
+             char char_) -> double {
+    return background_log_transition_prob<alphabet_t>(tree, context, val, char_,
+                                                      background_order);
+  };
+}
+
 } // namespace pst::distances::details::scoring
 
 namespace pst::distances::details {
@@ -99,14 +116,12 @@ log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
     }
 
     char char_ = sequence_dna[i].to_char();
-    auto context = tree.get_closest_state(subsequence);
+    auto [context, val] = tree.get_closest_state(subsequence);
 
-    double score = score_fun(tree, context, char_);
+    double score = score_fun(tree, context, val, char_);
 
-    if (score != 0.0) {
-      log_likelihood += score;
-      length += 1;
-    }
+    log_likelihood += score;
+    length += 1;
   }
 
   return {log_likelihood, length};
@@ -145,17 +160,15 @@ log_likelihood_part_dna(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 template <seqan3::alphabet alphabet_t>
 std::tuple<double, size_t>
 log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                    std::string &sequence, size_t start, size_t end,
+                    const std::string &sequence, size_t start, size_t end,
                     const scoring::score_signature<alphabet_t> &score_fun,
                     const int max_depth) {
-
   double log_likelihood = 0.0;
   size_t length = 0;
 
-  std::string subsequence{};
-  subsequence.resize(max_depth);
+  std::string_view sequence_view{sequence};
 
-  for (size_t i = start + max_depth; i < end; i++) {
+  for (size_t i = start; i < end; i++) {
     size_t start_index = i - max_depth;
     size_t end_index = i;
     if (max_depth > i) {
@@ -163,24 +176,16 @@ log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
       end_index = i;
     }
 
-    size_t context_len = end_index - start_index;
-    size_t len_diff = max_depth - context_len;
-    for (int j = 0; j < len_diff; j++) {
-      subsequence[j] = ' ';
-    }
-    for (size_t j = start_index; j < end_index; j++) {
-      subsequence[j - start_index + len_diff] = sequence[j];
-    }
+    auto subsequence =
+        sequence_view.substr(start_index, end_index - start_index);
 
     char char_ = sequence[i];
-    auto context = tree.get_closest_state(subsequence);
+    auto [context, val] = tree.get_closest_state(subsequence);
 
-    double score = score_fun(tree, context, char_);
+    double score = score_fun(tree, context, val, char_);
 
-    if (score != 0.0) {
-      log_likelihood += score;
-      length += 1;
-    }
+    log_likelihood += score;
+    length += 1;
   }
 
   return {log_likelihood, length};
@@ -189,7 +194,7 @@ log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 template <seqan3::alphabet alphabet_t>
 std::tuple<double, size_t>
 log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                    std::string &sequence, size_t start, size_t end,
+                    const std::string &sequence, size_t start, size_t end,
                     const scoring::score_signature<alphabet_t> &score_fun) {
   size_t order_max = tree.get_max_order();
   return log_likelihood_part(tree, sequence, start, end, score_fun, order_max);
@@ -198,14 +203,22 @@ log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 template <seqan3::alphabet alphabet_t>
 std::tuple<double, size_t>
 log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                    std::string &sequence, size_t start, size_t end) {
+                    const std::string &sequence, size_t start, size_t end) {
   return log_likelihood_part(tree, sequence, start, end,
                              scoring::log_transition_prob<alphabet_t>);
 }
 
 template <seqan3::alphabet alphabet_t>
+std::tuple<double, size_t>
+log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
+                    const std::string &sequence) {
+  return log_likelihood_part(tree, sequence, 0, sequence.size(),
+                             scoring::log_transition_prob<alphabet_t>);
+}
+
+template <seqan3::alphabet alphabet_t>
 double log_likelihood_part_string(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                                  std::string &sequence, size_t start,
+                                  const std::string &sequence, size_t start,
                                   size_t end) {
   return std::get<0>(log_likelihood_part(tree, sequence, start, end));
 }
@@ -213,11 +226,21 @@ double log_likelihood_part_string(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 template <seqan3::alphabet alphabet_t>
 double
 likelihood_context(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                   std::string &sequence,
+                   const std::string &sequence,
                    const scoring::score_signature<alphabet_t> &score_fun) {
 
   auto [score, _len] =
       log_likelihood_part(tree, sequence, 0, sequence.size(), score_fun);
+  return std::exp(score);
+}
+
+template <seqan3::alphabet alphabet_t>
+double likelihood_context(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
+                          const std::string &sequence) {
+
+  auto [score, _len] =
+      log_likelihood_part(tree, sequence, 0, sequence.size(),
+                          scoring::log_transition_prob<alphabet_t>);
   return std::exp(score);
 }
 
@@ -227,19 +250,27 @@ namespace pst::distances {
 
 template <seqan3::alphabet alphabet_t>
 double log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                      std::string &sequence) {
-  auto bounds = pst::parallelize::get_bounds(sequence.size());
-  std::vector<std::future<double>> part_futures{};
+                      const std::string &sequence) {
+  size_t order_max = tree.get_max_order();
 
-  for (auto &[start_index, stop_index] : bounds) {
-    part_futures.push_back(std::async(
-        std::launch::async, details::log_likelihood_part_string<alphabet_t>,
-        std::ref(tree), std::ref(sequence), start_index, stop_index));
+  auto bounds = pst::parallelize::get_bounds(sequence.size());
+  std::vector<std::future<std::tuple<double, size_t>>> part_futures{};
+
+  auto fun = [&](size_t start_index, size_t stop_index) {
+    return details::log_likelihood_part<alphabet_t>(
+        std::ref(tree), std::ref(sequence), start_index, stop_index,
+        details::scoring::log_transition_prob<alphabet_t>, order_max);
+  };
+
+  for (auto [start_index, stop_index] : bounds) {
+    part_futures.push_back(
+        std::async(std::launch::async, fun, start_index, stop_index));
   }
 
   double log_likelihood = 0.0;
   for (auto &f : part_futures) {
-    log_likelihood += f.get();
+    auto [log_lik, len] = f.get();
+    log_likelihood += log_lik;
   }
   return log_likelihood;
 }
@@ -290,6 +321,13 @@ double negative_log_likelihood(
   auto [score, length] = details::log_likelihood_part(
       tree, sequence_dna, 0, sequence_dna.size(), score_fun);
 
+  return -score / double(length);
+}
+
+template <seqan3::alphabet alphabet_t>
+double negative_log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
+                               std::string &sequence) {
+  auto [score, length] = details::log_likelihood_part(tree, sequence);
   return -score / double(length);
 }
 
@@ -375,12 +413,7 @@ negative_log_likelihood_symmetric(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
                                   std::vector<alphabet_t> &sequence) {
 
   return negative_log_likelihood_symmetric_<alphabet_t>(
-      tree, sequence,
-      [&](ProbabilisticSuffixTreeMap<alphabet_t> &tree_,
-          const std::string &context, char char_) -> double {
-        return details::scoring::log_transition_prob<alphabet_t>(tree_, context,
-                                                                 char_);
-      });
+      tree, sequence, details::scoring::log_transition_prob<alphabet_t>);
 }
 
 template <seqan3::alphabet alphabet_t>
@@ -401,10 +434,23 @@ double negative_log_likelihood_symmetric_p(
 template <seqan3::alphabet alphabet_t>
 double negative_log_likelihood_symmetric_p(
     ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-    std::vector<alphabet_t> &sequence,
-    std::function<double(int &, const std::string &, char)> function) {
+    std::vector<alphabet_t> &sequence) {
 
   return negative_log_likelihood_symmetric_p(
       tree, sequence, details::scoring::log_transition_prob);
 }
+
+template <seqan3::alphabet alphabet_t>
+inline double negative_log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &left,
+                               ProbabilisticSuffixTreeMap<alphabet_t> &right,
+                               size_t order) {
+  auto left_sequence = left.generate_sequence(order);
+  auto right_sequence = right.generate_sequence(order);
+
+  auto right_nll = negative_log_likelihood(right, left_sequence);
+  auto left_nll = negative_log_likelihood(left, right_sequence);
+
+  return (right_nll + left_nll) / 2;
+}
+
 } // namespace pst::distances
