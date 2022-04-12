@@ -98,40 +98,70 @@ struct Result {
   double aicc_score;
   double log_likelihood;
   uint64 n_parameters;
-  size_t fifth_percentile;
+  size_t observed_min_count;
+  size_t observed_max_depth;
 
   void output_result() const {
-    std::cout << "Min count: " << this->min_count
-              << ". Max depth: " << this->max_depth
-              << ". Threshold: " << this->threshold
-              << ". BIC score: " << this->bic_score
-              << ". AIC score: " << this->aic_score
-              << ". AICc score: " << this->aicc_score
-              << ". Log likelihood: " << this->log_likelihood
-              << ". N parameters: " << this->n_parameters
-              << ". Fifth percentile: " << this->fifth_percentile << std::endl;
+    std::cout << "{"
+              << "\"Min count\": " << this->min_count << ","
+              << "\"Max depth\": " << this->max_depth << ","
+              << "\"Threshold\": " << this->threshold << ","
+              << "\"BIC score\": " << this->bic_score << ","
+              << "\"AIC score\": " << this->aic_score << ","
+              << "\"AICc score\": " << this->aicc_score << ","
+              << "\"Log likelihood\": " << this->log_likelihood << ","
+              << "\"N parameters\": " << this->n_parameters << ","
+              << "\"Observed min count\": " << this->observed_min_count << ","
+              << "\"Observed max depth\": " << this->observed_max_depth << "}"
+              << std::endl;
+  }
+
+  void write_csv_line(std::ofstream &ofs) const {
+    ofs << n_parameters << ",";
+    ofs << bic_score << ",";
+    ofs << aic_score << ",";
+    ofs << aicc_score << ",";
+    ofs << min_count << ",";
+    ofs << max_depth << ",";
+    ofs << threshold << ",";
+    ofs << log_likelihood << ",";
+    ofs << observed_min_count << ",";
+    ofs << observed_max_depth << std::endl;
+  }
+
+  static void write_header(std::ofstream &ofs) {
+    ofs << "n_params,";
+    ofs << "bic_score,";
+    ofs << "aic_score,";
+    ofs << "aicc_score,";
+    ofs << "min_count,";
+    ofs << "max_depth,";
+    ofs << "threshold,";
+    ofs << "log_likelihood,";
+    ofs << "observed_min_count,";
+    ofs << "observed_max_depth";
+    ofs << std::endl;
   }
 };
 
-size_t percentile_frequency(pst::ProbabilisticSuffixTreeMap<seqan3::dna5> &tree,
-                            float percentile) {
-  std::vector<size_t> counts{};
-  for (auto &[_c, v] : tree.counts) {
+std::tuple<size_t, size_t>
+get_min_count_max_depth(pst::ProbabilisticSuffixTreeMap<seqan3::dna5> &tree) {
+  // This would have been cleaner as two loops, but when tree.counts is large
+  // that would take quite some time.
+
+  size_t min_count = std::numeric_limits<int>::max();
+  size_t max_depth = 0;
+
+  for (auto &[c, v] : tree.counts) {
     auto &[count, _p, included] = v;
-    if (!included) {
-      continue;
+    if (included) {
+      //      std::cout << c <<  " " << c.size() << " " << count << std::endl;
+      min_count = std::min(count, min_count);
+      max_depth = std::max(c.size(), max_depth);
     }
-    counts.push_back(count);
   }
 
-  std::sort(counts.begin(), counts.end());
-
-  size_t percentile_edge = counts.size() * percentile;
-  if (counts.size() == 0) {
-    return 0;
-  } else {
-    return counts[percentile_edge];
-  }
+  return {min_count, max_depth};
 }
 
 Result bic_score(pst::KullbackLieblerTreeMap<seqan3::dna5> &tree,
@@ -150,91 +180,13 @@ Result bic_score(pst::KullbackLieblerTreeMap<seqan3::dna5> &tree,
       aic_value + (2 * std::pow(n_parameters, 2.0) + 2 * n_parameters) /
                       (sequence.size() - n_parameters - 1);
 
-  auto fifth_percentile_frequency = percentile_frequency(tree, 0.05);
+  auto [obs_min_count, obs_max_depth] = get_min_count_max_depth(tree);
 
-  Result res{min_count,      max_depth,    threshold,
-             bic_value,      aic_value,    aicc_value,
-             log_likelihood, n_parameters, fifth_percentile_frequency};
+  Result res{min_count,     max_depth,    threshold,      bic_value,
+             aic_value,     aicc_value,   log_likelihood, n_parameters,
+             obs_min_count, obs_max_depth};
 
   return res;
-}
-
-Result bic(std::string &id, lst::details::sequence_t<seqan3::dna5> &sequence,
-           double threshold, const std::filesystem::path &out_path) {
-  std::vector<int> max_depths{3,  4,  5,  6,  7,  8,  9,  10, 11,
-                              12, 13, 14, 15, 16, 17, 18, 19, 20};
-  std::vector<int> min_counts{1,   2,   3,   4,   5,    6,    7,    8,    9,
-                              10,  20,  30,  40,  50,   60,   70,   80,   90,
-                              100, 125, 150, 175, 200,  250,  300,  400,  500,
-                              600, 700, 800, 900, 1000, 2000, 3000, 4000, 5000};
-  std::vector<float> thresholds{1.2, 3.9075};
-
-  std::vector<Result> results{};
-  Result best_result{0, 0, 0.0, std::numeric_limits<double>::max(), 0.0, 0, 0};
-
-  // This search can be made much quicker by modifying the
-  // Probabilistic suffix tree map class to allow iterative support pruning,
-  // i.e., computing the tree for maximal parameters and then removing nodes.
-  for (auto min_count : min_counts) {
-    for (auto max_depth : max_depths) {
-      for (auto threshold : thresholds) {
-        // Don't search parameters than previously have shown to never be "the
-        // best" to save computation
-        //        if (sequence.size() > 387424359 && min_count < 10) {
-        //          continue;
-        //        } else if (sequence.size() > 3099706404 && min_count < 100)
-        //        {
-        //          continue;
-        //        } else if (sequence.size() > 6699723695 && min_count < 500)
-        //        {
-        //          continue;
-        //        }
-        //
-        //        if (sequence.size() < 3099706404 && min_count > 15) {
-        //          continue;
-        //        }
-        pst::KullbackLieblerTreeMap<seqan3::dna5> tree{
-            id, sequence, max_depth, min_count, threshold, true, 2};
-        tree.construct_tree();
-
-        auto res = bic_score(tree, sequence, min_count, max_depth, threshold);
-
-        if (res.bic_score < best_result.bic_score) {
-          best_result = res;
-        }
-        results.push_back(res);
-      }
-    }
-  }
-
-  std::stringstream ss;
-  ss << "bic-" << id.substr(0, 20) << ".csv";
-  std::string s = ss.str();
-
-  std::filesystem::path path{out_path / s};
-
-  bool add_header = !std::filesystem::exists(path);
-
-  std::ofstream ofs(path, std::ios::app);
-
-  if (add_header) {
-    ofs << "n_params,bic_score,min_count,max_depth,threshold,log_likelihood,"
-           "fifth_percentile_frequency"
-        << std::endl;
-  }
-
-  for (auto [min_count, max_depth, threshold, score, aic_score, aicc_score,
-             log_likelihood, n_params, fifth_percentile] : results) {
-    ofs << n_params << "," << score << "," << min_count << "," << max_depth
-        << "," << threshold << "," << log_likelihood << "," << fifth_percentile
-        << std::endl;
-  }
-  ofs.close();
-
-  std::cout << "---------- Best bic ----------" << std::endl;
-  best_result.output_result();
-
-  return best_result;
 }
 
 std::vector<int> determine_min_counts(const int min_min_count,
@@ -284,7 +236,7 @@ std::tuple<int, int, double> find_best_parameters(
   Result best_bic_result{
       0, 0, 0.0, std::numeric_limits<double>::max(), 0.0, 0.0, 0.0, 0, 0};
 
-  std::vector<double> thresholds(100);
+  std::vector<double> thresholds(500);
   std::generate(thresholds.begin(), thresholds.end(), g);
   std::sort(thresholds.begin(), thresholds.end());
 
@@ -328,7 +280,7 @@ std::tuple<int, int, double> find_best_parameters(
   }
 
   std::stringstream ss;
-  ss << "bic-" << fasta_path.stem() << ".csv";
+  ss << "bic-" << fasta_path.stem().string() << ".csv";
   std::string s = ss.str();
 
   std::filesystem::path path{tree_path.parent_path() / s};
@@ -338,17 +290,11 @@ std::tuple<int, int, double> find_best_parameters(
   std::ofstream ofs(path, std::ios::app);
 
   if (add_header) {
-    ofs << "n_params,bic_score,aic_score,aicc_score,min_count,max_depth,"
-           "threshold,log_likelihood,"
-           "fifth_percentile_frequency"
-        << std::endl;
+    Result::write_header(ofs);
   }
 
-  for (auto [min_count, max_depth, threshold, bic_score, aic_score, aicc_score,
-             log_likelihood, n_params, fifth_percentile] : results) {
-    ofs << n_params << "," << bic_score << "," << aic_score << "," << aicc_score
-        << "," << min_count << "," << max_depth << "," << threshold << ","
-        << log_likelihood << "," << fifth_percentile << std::endl;
+  for (auto result : results) {
+    result.write_csv_line(ofs);
   }
   ofs.close();
 
@@ -373,16 +319,6 @@ int main(int argc, char *argv[]) {
                        arguments.max_min_count, arguments.threshold,
                        arguments.out_path, arguments.tmp_path, vlmc::Core::out,
                        arguments.sequence);
-
-  //  bic(arguments.id, arguments.sequence, arguments.threshold,
-  //      arguments.out_path.parent_path());
-
-  //  auto hashmap_done = std::chrono::steady_clock::now();
-
-  //  std::chrono::duration<double> kmc_seconds = kmc_done - kmc_start;
-  //  std::cout << "KMC time: " << kmc_seconds.count() << "s\n";
-  //  std::chrono::duration<double> hashmap_seconds = hashmap_done - kmc_done;
-  //  std::cout << "Hashmap time: " << hashmap_seconds.count() << "s\n";
 
   return EXIT_SUCCESS;
 }
