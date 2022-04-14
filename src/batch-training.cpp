@@ -13,8 +13,8 @@
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 
-#include "kl_tree_map.hpp"
-#include "probabilistic_suffix_tree_map.hpp"
+#include "pst/kl_tree_map.hpp"
+#include "pst/probabilistic_suffix_tree_map.hpp"
 
 using tree_t = pst::ProbabilisticSuffixTreeMap<seqan3::dna5>;
 

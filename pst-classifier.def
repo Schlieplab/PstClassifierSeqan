@@ -2,6 +2,7 @@ Bootstrap: docker
 From: debian:bullseye
 
 %files
+    include /PstClassifierSeqan/include
     src /PstClassifierSeqan/src
     tests /PstClassifierSeqan/tests
     seqan3 /PstClassifierSeqan/seqan3

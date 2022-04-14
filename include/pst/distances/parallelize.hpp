@@ -7,10 +7,10 @@
 #include <thread>
 #include <vector>
 
-#include <indicators/block_progress_bar.hpp>
-#include <indicators/cursor_control.hpp>
-#include <indicators/dynamic_progress.hpp>
-#include <indicators/progress_bar.hpp>
+#include "indicators/block_progress_bar.hpp"
+#include "indicators/cursor_control.hpp"
+#include "indicators/dynamic_progress.hpp"
+#include "indicators/progress_bar.hpp"
 
 namespace pst::parallelize {
 

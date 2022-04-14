@@ -1,14 +1,14 @@
 #pragma once
 
-#include <robin_hood.h>
+#include "robin_hood.h"
 
-#include <Eigen/Dense>
+#include "Eigen/Dense"
 #include <algorithm>
 #include <functional>
 #include <numeric>
 
-#include <seqan3/alphabet/concept.hpp>
-#include <seqan3/alphabet/nucleotide/dna5.hpp>
+#include "seqan3/alphabet/concept.hpp"
+#include "seqan3/alphabet/nucleotide/dna5.hpp"
 
 #include "../probabilistic_suffix_tree_map.hpp"
 #include "composition_vectors.hpp"

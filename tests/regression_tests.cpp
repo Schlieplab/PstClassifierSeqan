@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include "../src/kl_tree_map.hpp"
-#include "../src/probabilistic_suffix_tree_map.hpp"
+#include "pst/kl_tree_map.hpp"
+#include "pst/probabilistic_suffix_tree_map.hpp"
 
 #include <robin_hood.h>
 
@@ -16,8 +16,8 @@
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 
-#include "../src/kl_tree.hpp"
-#include "../src/kl_tree_map.hpp"
+#include "pst/kl_tree.hpp"
+#include "pst/kl_tree_map.hpp"
 #include "random_sequence.hpp"
 #include "test_utils.hpp"
 

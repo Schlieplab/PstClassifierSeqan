@@ -9,17 +9,17 @@
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/std/filesystem>
 
-#include "../src/distances/cv.hpp"
-#include "../src/distances/d2.hpp"
-#include "../src/distances/d2star.hpp"
-#include "../src/distances/dvstar.hpp"
-#include "../src/distances/kl_divergence.hpp"
-#include "../src/distances/score.hpp"
-#include "../src/distances/sliding_windows.hpp"
-#include "../src/kl_tree_map.hpp"
+#include "pst/distances/cv.hpp"
+#include "pst/distances/d2.hpp"
+#include "pst/distances/d2star.hpp"
+#include "pst/distances/dvstar.hpp"
+#include "pst/distances/kl_divergence.hpp"
+#include "pst/distances/score.hpp"
+#include "pst/distances/sliding_windows.hpp"
+#include "pst/kl_tree_map.hpp"
 
-#include "../src/kl_tree.hpp"
-#include "../src/probabilistic_suffix_tree_map.hpp"
+#include "pst/kl_tree.hpp"
+#include "pst/probabilistic_suffix_tree_map.hpp"
 #include "random_sequence.hpp"
 
 class DistancesTest : public ::testing::Test {
@@ -118,10 +118,10 @@ TEST_F(DistancesTest, included_in_both) {
 }
 
 TEST_F(DistancesTest, dvstarSnapshots) {
-  float expected_dissimilar = 0.015304013;
+  float expected_dissimilar = 0.015588916;
   EXPECT_FLOAT_EQ(expected_dissimilar, pst::distances::dvstar(first, third, 0));
 
-  float expected_similar = 6.4066444e-05;
+  float expected_similar = 6.4417443e-05;
   EXPECT_FLOAT_EQ(expected_similar, pst::distances::dvstar(first, second, 0));
 }
 
@@ -275,7 +275,7 @@ TEST_F(DistancesTest, LogLikelighoodHandCrafted1Order) {
   double log_likelihood = pst::distances::log_likelihood(tree, binary_seq);
 
   double log_likelihood_manual =
-      391 * std::log(0.9) + 42 * std::log(0.1) + 42 * std::log(1);
+      391 * std::log(0.9) + 42 * std::log(0.1) + 42 * std::log(1) + std::log(0.8);
 
   EXPECT_FLOAT_EQ(log_likelihood, log_likelihood_manual);
 }

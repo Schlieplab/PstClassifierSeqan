@@ -10,13 +10,13 @@
 #include <typeinfo>
 #include <vector>
 
-#include <seqan3/alphabet/composite/alphabet_variant.hpp>
-#include <seqan3/alphabet/concept.hpp>
-#include <seqan3/alphabet/nucleotide/dna4.hpp>
-#include <seqan3/alphabet/nucleotide/dna5.hpp>
-#include <seqan3/alphabet/views/all.hpp>
-#include <seqan3/std/ranges>
-#include <seqan3/utility/views/to.hpp>
+#include "seqan3/alphabet/composite/alphabet_variant.hpp"
+#include "seqan3/alphabet/concept.hpp"
+#include "seqan3/alphabet/nucleotide/dna4.hpp"
+#include "seqan3/alphabet/nucleotide/dna5.hpp"
+#include "seqan3/alphabet/views/all.hpp"
+#include "seqan3/std/ranges"
+#include "seqan3/utility/views/to.hpp"
 
 #include "lazy_suffix_tree/construction.hpp"
 #include "lazy_suffix_tree/iteration.hpp"

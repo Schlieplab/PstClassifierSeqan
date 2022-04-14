@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "../../../src/search/lazy_suffix_tree/construction.hpp"
-#include "../../../src/search/lazy_suffix_tree/suffix_links.hpp"
+#include "pst/search/lazy_suffix_tree/construction.hpp"
+#include "pst/search/lazy_suffix_tree/suffix_links.hpp"
 
 using namespace lst::details;
 

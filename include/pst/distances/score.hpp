@@ -6,13 +6,13 @@
 #include <string>
 #include <thread>
 
-#include <indicators/block_progress_bar.hpp>
-#include <indicators/cursor_control.hpp>
-#include <indicators/dynamic_progress.hpp>
+#include "indicators/block_progress_bar.hpp"
+#include "indicators/cursor_control.hpp"
+#include "indicators/dynamic_progress.hpp"
 
-#include <seqan3/alphabet/nucleotide/dna5.hpp>
-#include <seqan3/argument_parser/argument_parser.hpp>
-#include <seqan3/io/sequence_file/input.hpp>
+#include "seqan3/alphabet/nucleotide/dna5.hpp"
+#include "seqan3/argument_parser/argument_parser.hpp"
+#include "seqan3/io/sequence_file/input.hpp"
 
 #include "../probabilistic_suffix_tree_map.hpp"
 #include "negative_log_likelihood.hpp"
@@ -45,10 +45,10 @@ void score_trees_slice_with_progress(
       scores[j][i] = fun(trees[i], sequences[j]);
     }
     float progress = float(j) / float(sequences.size());
-    bars[bars_i].set_progress(progress * 100);
+    bar.set_progress(progress * 100);
   }
 
-  bars[bars_i].mark_as_completed();
+  //bars[bars_i].mark_as_completed();
 }
 
 void score_trees_slice(

@@ -1,10 +1,10 @@
 #pragma once
 
-#include <Eigen/Dense>
+#include "Eigen/Dense"
 #include <functional>
 #include <string>
 
-#include <seqan3/alphabet/concept.hpp>
+#include "seqan3/alphabet/concept.hpp"
 
 #include "../probabilistic_suffix_tree_map.hpp"
 #include "negative_log_likelihood.hpp"
@@ -165,7 +165,7 @@ inline Eigen::VectorXd composition_vector_state_probability_scaled(
 
   size_t i = 0;
   for (auto &context : contexts) {
-    auto state = tree.get_closest_state(context);
+    auto [state, val] = tree.get_closest_state(context);
 
     double state_probability = double(tree.counts[state].count) /
                                double(tree.counts[""].count);

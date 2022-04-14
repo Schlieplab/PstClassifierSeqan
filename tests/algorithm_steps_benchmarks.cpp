@@ -5,17 +5,15 @@
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 
-#include "../../src/kl_tree.hpp"
-#include "../../src/kl_tree_map.hpp"
+#include "pst/kl_tree.hpp"
+#include "pst/kl_tree_map.hpp"
 
 #include "random_sequence.hpp"
 
 using seqan3::operator""_dna5;
 
-using counts_map = robin_hood::unordered_map<
-    std::string,
-    std::tuple<size_t, std::array<double, seqan3::alphabet_size<seqan3::dna5>>,
-               bool>>;
+using counts_map =
+    robin_hood::unordered_map<std::string, pst::hashmap_value<seqan3::dna5>>;
 
 class KLTreeixture : public benchmark::Fixture {
 public:

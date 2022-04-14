@@ -16,11 +16,11 @@
 
 #include <seqan3/std/filesystem>
 
-#include "distances/composition_vectors.hpp"
-#include "distances/negative_log_likelihood.hpp"
-#include "distances/parallelize.hpp"
-#include "distances/score.hpp"
-#include "probabilistic_suffix_tree_map.hpp"
+#include "pst/distances/composition_vectors.hpp"
+#include "pst/distances/negative_log_likelihood.hpp"
+#include "pst/distances/parallelize.hpp"
+#include "pst/distances/score.hpp"
+#include "pst/probabilistic_suffix_tree_map.hpp"
 
 using tree_t = pst::ProbabilisticSuffixTreeMap<seqan3::dna5>;
 

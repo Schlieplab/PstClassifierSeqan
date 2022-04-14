@@ -4,7 +4,7 @@
 #include <queue>
 #include <string>
 
-#include <seqan3/alphabet/concept.hpp>
+#include "seqan3/alphabet/concept.hpp"
 
 #include "probabilistic_suffix_tree.hpp"
 

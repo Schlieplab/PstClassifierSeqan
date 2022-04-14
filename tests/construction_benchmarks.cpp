@@ -6,8 +6,8 @@
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 
-#include "../src/kl_tree_map.hpp"
-#include "../src/probabilistic_suffix_tree_map.hpp"
+#include "pst/kl_tree_map.hpp"
+#include "pst/probabilistic_suffix_tree_map.hpp"
 
 struct my_traits : seqan3::sequence_file_input_default_traits_dna {
   template <typename alph>

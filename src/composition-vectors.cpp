@@ -10,9 +10,9 @@
 
 #include <seqan3/std/filesystem>
 
-#include "distances/composition_vectors.hpp"
-#include "distances/cv.hpp"
-#include "probabilistic_suffix_tree_map.hpp"
+#include "pst/distances/composition_vectors.hpp"
+#include "pst/distances/cv.hpp"
+#include "pst/probabilistic_suffix_tree_map.hpp"
 
 using tree_t = pst::ProbabilisticSuffixTreeMap<seqan3::dna5>;
 

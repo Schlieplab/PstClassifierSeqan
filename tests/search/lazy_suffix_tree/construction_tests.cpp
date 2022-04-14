@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "../../../src/search/lazy_suffix_tree/construction.hpp"
+#include "pst/search/lazy_suffix_tree/construction.hpp"
 using namespace lst::details;
 
 #include <seqan3/alphabet/gap/all.hpp>

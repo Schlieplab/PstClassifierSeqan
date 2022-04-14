@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include "../../../src/search/lazy_suffix_tree/construction.hpp"
-#include "../../../src/search/lazy_suffix_tree/iteration.hpp"
+#include "pst/search/lazy_suffix_tree/construction.hpp"
+#include "pst/search/lazy_suffix_tree/iteration.hpp"
 #include <vector>
 
 using namespace lst::details;

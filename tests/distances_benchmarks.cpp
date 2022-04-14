@@ -1,12 +1,12 @@
 #include <benchmark/benchmark.h>
 
-#include "../src/distances/cv.hpp"
-#include "../src/distances/d2.hpp"
-#include "../src/distances/dvstar.hpp"
-#include "../src/distances/kl_divergence.hpp"
-#include "../src/distances/negative_log_likelihood.hpp"
-#include "../src/kl_tree.hpp"
-#include "../src/kl_tree_map.hpp"
+#include "pst/distances/cv.hpp"
+#include "pst/distances/d2.hpp"
+#include "pst/distances/dvstar.hpp"
+#include "pst/distances/kl_divergence.hpp"
+#include "pst/distances/negative_log_likelihood.hpp"
+#include "pst/kl_tree.hpp"
+#include "pst/kl_tree_map.hpp"
 
 #include "random_sequence.hpp"
 

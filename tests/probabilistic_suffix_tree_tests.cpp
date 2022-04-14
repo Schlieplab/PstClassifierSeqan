@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include "../src/kl_tree.hpp"
-#include "../src/probabilistic_suffix_tree.hpp"
+#include "pst/kl_tree.hpp"
+#include "pst/probabilistic_suffix_tree.hpp"
 
 #include <array>
 #include <map>

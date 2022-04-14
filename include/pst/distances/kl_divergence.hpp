@@ -1,7 +1,7 @@
 #pragma once
 
-#include <seqan3/alphabet/concept.hpp>
-#include <seqan3/alphabet/nucleotide/dna5.hpp>
+#include "seqan3/alphabet/concept.hpp"
+#include "seqan3/alphabet/nucleotide/dna5.hpp"
 
 #include "../probabilistic_suffix_tree_map.hpp"
 #include "cv.hpp"

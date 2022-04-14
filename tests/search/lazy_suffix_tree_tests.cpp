@@ -3,7 +3,7 @@
 #include <tuple>
 #include <vector>
 
-#include "../../src/search/lazy_suffix_tree.hpp"
+#include "pst/search/lazy_suffix_tree.hpp"
 
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>

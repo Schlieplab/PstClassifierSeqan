@@ -10,7 +10,7 @@
 #include <thread>
 #include <vector>
 
-#include <seqan3/alphabet/concept.hpp>
+#include "seqan3/alphabet/concept.hpp"
 
 #include "construction.hpp"
 #include "iteration.hpp"

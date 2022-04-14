@@ -19,13 +19,13 @@
 #include <indicators/dynamic_progress.hpp>
 #include <indicators/progress_bar.hpp>
 
-#include "distances/cv.hpp"
-#include "distances/d2.hpp"
-#include "distances/d2star.hpp"
-#include "distances/dvstar.hpp"
-#include "distances/kl_divergence.hpp"
-#include "distances/parallelize.hpp"
-#include "probabilistic_suffix_tree_map.hpp"
+#include "pst/distances/cv.hpp"
+#include "pst/distances/d2.hpp"
+#include "pst/distances/d2star.hpp"
+#include "pst/distances/dvstar.hpp"
+#include "pst/distances/kl_divergence.hpp"
+#include "pst/distances/parallelize.hpp"
+#include "pst/probabilistic_suffix_tree_map.hpp"
 
 using tree_t = pst::ProbabilisticSuffixTreeMap<seqan3::dna5>;
 using matrix_t = Eigen::MatrixXd;

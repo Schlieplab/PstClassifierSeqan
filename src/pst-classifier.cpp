@@ -13,9 +13,9 @@
 
 #include <vlmc_from_kmers/build_vlmc.hpp>
 
-#include "kl_tree.hpp"
-#include "kl_tree_map.hpp"
-#include "probabilistic_suffix_tree_map.hpp"
+#include "pst/kl_tree.hpp"
+#include "pst/kl_tree_map.hpp"
+#include "pst/probabilistic_suffix_tree_map.hpp"
 
 using seqan3::operator""_dna5;
 

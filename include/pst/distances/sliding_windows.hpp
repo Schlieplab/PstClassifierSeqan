@@ -5,9 +5,9 @@
 #include <map>
 #include <string>
 
-#include <seqan3/alphabet/concept.hpp>
-#include <seqan3/alphabet/views/all.hpp>
-#include <seqan3/std/ranges>
+#include "seqan3/alphabet/concept.hpp"
+#include "seqan3/alphabet/views/all.hpp"
+#include "seqan3/std/ranges"
 
 #include "../probabilistic_suffix_tree_map.hpp"
 #include "negative_log_likelihood.hpp"

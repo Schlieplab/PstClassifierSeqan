@@ -5,7 +5,7 @@
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 
-#include "../../src/search/lazy_suffix_tree.hpp"
+#include "pst/search/lazy_suffix_tree.hpp"
 
 #include "../random_sequence.hpp"
 

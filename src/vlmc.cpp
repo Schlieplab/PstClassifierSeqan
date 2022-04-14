@@ -7,8 +7,8 @@
 #include <seqan3/std/ranges>
 #include <seqan3/utility/views/to.hpp>
 
-#include "kl_tree_map.hpp"
-#include "probabilistic_suffix_tree_map.hpp"
+#include "pst/kl_tree_map.hpp"
+#include "pst/probabilistic_suffix_tree_map.hpp"
 
 lst::details::sequence_t<seqan3::dna5> to_dna(const char *sequence_) {
   std::string seq{sequence_};
