@@ -37,14 +37,13 @@ double background_log_transition_prob(
     ProbabilisticSuffixTreeMap<alphabet_t> &tree, const std::string &context,
     const hashmap_value<alphabet_t> &val, char char_, int background_order) {
 
-  std::string background_context;
-  hashmap_value<alphabet_t> background_val;
-  if (background_order != 0 && background_order < context.size()) {
-    auto [background_context_, background_val_] = tree.get_closest_state(
-        context.substr(context.size() - background_order));
-    background_context = background_context_;
-    background_val = background_val_;
+  std::string_view context_in;
+  if (background_order != 0 && background_order < context.size()){
+    context_in = context.substr(context.size() - background_order);
   }
+
+  auto [background_context, background_val] = tree.get_closest_state(
+      context_in);
 
   double probability = tree.get_transition_probability(val, char_);
   double background_probability =
