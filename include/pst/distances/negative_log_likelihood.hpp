@@ -325,7 +325,14 @@ double negative_log_likelihood(
 
 template <seqan3::alphabet alphabet_t>
 double negative_log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                               std::string &sequence) {
+                               const std::string &sequence, const details::scoring::score_signature<alphabet_t> &score_fun) {
+  auto [score, length] = details::log_likelihood_part(tree, sequence, 0, sequence.size(), score_fun);
+  return -score / double(length);
+}
+
+template <seqan3::alphabet alphabet_t>
+double negative_log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
+                               const std::string &sequence) {
   auto [score, length] = details::log_likelihood_part(tree, sequence);
   return -score / double(length);
 }
@@ -440,14 +447,34 @@ double negative_log_likelihood_symmetric_p(
 }
 
 template <seqan3::alphabet alphabet_t>
-inline double negative_log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &left,
-                               ProbabilisticSuffixTreeMap<alphabet_t> &right,
-                               size_t order) {
+inline double
+negative_log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &left,
+                        ProbabilisticSuffixTreeMap<alphabet_t> &right,
+                        size_t order) {
   auto left_sequence = left.generate_sequence(order);
   auto right_sequence = right.generate_sequence(order);
 
   auto right_nll = negative_log_likelihood(right, left_sequence);
   auto left_nll = negative_log_likelihood(left, right_sequence);
+
+  return (right_nll + left_nll) / 2;
+}
+
+template <seqan3::alphabet alphabet_t>
+inline double negative_log_likelihood_background(
+    ProbabilisticSuffixTreeMap<alphabet_t> &left,
+    ProbabilisticSuffixTreeMap<alphabet_t> &right, size_t order,
+    size_t background_order) {
+  auto left_sequence = left.generate_sequence(order);
+  auto right_sequence = right.generate_sequence(order);
+
+  auto transition_fun =
+      details::scoring::specialise_background_log_transition_prob<alphabet_t>(
+          background_order);
+
+  auto right_nll =
+      negative_log_likelihood(right, left_sequence, transition_fun);
+  auto left_nll = negative_log_likelihood(left, right_sequence, transition_fun);
 
   return (right_nll + left_nll) / 2;
 }
