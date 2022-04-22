@@ -238,7 +238,8 @@ int main(int argc, char *argv[]) {
   if (arguments.sequence_list.extension() == ".fasta" ||
       arguments.sequence_list.extension() == ".fastq" ||
       arguments.sequence_list.extension() == ".fna" ||
-      arguments.sequence_list.extension() == ".fa") {
+      arguments.sequence_list.extension() == ".fa" ||
+      arguments.sequence_list.extension() == ".gz") {
     sequence_list.push_back(arguments.sequence_list);
   } else if (arguments.sequence_list.extension() == ".txt") {
     std::ifstream infile(arguments.sequence_list);
