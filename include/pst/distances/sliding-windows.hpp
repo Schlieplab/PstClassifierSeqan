@@ -130,16 +130,18 @@ std::vector<std::vector<double>> sliding_windows_background(
 template <seqan3::alphabet alphabet_t>
 std::vector<std::vector<double>>
 sliding_windows(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                std::string &sequence, int window_sizes) {
-  return sliding_windows(tree, sequence, {window_sizes});
+                std::string &sequence, int window_size) {
+  std::vector<int> window_sizes{window_size};
+  return sliding_windows(tree, sequence, window_sizes);
 }
 
 template <seqan3::alphabet alphabet_t>
 std::vector<std::vector<double>>
 sliding_windows_background(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                           std::string &sequence, int window_sizes,
+                           std::string &sequence, int window_size,
                            int background_order) {
-  return sliding_windows_background(tree, sequence, {window_sizes},
+  std::vector<int> window_sizes{window_size};
+  return sliding_windows_background(tree, sequence, window_sizes,
                                     background_order);
 }
 } // namespace pst::distances

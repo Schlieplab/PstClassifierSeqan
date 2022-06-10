@@ -27,6 +27,8 @@
 #include "pst/distances/parallelize.hpp"
 #include "pst/probabilistic_suffix_tree_map.hpp"
 
+#include "io_utils.hpp"
+
 using tree_t = pst::ProbabilisticSuffixTreeMap<seqan3::dna5>;
 using matrix_t = Eigen::MatrixXd;
 
@@ -247,72 +249,18 @@ matrix_t calculate_distances(
   return distances;
 }
 
-std::vector<tree_t> get_trees(const std::filesystem::path &directory,
-                              const double pseudo_count_amount) {
-  std::vector<tree_t> trees{};
-  std::cout << "parsing trees..." << std::endl;
-  for (auto const &dir_entry : std::filesystem::directory_iterator{directory}) {
-    trees.push_back(tree_t{dir_entry.path(), pseudo_count_amount});
-  }
-
-  return trees;
-}
-
-std::vector<tree_t> get_trees(HighFive::File &file,
-                              const double pseudo_count_amount) {
-  const std::string DATASET_NAME("signatures");
-
-  HighFive::DataSet dataset = file.getDataSet(DATASET_NAME);
-
-  std::vector<std::string> result_string_list;
-  dataset.read(result_string_list);
-
-  std::vector<tree_t> trees{};
-  std::cout << "parsing trees..." << std::endl;
-  std::transform(result_string_list.begin(), result_string_list.end(),
-                 std::back_inserter(trees),
-                 [&pseudo_count_amount](std::string &tree) -> tree_t {
-                   return tree_t{tree, pseudo_count_amount};
-                 });
-
-  return trees;
-}
-
 int main(int argc, char *argv[]) {
   input_arguments arguments = parse_cli_arguments(argc, argv);
   const auto [distance_fun, distance_name_with_args] =
       parse_distance_function(arguments);
 
-  std::vector<tree_t> trees;
+  std::vector<tree_t> trees =
+      get_trees(arguments.filepath, arguments.pseudo_count_amount);
   std::vector<tree_t> trees_to;
-
-  if (arguments.filepath.extension() == ".h5" ||
-      arguments.filepath.extension() == ".hdf5") {
-    HighFive::File file{arguments.filepath, HighFive::File::ReadOnly};
-    trees = get_trees(file, arguments.pseudo_count_amount);
-  } else if (arguments.filepath.extension() == ".tree" ||
-             arguments.filepath.extension() == ".bintree") {
-    pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree{
-        arguments.filepath, arguments.pseudo_count_amount};
-
-    trees = std::vector<tree_t>{std::move(tree)};
-  } else if (std::filesystem::is_directory(arguments.filepath)) {
-    trees = get_trees(arguments.filepath, arguments.pseudo_count_amount);
-  }
 
   if (arguments.filepath_to.empty()) {
     trees_to = trees;
-  } else if (arguments.filepath_to.extension() == ".h5" ||
-             arguments.filepath_to.extension() == ".hdf5") {
-    HighFive::File file{arguments.filepath_to, HighFive::File::ReadOnly};
-    trees_to = get_trees(file, arguments.pseudo_count_amount);
-  } else if (arguments.filepath_to.extension() == ".tree" ||
-             arguments.filepath_to.extension() == ".bintree") {
-    pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree{
-        arguments.filepath_to, arguments.pseudo_count_amount};
-
-    trees_to = std::vector<tree_t>{std::move(tree)};
-  } else if (std::filesystem::is_directory(arguments.filepath_to)) {
+  } else {
     trees_to = get_trees(arguments.filepath_to, arguments.pseudo_count_amount);
   }
 
@@ -337,8 +285,7 @@ int main(int argc, char *argv[]) {
   } else if (arguments.scores.extension() == ".h5" ||
              arguments.scores.extension() == ".hdf5") {
     std::cout << "Writing to file..." << std::endl;
-    HighFive::File file{arguments.scores,
-                        HighFive::File::ReadWrite | HighFive::File::Create};
+    HighFive::File file{arguments.scores, HighFive::File::OpenOrCreate};
 
     if (!file.exist("ids")) {
       file.createDataSet<std::string>("ids", HighFive::DataSpace::From(ids));
@@ -360,8 +307,8 @@ int main(int argc, char *argv[]) {
 
     if (!distance_group.exist(distance_name_with_args)) {
       std::vector<size_t> dims{trees.size(), trees_to.size()};
-      distance_group.createDataSet<float>(distance_name_with_args,
-                                          HighFive::DataSpace(dims));
+      distance_group.createDataSet<double>(distance_name_with_args,
+                                           HighFive::DataSpace(dims));
     }
 
     auto distance_data_set = distance_group.getDataSet(distance_name_with_args);

@@ -23,6 +23,7 @@
 #include "pst/probabilistic_suffix_tree_map.hpp"
 
 #include "io_utils.hpp"
+#include "pst/distances/sliding-windows.hpp"
 
 using tree_t = pst::ProbabilisticSuffixTreeMap<seqan3::dna5>;
 
@@ -34,6 +35,7 @@ struct input_arguments {
   std::filesystem::path outpath{};
   std::filesystem::path sequence_list{};
   double pseudo_count_amount{1.0};
+  int window_size{300};
 };
 
 input_arguments parse_cli_arguments(int argc, char *argv[]) {
@@ -64,6 +66,8 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
                     "Size of pseudo count for probability estimation. See e.g. "
                     "https://en.wikipedia.org/wiki/Additive_smoothing .");
 
+  parser.add_option(arguments.window_size, 'i', "window-size",
+                    "Size of windows.");
   try {
     parser.parse();
   } catch (seqan3::argument_parser_error const &ext) {
@@ -74,65 +78,48 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
   return arguments;
 }
 
-std::function<double(tree_t &, std::vector<seqan3::dna5> &)>
-parse_scoring_function(size_t n_sequences, bool score_both_sequence_directions,
-                       bool background_adjusted, int background_order) {
+std::function<std::vector<double>(tree_t &, std::vector<seqan3::dna5> &)>
+parse_sliding_window_function(size_t n_sequences, bool background_adjusted,
+                              int background_order, int window_size) {
   pst::distances::details::scoring::score_signature<seqan3::dna5>
       transition_score_fun =
           pst::distances::details::scoring::log_transition_prob<seqan3::dna5>;
 
+  std::function<std::vector<double>(tree_t &, std::vector<seqan3::dna5> &)>
+      sliding_window_fun;
+
   if (background_adjusted) {
-    transition_score_fun = pst::distances::details::scoring::
-        specialise_background_log_transition_prob<seqan3::dna5>(
-            background_order);
-  }
-
-  std::function<double(tree_t &, std::vector<seqan3::dna5> &)> score_fun;
-
-  if (n_sequences == 1) {
-    if (score_both_sequence_directions) {
-      score_fun = [transition_score_fun](
-                      tree_t &tree,
-                      std::vector<seqan3::dna5> &sequence) -> double {
-        return pst::distances::negative_log_likelihood_symmetric_p<
-            seqan3::dna5>(tree, sequence, transition_score_fun);
-      };
-    } else {
-      score_fun = [transition_score_fun](
-                      tree_t &tree,
-                      std::vector<seqan3::dna5> &sequence) -> double {
-        return pst::distances::negative_log_likelihood_p<seqan3::dna5>(
-            tree, sequence, transition_score_fun);
-      };
-    }
+    sliding_window_fun =
+        [window_size, background_order](
+            tree_t &tree,
+            std::vector<seqan3::dna5> &sequence) -> std::vector<double> {
+      auto seq = to_string(sequence);
+      auto windows = pst::distances::sliding_windows_background<seqan3::dna5>(
+          tree, seq, window_size, background_order);
+      return windows[0];
+    };
   } else {
-    if (score_both_sequence_directions) {
-      score_fun = [transition_score_fun](
-                      tree_t &tree,
-                      std::vector<seqan3::dna5> &sequence) -> double {
-        return pst::distances::negative_log_likelihood_symmetric_<seqan3::dna5>(
-            tree, sequence, transition_score_fun);
-      };
-    } else {
-      score_fun = [transition_score_fun](
-                      tree_t &tree,
-                      std::vector<seqan3::dna5> &sequence) -> double {
-        return pst::distances::negative_log_likelihood<seqan3::dna5>(
-            tree, sequence, transition_score_fun);
-      };
-    }
+    sliding_window_fun =
+        [window_size, background_order](
+            tree_t &tree,
+            std::vector<seqan3::dna5> &sequence) -> std::vector<double> {
+      auto seq = to_string(sequence);
+      auto windows =
+          pst::distances::sliding_windows<seqan3::dna5>(tree, seq, window_size);
+      return windows[0];
+    };
   }
 
-  return score_fun;
+  return sliding_window_fun;
 }
 
-std::tuple<std::vector<std::vector<double>>, std::vector<std::string>>
-score_sequences_paths(std::vector<tree_t> &trees,
+std::tuple<std::vector<std::vector<std::vector<double>>>,
+           std::vector<std::string>>
+score_sliding_windows(std::vector<tree_t> &trees,
                       std::vector<std::filesystem::path> &sequence_list,
-                      size_t background_order,
-                      bool score_both_sequence_directions,
+                      size_t background_order, int window_size,
                       bool background_adjusted) {
-  std::vector<std::vector<double>> all_scores{};
+  std::vector<std::vector<std::vector<double>>> all_scores{};
   std::vector<std::string> ids{};
 
   for (auto &path : sequence_list) {
@@ -154,20 +141,23 @@ score_sequences_paths(std::vector<tree_t> &trees,
       }
     }
 
-    std::vector<std::vector<double>> scores(sequences.size(),
-                                            std::vector<double>(trees.size()));
+    std::vector<std::vector<std::vector<double>>> scores(
+        sequences.size(), std::vector<std::vector<double>>(trees.size()));
 
-    std::function<double(tree_t &, std::vector<seqan3::dna5> &)> score_fun =
-        parse_scoring_function(sequences.size(), score_both_sequence_directions,
-                               background_adjusted, background_order);
+    std::function<std::vector<double>(tree_t &, std::vector<seqan3::dna5> &)>
+        sliding_window_function =
+            parse_sliding_window_function(sequences.size(), background_adjusted,
+                                          background_order, window_size);
 
     indicators::DynamicProgress<indicators::ProgressBar> bars{};
     bars.set_option(indicators::option::HideBarWhenComplete{true});
 
     auto fun = [&](size_t start_index, size_t stop_index) {
-      pst::score_sequences_slice_with_progress(
-          start_index, stop_index, std::ref(scores), std::ref(trees),
-          std::ref(sequences), score_fun, std::ref(bars));
+      for (size_t i = 0; i < trees.size(); i++) {
+        for (size_t j = start_index; j < stop_index; j++) {
+          scores[j][i] = sliding_window_function(trees[i], sequences[j]);
+        }
+      }
     };
     pst::parallelize::parallelize(sequences.size(), fun);
 
@@ -180,15 +170,35 @@ score_sequences_paths(std::vector<tree_t> &trees,
 int main(int argc, char *argv[]) {
   input_arguments arguments = parse_cli_arguments(argc, argv);
 
-  std::vector<tree_t> trees =
-      get_trees(arguments.filepath, arguments.pseudo_count_amount);
+  std::vector<tree_t> trees;
 
+  if (arguments.outpath.empty()) {
+    std::cerr << "Error: " << arguments.outpath << " is not a file.";
+    return EXIT_FAILURE;
+  }
   if (!std::filesystem::exists(arguments.filepath)) {
     std::cerr << "Error: " << arguments.filepath << " is not a file.";
     return EXIT_FAILURE;
   }
   if (!std::filesystem::exists(arguments.sequence_list)) {
     std::cerr << "Error: " << arguments.sequence_list << " is not a file.";
+    return EXIT_FAILURE;
+  }
+
+  if (arguments.filepath.extension() == ".h5" ||
+      arguments.filepath.extension() == ".hdf5") {
+
+    HighFive::File file{arguments.filepath, HighFive::File::ReadOnly};
+    trees = get_trees(file, arguments.pseudo_count_amount);
+  } else if (arguments.filepath.extension() == ".tree" ||
+             arguments.filepath.extension() == ".bintree") {
+    pst::ProbabilisticSuffixTreeMap<seqan3::dna5> tree{
+        arguments.filepath, arguments.pseudo_count_amount};
+
+    trees = std::vector<tree_t>{std::move(tree)};
+  } else {
+    std::cerr << "Error: " << arguments.filepath
+              << " has invalid extension, and can't be parsed.";
     return EXIT_FAILURE;
   }
 
@@ -212,35 +222,40 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
-  auto [scores, ids] = score_sequences_paths(
-      trees, sequence_list, arguments.background_order,
-      arguments.score_both_sequence_directions, arguments.background_adjusted);
+  auto [scores, ids] = score_sliding_windows(
+      trees, sequence_list, arguments.background_order, arguments.window_size,
+      arguments.background_adjusted);
 
-  if (arguments.outpath.empty()) {
-    for (int i = 0; i < trees.size(); i++) {
-      for (int j = 0; j < trees.size(); j++) {
-        std::cout << scores[i][j] << " ";
+  HighFive::File out_file{arguments.outpath, HighFive::File::OpenOrCreate};
+
+  if (!out_file.exist("windows")) {
+    std::vector<size_t> dims{scores.size(),
+                             static_cast<size_t>(scores[0].size())};
+    out_file.createGroup("windows");
+  }
+  auto windows_group = out_file.getGroup("windows");
+  for (int i = 0; i < ids.size(); i++) {
+    auto id_ = ids[i];
+    if (!windows_group.exist(id_)) {
+
+      windows_group.createGroup(id_);
+    }
+    auto id_group = windows_group.getGroup(id_);
+    for (int j = 0; j < trees.size(); j++) {
+      auto tree_name = trees[j].id;
+      if (!id_group.exist(tree_name)) {
+        std::vector<size_t> dims{scores.size(),
+                                 static_cast<size_t>(scores[0].size())};
+        id_group.createGroup(tree_name);
       }
-      std::cout << std::endl;
+      auto tree_group = id_group.getGroup(tree_name);
+      if (!tree_group.exist("window_scores")) {
+        tree_group.createDataSet<double>(
+            "window_scores", HighFive::DataSpace::From(scores[i][j]));
+      }
+      auto scores_dataset = tree_group.getDataSet("window_scores");
+      scores_dataset.write(scores[i][j]);
     }
-  } else {
-    HighFive::File out_file{arguments.outpath,
-                            HighFive::File::ReadWrite | HighFive::File::Create};
-
-    if (!out_file.exist("scores")) {
-      std::vector<size_t> dims{scores.size(),
-                               static_cast<size_t>(scores[0].size())};
-      out_file.createDataSet<double>("scores", HighFive::DataSpace(dims));
-    }
-    auto scores_dataset = out_file.getDataSet("scores");
-    scores_dataset.write(scores);
-
-    if (!out_file.exist("ids")) {
-      out_file.createDataSet<std::string>("ids",
-                                          HighFive::DataSpace::From(ids));
-    }
-    auto ids_dataset = out_file.getDataSet("ids");
-    ids_dataset.write(ids);
   }
 
   return EXIT_SUCCESS;
