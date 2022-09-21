@@ -210,6 +210,13 @@ public:
     this->set_root_state();
   }
 
+  void set_root_state() {
+    auto root_iter = this->counts.find("");
+    if (root_iter != this->counts.end()) {
+      this->root_state = root_iter->second;
+    }
+  }
+
   /*! \brief Construct tree
    * Constructs the PST by applying the support and similarity pruning
    * steps from the VOMC construction algorithm.
@@ -1228,7 +1235,18 @@ public:
    *
    * \return The number of nodes in the tree.
    */
-  size_t nodes_in_tree() { return this->counts.size(); }
+  size_t nodes_in_tree() {
+    std::atomic<size_t> n_terminal_nodes = 0;
+
+    for (auto &[node, v] : this->counts) {
+      bool included = v.is_included;
+      if (included) {
+        n_terminal_nodes += 1;
+      }
+    }
+
+    return n_terminal_nodes;
+  }
 
   /**! \brief Determine if a node should be included in the tree.
    * \details
@@ -1397,13 +1415,6 @@ public:
       return 0;
     } else {
       return search->second.count;
-    }
-  }
-
-  void set_root_state() {
-    auto root_iter = this->counts.find("");
-    if (root_iter != this->counts.end()) {
-      this->root_state = root_iter->second;
     }
   }
 };

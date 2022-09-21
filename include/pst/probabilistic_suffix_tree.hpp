@@ -232,7 +232,7 @@ public:
     tree_string << "Tree: PST" << std::endl;
     tree_string << "Alphabet: " << lst::get_alphabet_name<alphabet_t>()
                 << std::endl;
-    tree_string << "Number(nodes): " << nodes_in_tree() << std::endl;
+    tree_string << "Number(nodes): " << this->nodes_in_tree() << std::endl;
 
     auto n_parameters =
         this->count_terminal_nodes() * (valid_characters.size() - 1);
@@ -1011,7 +1011,7 @@ public:
     std::atomic_size_t n_nodes = 0;
     this->pst_breadth_first_iteration(
         [&](size_t node_index, size_t level) -> bool {
-          if (is_included(node_index)) {
+          if (this->is_included(node_index)) {
             n_nodes += 1;
           }
           return true;
