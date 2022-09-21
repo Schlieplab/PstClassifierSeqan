@@ -124,25 +124,26 @@ std::vector<std::vector<double>> sliding_windows_background(
 
   return details::sliding_windows_<alphabet_t>(
       tree, sequence, window_sizes,
-      details::scoring::specialise_background_log_transition_prob<alphabet_t>(background_order));
+      details::scoring::specialise_background_log_transition_prob<alphabet_t>(
+          background_order));
 }
 
 template <seqan3::alphabet alphabet_t>
-std::vector<std::vector<double>>
+std::vector<double>
 sliding_windows(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
                 std::string &sequence, int window_size) {
   std::vector<int> window_sizes{window_size};
-  return sliding_windows(tree, sequence, window_sizes);
+  return sliding_windows(tree, sequence, window_sizes)[0];
 }
 
 template <seqan3::alphabet alphabet_t>
-std::vector<std::vector<double>>
+std::vector<double>
 sliding_windows_background(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
                            std::string &sequence, int window_size,
                            int background_order) {
   std::vector<int> window_sizes{window_size};
   return sliding_windows_background(tree, sequence, window_sizes,
-                                    background_order);
+                                    background_order)[0];
 }
 } // namespace pst::distances
 
@@ -159,7 +160,7 @@ sliding_windows_cpp(std::string tree_string, std::string sequence,
 
 static std::vector<std::vector<double>>
 sliding_windows_background_cpp(std::string tree_string, std::string sequence,
-                               const std::vector<int>& window_sizes,
+                               const std::vector<int> &window_sizes,
                                int background_order) {
   tree_t tree{tree_string};
 

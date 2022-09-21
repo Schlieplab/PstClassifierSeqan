@@ -94,19 +94,41 @@ parse_sliding_window_function(size_t n_sequences, bool background_adjusted,
             tree_t &tree,
             std::vector<seqan3::dna5> &sequence) -> std::vector<double> {
       auto seq = to_string(sequence);
+      std::string reverse_seq(seq);
+      std::reverse(reverse_seq.begin(), reverse_seq.end());
+
       auto windows = pst::distances::sliding_windows_background<seqan3::dna5>(
           tree, seq, window_size, background_order);
-      return windows[0];
+      auto reverse_windows =
+          pst::distances::sliding_windows_background<seqan3::dna5>(
+              tree, reverse_seq, window_size, background_order);
+
+      for (int i = 0; i < windows.size(); i++) {
+        windows[i] = std::min(windows[i],
+                              reverse_windows[reverse_windows.size() - 1 - i]);
+      }
+
+      return windows;
     };
   } else {
     sliding_window_fun =
-        [window_size, background_order](
+        [window_size](
             tree_t &tree,
             std::vector<seqan3::dna5> &sequence) -> std::vector<double> {
       auto seq = to_string(sequence);
+      std::string reverse_seq(seq);
+      std::reverse(reverse_seq.begin(), reverse_seq.end());
       auto windows =
           pst::distances::sliding_windows<seqan3::dna5>(tree, seq, window_size);
-      return windows[0];
+      auto reverse_windows = pst::distances::sliding_windows<seqan3::dna5>(
+          tree, reverse_seq, window_size);
+
+      for (int i = 0; i < windows.size(); i++) {
+        std::cout << windows[i] << " " << reverse_windows[reverse_windows.size() - 1 - i] << std::endl;
+        windows[i] = std::min(windows[i],
+                              reverse_windows[reverse_windows.size() - 1 - i]);
+      }
+      return windows;
     };
   }
 
@@ -148,9 +170,6 @@ score_sliding_windows(std::vector<tree_t> &trees,
         sliding_window_function =
             parse_sliding_window_function(sequences.size(), background_adjusted,
                                           background_order, window_size);
-
-    indicators::DynamicProgress<indicators::ProgressBar> bars{};
-    bars.set_option(indicators::option::HideBarWhenComplete{true});
 
     auto fun = [&](size_t start_index, size_t stop_index) {
       for (size_t i = 0; i < trees.size(); i++) {
