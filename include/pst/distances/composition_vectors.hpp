@@ -167,8 +167,8 @@ inline Eigen::VectorXd composition_vector_state_probability_scaled(
   for (auto &context : contexts) {
     auto [state, val] = tree.get_closest_state(context);
 
-    double state_probability = double(tree.counts[state].count) /
-                               double(tree.counts[""].count);
+    double state_probability =
+        double(tree.counts[state].count) / double(tree.counts[""].count);
 
     const auto background_context =
         get_background_context(state, background_order);
@@ -240,6 +240,40 @@ void iterate_included_in_both(
 
     if (included_in_both) {
       f(context, left_v, right_v);
+    }
+  }
+}
+
+template <seqan3::alphabet alphabet_t>
+void iterate_contexts(
+    ProbabilisticSuffixTreeMap<alphabet_t> &left,
+    ProbabilisticSuffixTreeMap<alphabet_t> &right,
+    const std::function<void(const std::string &,
+                             const hashmap_value<alphabet_t> &,
+                             const hashmap_value<alphabet_t> &)> &in_both_f,
+    const std::function<void(const std::string &,
+                             const hashmap_value<alphabet_t> &)> &in_left_f,
+    const std::function<void(const std::string &,
+                             const hashmap_value<alphabet_t> &)> &in_right_f) {
+  for (auto &[context, left_v] : left.counts) {
+    auto [included_in_both, right_v] =
+        is_included_in_both(left, right, context, left_v);
+
+    if (included_in_both) {
+      in_both_f(context, left_v, right_v);
+    } else {
+      in_left_f(context, left_v);
+    }
+  }
+
+  for (auto &[context, right_v] : right.counts) {
+    auto [included_in_both, _] =
+        is_included_in_both(left, right, context, right_v);
+
+    // Have already found the shared contexts, now need to yield the contexts
+    // that are unique to right
+    if (!included_in_both) {
+      in_right_f(context, right_v);
     }
   }
 }

@@ -8,6 +8,8 @@
 #include "pst/kl_tree.hpp"
 #include "pst/kl_tree_map.hpp"
 
+#include "robin_hood.h"
+
 #include "random_sequence.hpp"
 
 class D2StarBenchmarks : public benchmark::Fixture {
@@ -176,7 +178,8 @@ BENCHMARK_F(D2StarBenchmarks, DvstarInclude)
   auto left_v = sakai.counts[context];
   for (auto _ : state) {
     size_t i = 0;
-    pst::distances::details::is_included_in_both<seqan3::dna5>(sakai, ed1a, context, left_v);
+    pst::distances::details::is_included_in_both<seqan3::dna5>(sakai, ed1a,
+                                                               context, left_v);
   }
 }
 
@@ -382,21 +385,22 @@ static void HashMapScore(benchmark::State &state) {
 
 BENCHMARK(HashMapScore);
 
-//static void TreeScore(benchmark::State &state) {
-//  using seqan3::operator""_dna5;
-//  std::vector<seqan3::dna5> sequence = random_sequence(50000);
+// static void TreeScore(benchmark::State &state) {
+//   using seqan3::operator""_dna5;
+//   std::vector<seqan3::dna5> sequence = random_sequence(50000);
 //
-//  pst::KullbackLieblerTree<seqan3::dna5> tree{"Tree", sequence, 7, 2,
-//                                              3.9075, false,    2};
-//  tree.construct_tree();
+//   pst::KullbackLieblerTree<seqan3::dna5> tree{"Tree", sequence, 7, 2,
+//                                               3.9075, false,    2};
+//   tree.construct_tree();
 //
-//  for (auto _ : state) {
-//    benchmark::DoNotOptimize(
-//        pst::distances::negative_log_likelihood<seqan3::dna5>(tree, sequence));
-//  }
-//}
+//   for (auto _ : state) {
+//     benchmark::DoNotOptimize(
+//         pst::distances::negative_log_likelihood<seqan3::dna5>(tree,
+//         sequence));
+//   }
+// }
 //
-//BENCHMARK(TreeScore);
+// BENCHMARK(TreeScore);
 
 static void KL_AllContexts(benchmark::State &state) {
   std::filesystem::path first_path{"./../trees/CM008035.1.tree"};
@@ -452,5 +456,56 @@ static void KL_(benchmark::State &state) {
   }
 }
 BENCHMARK(KL_);
+
+static void HashFind(benchmark::State &state) {
+  std::filesystem::path first_path{"ecoli-15-2-0.bintree"};
+  pst::KullbackLieblerTreeMap<seqan3::dna5> first{first_path};
+
+  std::string context{"ACGT"};
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(first.counts.find(context));
+  }
+}
+BENCHMARK(HashFind);
+
+static void Hash(benchmark::State &state) {
+  std::filesystem::path first_path{"ecoli-15-2-0.bintree"};
+  pst::KullbackLieblerTreeMap<seqan3::dna5> first{first_path};
+
+  std::string context{"ACGT"};
+  auto hash_f = robin_hood::hash<std::string>{};
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(hash_f(context));
+  }
+}
+BENCHMARK(Hash);
+
+static void HashIncludedInBoth(benchmark::State &state) {
+  std::filesystem::path first_path{"ecoli-15-2-0.bintree"};
+  pst::KullbackLieblerTreeMap<seqan3::dna5> first{first_path};
+
+  std::string context{"GTACGCCGTCTGCGT"};
+  auto v_ = first.counts.find(context);
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(
+        pst::distances::details::is_included_in_both<seqan3::dna5>(
+            first, first, context, v_->second));
+  }
+}
+BENCHMARK(HashIncludedInBoth);
+
+static void HashIterateBoth(benchmark::State &state) {
+  std::filesystem::path first_path{"ecoli-15-2-0.bintree"};
+  pst::KullbackLieblerTreeMap<seqan3::dna5> first{first_path};
+
+  for (auto _ : state) {
+    pst::distances::details::iterate_included_in_both<seqan3::dna5>(
+        first, first, [&](auto &context, auto &first_v, auto &second_v) {
+          benchmark::DoNotOptimize(first_v.is_included);
+          benchmark::DoNotOptimize(second_v.is_included);
+        });
+  }
+}
+BENCHMARK(HashIterateBoth);
 
 BENCHMARK_MAIN();

@@ -15,7 +15,7 @@
 #include "pst/distances/dvstar.hpp"
 #include "pst/distances/kl_divergence.hpp"
 #include "pst/distances/score.hpp"
-#include "pst/distances/sliding_windows.hpp"
+#include "pst/distances/sliding-windows.hpp"
 #include "pst/kl_tree_map.hpp"
 
 #include "pst/kl_tree.hpp"
@@ -428,10 +428,40 @@ TEST_F(DistancesTest, dvstarRegression) {
 }
 
 
+TEST_F(DistancesTest, dvstarPenalizedRegression) {
+
+  pst::KullbackLieblerTreeMap<seqan3::dna5> left{"NC_001497.bintree"};
+  pst::KullbackLieblerTreeMap<seqan3::dna5> second{"NC_028367.bintree"};
+
+  auto dist = pst::distances::penalized_dvstar(left, second, 0);
+  EXPECT_FLOAT_EQ(dist, 0.0446197);
+}
+
+
+TEST_F(DistancesTest, dvstarMissingRegression) {
+
+  pst::KullbackLieblerTreeMap<seqan3::dna5> left{"NC_001497.bintree"};
+  pst::KullbackLieblerTreeMap<seqan3::dna5> second{"NC_028367.bintree"};
+
+  auto dist = pst::distances::nearest_dvstar(left, second, 0);
+  EXPECT_FLOAT_EQ(dist, 0.0446197);
+}
+
+
 TEST_F(DistancesTest, dvstarRegression2) {
 
   pst::KullbackLieblerTreeMap<seqan3::dna5> left{"NC_045512.bintree"};
   pst::KullbackLieblerTreeMap<seqan3::dna5> second{"NC_028367.bintree"};
+
+  auto dist = pst::distances::dvstar(left, second, 0);
+  EXPECT_FLOAT_EQ(dist, 0.15452552);
+}
+
+
+TEST_F(DistancesTest, dvstarRegressionbig) {
+
+  pst::KullbackLieblerTreeMap<seqan3::dna5> left{"ecoli-15-2-0.bintree"};
+  pst::KullbackLieblerTreeMap<seqan3::dna5> second{"ecoli-15-2-0.bintree"};
 
   auto dist = pst::distances::dvstar(left, second, 0);
   EXPECT_FLOAT_EQ(dist, 0.014657059);

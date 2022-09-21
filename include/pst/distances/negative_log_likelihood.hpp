@@ -33,17 +33,39 @@ double log_transition_prob(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 }
 
 template <seqan3::alphabet alphabet_t>
+double
+transition_prob_max_adjusted(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
+                             const std::string &context,
+                             const hashmap_value<alphabet_t> &val, char char_) {
+  double probability = tree.get_transition_probability(val, char_);
+
+  double max_prob = 0.0;
+  double min_prob = 1.0;
+
+  for (auto &c : tree.valid_characters) {
+    double p = tree.get_transition_probability(val, c);
+    max_prob = std::max(p, max_prob);
+    min_prob = std::min(p, min_prob);
+  }
+  if (probability == 0.0) {
+    return 0.0;
+  } else {
+    return probability;
+  }
+}
+
+template <seqan3::alphabet alphabet_t>
 double background_log_transition_prob(
     ProbabilisticSuffixTreeMap<alphabet_t> &tree, const std::string &context,
     const hashmap_value<alphabet_t> &val, char char_, int background_order) {
 
   std::string_view context_in;
-  if (background_order != 0 && background_order < context.size()){
+  if (background_order != 0 && background_order < context.size()) {
     context_in = context.substr(context.size() - background_order);
   }
 
-  auto [background_context, background_val] = tree.get_closest_state(
-      context_in);
+  auto [background_context, background_val] =
+      tree.get_closest_state(context_in);
 
   double probability = tree.get_transition_probability(val, char_);
   double background_probability =

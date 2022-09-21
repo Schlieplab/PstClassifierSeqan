@@ -24,6 +24,7 @@
 #include "pst/distances/d2star.hpp"
 #include "pst/distances/dvstar.hpp"
 #include "pst/distances/kl_divergence.hpp"
+#include "pst/distances/other_distances.hpp"
 #include "pst/distances/parallelize.hpp"
 #include "pst/probabilistic_suffix_tree_map.hpp"
 
@@ -66,7 +67,8 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
   parser.add_option(
       arguments.distance_name, 'n', "distance-name",
       "Name of distance function.  Must be one of 'd2', "
-      "'d2star', 'dvstar', 'kl', 'kl-both', 'nll', 'cv' and 'cv-estimation'");
+      "'d2star', 'dvstar', 'nearest-dvstar', 'penalized-dvstar', 'kl', "
+      "'kl-both', 'nll', 'nll-background', 'cv' and 'cv-estimation'");
   parser.add_option(arguments.order, 'o', "order",
                     "Length of contexts/sequence in distances 'cv-estimation', "
                     "'nll', and 'kl'.");
@@ -163,6 +165,20 @@ parse_distance_function(input_arguments &arguments) {
                                                   arguments.background_order);
     };
     return {fun, "dvstar-" + std::to_string(arguments.background_order)};
+  } else if (arguments.distance_name == "penalized-dvstar") {
+    auto fun = [&](auto &left, auto &right) {
+      return pst::distances::penalized_dvstar<seqan3::dna5>(
+          left, right, arguments.background_order);
+    };
+    return {fun,
+            "penalized-dvstar-" + std::to_string(arguments.background_order)};
+  } else if (arguments.distance_name == "nearest-dvstar") {
+    auto fun = [&](auto &left, auto &right) {
+      return pst::distances::nearest_dvstar<seqan3::dna5>(
+          left, right, arguments.background_order);
+    };
+    return {fun,
+            "nearest-dvstar-" + std::to_string(arguments.background_order)};
   } else if (arguments.distance_name == "d2star") {
     auto fun = [&](auto &left, auto &right) {
       return pst::distances::d2star<seqan3::dna5>(left, right,
@@ -186,14 +202,50 @@ parse_distance_function(input_arguments &arguments) {
                                                                         right);
     };
     return {fun, "kl-both"};
-  }
-
-  else if (arguments.distance_name == "nll") {
+  } else if (arguments.distance_name == "kl-both-background") {
+    auto fun = [&](auto &left, auto &right) {
+      return pst::distances::symmetric_kl_divergence_both_background<
+          seqan3::dna5>(left, right);
+    };
+    return {fun, "kl-both-background"};
+  } else if (arguments.distance_name == "jensenshannon") {
+    auto fun = [&](auto &left, auto &right) {
+      return pst::distances::jensenshannon<seqan3::dna5>(left, right);
+    };
+    return {fun, arguments.distance_name};
+  } else if (arguments.distance_name == "canberra") {
+    auto fun = [&](auto &left, auto &right) {
+      return pst::distances::canberra<seqan3::dna5>(left, right);
+    };
+    return {fun, arguments.distance_name};
+  } else if (arguments.distance_name == "correlation") {
+    auto fun = [&](auto &left, auto &right) {
+      return pst::distances::correlation<seqan3::dna5>(left, right);
+    };
+    return {fun, arguments.distance_name};
+  } else if (arguments.distance_name == "jaccard") {
+    auto fun = [&](auto &left, auto &right) {
+      return pst::distances::jaccard_estimation<seqan3::dna5>(left, right);
+    };
+    return {fun, arguments.distance_name};
+  } else if (arguments.distance_name == "jaccard-prob") {
+    auto fun = [&](auto &left, auto &right) {
+      return pst::distances::jaccard_estimation_prob<seqan3::dna5>(left, right);
+    };
+    return {fun, arguments.distance_name};
+  } else if (arguments.distance_name == "nll") {
     auto fun = [&](auto &left, auto &right) {
       return pst::distances::negative_log_likelihood<seqan3::dna5>(
           left, right, arguments.order);
     };
     return {fun, "nll-" + std::to_string(arguments.order)};
+  } else if (arguments.distance_name == "nll-background") {
+    auto fun = [&](auto &left, auto &right) {
+      return pst::distances::negative_log_likelihood_background<seqan3::dna5>(
+          left, right, arguments.order, arguments.background_order);
+    };
+    return {fun, "nll-" + std::to_string(arguments.order) + "-background-" +
+                     std::to_string(arguments.background_order)};
   }
 
   throw std::invalid_argument("Invalid distance function name.");
