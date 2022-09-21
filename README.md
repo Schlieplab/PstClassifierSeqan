@@ -8,8 +8,8 @@ correspondence to the VLMC.
 In support pruning, we select only those branches which are at most _d_ deep (_k_-mer is at most _d_ long), and occur at
 least _c_ times in the sequence. This is implemented in practice using a Lazy Suffix Tree (using the WOTD algorithm
 described by [Giegerich et al.](https://doi.org/10.1002/spe.535)). The suffix tree is extended with implicit nodes and
-suffix links. See [search/lazy_suffix_tree.hpp](src/search/lazy_suffix_tree.hpp)
-and [search/lazy_suffix_tree/](src/search/lazy_suffix_tree/) for the implementation details.
+suffix links. See [search/lazy_suffix_tree.hpp](include/pst/search/lazy_suffix_tree.hpp)
+and [search/lazy_suffix_tree/](include/pst/search/lazy_suffix_tree/) for the implementation details.
 
 The similarity pruning proceeds to compute the forward probabilities (probability of a character _a_ occurring after a
 context _c_), and then prunes the tree bottom-up. The pruning uses the Kullback-Leibler estimator for calculation of
@@ -47,11 +47,11 @@ Equivalently, if `CP007136.1.fa` was a multi-fasta file,
 ./pst-score-sequences -p trees.h5 -s CP007136.1.fa
 ```
 
-To use the VLMC in a c++ project, copy the corresponding header files, make sure SeqAn3 is installed. Example usage:
+To use the VLMC in a c++ project, include the corresponding header files (in include/), make sure SeqAn3 is installed. Example usage:
 
 ```cpp
-#include "probabilistic_suffix_tree.hpp"
-#include "distances/negative_log_likelihood.hpp"
+#include "pst/probabilistic_suffix_tree.hpp"
+#include "pst/distances/negative_log_likelihood.hpp"
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 
 int main() {
