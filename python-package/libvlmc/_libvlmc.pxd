@@ -11,7 +11,7 @@ cdef const char *train_kl(const char *id_, const char *sequence_, size_t max_dep
 
 cpdef str train(str name, str sequence, int max_depth, int min_count, int threshold, bool multi_core, int parallel_depth)
 
-cdef vector[vector[double]] score_cpp(vector[string] tree_strings, vector[string] sequence_list)
+cdef vector[vector[double]] score_cpp(const vector[string]& tree_strings, const vector[string]& sequence_list)
 
 cpdef vector[vector[double]] score_sequences_cython(list trees, list sequence_list)
 cpdef score_sequences(trees, sequence_list)

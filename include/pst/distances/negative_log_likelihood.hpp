@@ -109,7 +109,7 @@ std::string get_reverse_complement(const std::string &forward) {
 template <seqan3::alphabet alphabet_t>
 std::tuple<double, size_t>
 log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                    std::vector<alphabet_t> &sequence_dna, size_t start,
+                    const std::vector<alphabet_t> &sequence_dna, size_t start,
                     size_t end,
                     const scoring::score_signature<alphabet_t> &score_fun,
                     const size_t max_depth) {
@@ -151,7 +151,7 @@ log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 template <seqan3::alphabet alphabet_t>
 std::tuple<double, size_t>
 log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                    std::vector<alphabet_t> &sequence_dna, size_t start,
+                    const std::vector<alphabet_t> &sequence_dna, size_t start,
                     size_t end,
                     const scoring::score_signature<alphabet_t> &score_fun) {
   auto max_depth = tree.get_max_order();
@@ -162,7 +162,7 @@ log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 template <seqan3::alphabet alphabet_t>
 std::tuple<double, size_t>
 log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                    std::vector<alphabet_t> &sequence_dna, size_t start,
+                    const std::vector<alphabet_t> &sequence_dna, size_t start,
                     size_t end) {
   return log_likelihood_part(tree, sequence_dna, start, end,
                              scoring::log_transition_prob<alphabet_t>);
@@ -171,7 +171,7 @@ log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 template <seqan3::alphabet alphabet_t>
 double
 log_likelihood_part_dna(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                        std::vector<alphabet_t> &sequence_dna, size_t start,
+                        const std::vector<alphabet_t> &sequence_dna, size_t start,
                         size_t end,
                         const scoring::score_signature<alphabet_t> &score_fun) {
   return std::get<0>(
@@ -270,6 +270,27 @@ double likelihood_context(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 namespace pst::distances {
 
 template <seqan3::alphabet alphabet_t>
+double log_likelihood_s(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
+                        const std::string &sequence) {
+  size_t order_max = tree.get_max_order();
+
+  auto [log_likelihood, _l] =
+      details::log_likelihood_part<alphabet_t>(tree, sequence);
+  return log_likelihood;
+}
+
+template <seqan3::alphabet alphabet_t>
+double max_adjusted_likelihood_s(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
+                                 const std::string &sequence) {
+  size_t order_max = tree.get_max_order();
+
+  auto [log_likelihood, _l] = details::log_likelihood_part<alphabet_t>(
+      tree, sequence, 0, sequence.size(),
+      details::scoring::transition_prob_max_adjusted<alphabet_t>);
+  return log_likelihood;
+}
+
+template <seqan3::alphabet alphabet_t>
 double log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
                       const std::string &sequence) {
   size_t order_max = tree.get_max_order();
@@ -299,7 +320,7 @@ double log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 template <seqan3::alphabet alphabet_t>
 double
 log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-               std::vector<alphabet_t> &sequence_dna,
+               const std::vector<alphabet_t> &sequence_dna,
                const details::scoring::score_signature<alphabet_t> &score_fun) {
   auto bounds = pst::parallelize::get_bounds(sequence_dna.size());
   std::vector<std::future<double>> part_futures{};
@@ -336,7 +357,7 @@ double negative_log_likelihood_p(
 template <seqan3::alphabet alphabet_t>
 double negative_log_likelihood(
     ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-    std::vector<alphabet_t> &sequence_dna,
+    const std::vector<alphabet_t> &sequence_dna,
     const details::scoring::score_signature<alphabet_t> &score_fun) {
 
   auto [score, length] = details::log_likelihood_part(
@@ -346,9 +367,11 @@ double negative_log_likelihood(
 }
 
 template <seqan3::alphabet alphabet_t>
-double negative_log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                               const std::string &sequence, const details::scoring::score_signature<alphabet_t> &score_fun) {
-  auto [score, length] = details::log_likelihood_part(tree, sequence, 0, sequence.size(), score_fun);
+double negative_log_likelihood(
+    ProbabilisticSuffixTreeMap<alphabet_t> &tree, const std::string &sequence,
+    const details::scoring::score_signature<alphabet_t> &score_fun) {
+  auto [score, length] = details::log_likelihood_part(
+      tree, sequence, 0, sequence.size(), score_fun);
   return -score / double(length);
 }
 
@@ -361,14 +384,14 @@ double negative_log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 
 template <seqan3::alphabet alphabet_t>
 double negative_log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                               std::vector<alphabet_t> &sequence_dna) {
+                               const std::vector<alphabet_t> &sequence_dna) {
   return negative_log_likelihood(
       tree, sequence_dna, details::scoring::log_transition_prob<alphabet_t>);
 }
 
 template <seqan3::alphabet alphabet_t>
 double negative_log_likelihood(ProbabilisticSuffixTree<alphabet_t> &tree,
-                               std::vector<alphabet_t> &sequence_dna) {
+                               const std::vector<alphabet_t> &sequence_dna) {
   // Example:
   // Tree edges:  ACGT -> ACGTT
   // Reverse edges:  ACGT -> CGT
@@ -424,7 +447,7 @@ double negative_log_likelihood(ProbabilisticSuffixTree<alphabet_t> &tree,
 template <seqan3::alphabet alphabet_t>
 double negative_log_likelihood_symmetric_(
     ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-    std::vector<alphabet_t> &sequence,
+    const std::vector<alphabet_t> &sequence,
     const details::scoring::score_signature<alphabet_t> &score_fun) {
   std::vector<alphabet_t> reverse_sequence =
       sequence | std::views::reverse | seqan3::views::complement |
@@ -438,10 +461,21 @@ double negative_log_likelihood_symmetric_(
 template <seqan3::alphabet alphabet_t>
 double
 negative_log_likelihood_symmetric(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                                  std::vector<alphabet_t> &sequence) {
+                                  const std::vector<alphabet_t> &sequence) {
 
   return negative_log_likelihood_symmetric_<alphabet_t>(
       tree, sequence, details::scoring::log_transition_prob<alphabet_t>);
+}
+
+template <seqan3::alphabet alphabet_t>
+double
+negative_log_likelihood_symmetric_string(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
+                                  const std::string &sequence) {
+  auto reverse_sequence = details::get_reverse_complement(sequence);
+
+  return std::min(
+      negative_log_likelihood<alphabet_t>(tree, sequence),
+      negative_log_likelihood<alphabet_t>(tree, reverse_sequence));
 }
 
 template <seqan3::alphabet alphabet_t>

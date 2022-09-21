@@ -1,6 +1,7 @@
 FROM python:3.10-bullseye as python310
 
 COPY src /PstClassifierSeqan/src
+COPY include /PstClassifierSeqan/include
 COPY seqan3 /PstClassifierSeqan/seqan3
 COPY robin-hood-hashing /PstClassifierSeqan/robin-hood-hashing
 COPY HighFive /PstClassifierSeqan/HighFive
@@ -24,6 +25,7 @@ RUN python3.10 setup.py bdist_wheel
 FROM python:3.9-bullseye as python39
 
 COPY src /PstClassifierSeqan/src
+COPY include /PstClassifierSeqan/include
 COPY seqan3 /PstClassifierSeqan/seqan3
 COPY robin-hood-hashing /PstClassifierSeqan/robin-hood-hashing
 COPY HighFive /PstClassifierSeqan/HighFive

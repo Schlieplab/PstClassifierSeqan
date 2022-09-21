@@ -58,10 +58,10 @@ cpdef str train(str name, str sequence, int max_depth, int min_count, int thresh
     return tree.decode("utf-8")
 
 
-cdef extern from "../../src/distances/score.hpp" namespace "pst":
-    vector[vector[double]] score_cpp(vector[string] tree_strings, vector[string] sequence_list)
+cdef extern from "../../include/pst/distances/score.hpp" namespace "pst":
+    vector[vector[double]] score_cpp(const vector[string]& tree_strings, const vector[string]& sequence_list)
 
-cdef extern from "../../src/distances/sliding_windows.hpp" namespace "pst":
+cdef extern from "../../include/pst/distances/sliding-windows.hpp" namespace "pst":
     vector[vector[double]] sliding_windows_cpp(string tree_string, string sequence, vector[int] window_sizes)
     vector[vector[double]] sliding_windows_background_cpp(string tree_string, string sequence, vector[int] window_sizes, int background_order)
 
@@ -105,16 +105,16 @@ cpdef sliding_windows_background(tree, sequence, window_sizes, background_order)
     return np.array(sliding_windows_background_cython(tree, sequence, window_sizes, background_order))
 
 
-cdef extern from "../../src/distances/d2.hpp" namespace "pst::distances":
+cdef extern from "../../include/pst/distances/d2.hpp" namespace "pst::distances":
     double d2_cpp(string left_string, string right_string)
 
-cdef extern from "../../src/distances/d2star.hpp" namespace "pst::distances":
+cdef extern from "../../include/pst/distances/d2star.hpp" namespace "pst::distances":
     double d2star_cpp(string left_string, string right_string, int background_order)
 
-cdef extern from "../../src/distances/dvstar.hpp" namespace "pst::distances":
+cdef extern from "../../include/pst/distances/dvstar.hpp" namespace "pst::distances":
     double dvstar_cpp(string left_string, string right_string, int background_order)
 
-cdef extern from "../../src/distances/cv.hpp" namespace "pst::distances":
+cdef extern from "../../include/pst/distances/cv.hpp" namespace "pst::distances":
     double cv_cpp(string left_string, string right_string, int background_order)
 
 cpdef double d2(str left_tree, str right_tree):

@@ -28,4 +28,6 @@ include_directories("${CMAKE_SOURCE_DIR}/../indicators/include")
 add_subdirectory("${CMAKE_SOURCE_DIR}/../vlmc-from-kmers" "vlmc-from-kmers")
 include_directories("${CountVLMC_INCLUDE_DIRS}")
 
+include_directories("${CMAKE_SOURCE_DIR}/../include/")
+
 add_subdirectory(libvlmc)

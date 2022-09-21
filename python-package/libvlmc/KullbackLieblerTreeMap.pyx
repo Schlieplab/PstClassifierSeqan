@@ -24,6 +24,9 @@ cdef class pyKullbackLieblerTreeMap:
     def get_transition_probability(self, label: str, character: str):
         return self.c_vlmc.get_transition_probability(label, character)
 
+    def generate_sequence(self, length: int) -> str:
+        return self.c_vlmc.generate_sequence(length).decode()
+
 
 # def negative_log_likelihood(left: list[pyKullbackLieblerTreeMap], right: list[str], background_order: int = 0) -> float:
 #     return score_sequences([l.c_vlmc for l in left], [r.encode() for r in right], background_order)
