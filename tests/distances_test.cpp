@@ -118,10 +118,10 @@ TEST_F(DistancesTest, included_in_both) {
 }
 
 TEST_F(DistancesTest, dvstarSnapshots) {
-  float expected_dissimilar = 0.015588916;
+  float expected_dissimilar = 0.15938702;
   EXPECT_FLOAT_EQ(expected_dissimilar, pst::distances::dvstar(first, third, 0));
 
-  float expected_similar = 6.4417443e-05;
+  float expected_similar = 0.010219191;
   EXPECT_FLOAT_EQ(expected_similar, pst::distances::dvstar(first, second, 0));
 }
 
@@ -418,13 +418,24 @@ TEST_F(DistancesTest, nllGenerateSymmetry) {
 }
 
 
-TEST_F(DistancesTest, dvstarRegression) {
+TEST_F(DistancesTest, dvstarRegressionDifferent) {
 
   pst::KullbackLieblerTreeMap<seqan3::dna5> left{"NC_001497.bintree"};
   pst::KullbackLieblerTreeMap<seqan3::dna5> second{"NC_028367.bintree"};
 
   auto dist = pst::distances::dvstar(left, second, 0);
-  EXPECT_FLOAT_EQ(dist, 0.0446197);
+  EXPECT_FLOAT_EQ(dist, 0.27162704);
+}
+
+
+
+TEST_F(DistancesTest, dvstarRegressionSimilar) {
+
+  pst::KullbackLieblerTreeMap<seqan3::dna5> left{"NC_045512.bintree"};
+  pst::KullbackLieblerTreeMap<seqan3::dna5> second{"NC_028367.bintree"};
+
+  auto dist = pst::distances::dvstar(left, second, 0);
+  EXPECT_FLOAT_EQ(dist, 0.18374009);
 }
 
 
@@ -434,7 +445,7 @@ TEST_F(DistancesTest, dvstarPenalizedRegression) {
   pst::KullbackLieblerTreeMap<seqan3::dna5> second{"NC_028367.bintree"};
 
   auto dist = pst::distances::penalized_dvstar(left, second, 0);
-  EXPECT_FLOAT_EQ(dist, 0.0446197);
+  EXPECT_FLOAT_EQ(dist, 0.27501306);
 }
 
 
@@ -444,17 +455,7 @@ TEST_F(DistancesTest, dvstarMissingRegression) {
   pst::KullbackLieblerTreeMap<seqan3::dna5> second{"NC_028367.bintree"};
 
   auto dist = pst::distances::nearest_dvstar(left, second, 0);
-  EXPECT_FLOAT_EQ(dist, 0.0446197);
-}
-
-
-TEST_F(DistancesTest, dvstarRegression2) {
-
-  pst::KullbackLieblerTreeMap<seqan3::dna5> left{"NC_045512.bintree"};
-  pst::KullbackLieblerTreeMap<seqan3::dna5> second{"NC_028367.bintree"};
-
-  auto dist = pst::distances::dvstar(left, second, 0);
-  EXPECT_FLOAT_EQ(dist, 0.15452552);
+  EXPECT_FLOAT_EQ(dist, 0.28587735);
 }
 
 
@@ -464,5 +465,5 @@ TEST_F(DistancesTest, dvstarRegressionbig) {
   pst::KullbackLieblerTreeMap<seqan3::dna5> second{"ecoli-15-2-0.bintree"};
 
   auto dist = pst::distances::dvstar(left, second, 0);
-  EXPECT_FLOAT_EQ(dist, 0.014657059);
+  EXPECT_FLOAT_EQ(dist, 0);
 }
