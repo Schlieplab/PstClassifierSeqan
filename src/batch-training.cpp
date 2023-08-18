@@ -28,6 +28,7 @@ struct input_arguments {
   std::string estimator{"KL"};
   bool multi_core{true};
   int parallel_depth{1};
+  double pseudo_count_amount{1.0};
 
   std::filesystem::path h5_path{""};
 };
@@ -85,6 +86,11 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
       "parallel-depth."
       "Higher value increase the number of threads spawned. Default 1");
 
+  parser.add_option(arguments.pseudo_count_amount, 'j', "pseudo-count-amount",
+                    "Size of pseudo count for probability estimation, does "
+                    "not work for algorithm-method=='tree'. See e.g. "
+                    "https://en.wikipedia.org/wiki/Additive_smoothing .");
+
   try {
     parser.parse();
   } catch (seqan3::argument_parser_error const &ext) {
@@ -99,7 +105,8 @@ std::string train(lst::details::sequence_t<seqan3::dna5> &sequence,
                   std::string &id, size_t max_depth, size_t min_count,
                   float threshold, size_t number_of_parameters,
                   std::string pruning_method, std::string estimator,
-                  bool multi_core, int parallel_depth) {
+                  bool multi_core, int parallel_depth,
+                  double pseudo_count_amount) {
 
   if (estimator == "KL") {
     pst::KullbackLieblerTreeMap<seqan3::dna5> pst{id,
@@ -110,7 +117,8 @@ std::string train(lst::details::sequence_t<seqan3::dna5> &sequence,
                                                   number_of_parameters,
                                                   pruning_method,
                                                   multi_core,
-                                                  parallel_depth};
+                                                  parallel_depth,
+                                                  pseudo_count_amount};
     pst.construct_tree();
     return pst.to_tree();
   } else {
@@ -131,7 +139,8 @@ int main(int argc, char *argv[]) {
     std::string tree = train(
         seq_, id, arguments.max_depth, arguments.min_count, arguments.threshold,
         arguments.number_of_parameters, arguments.pruning_method,
-        arguments.estimator, arguments.multi_core, arguments.parallel_depth);
+        arguments.estimator, arguments.multi_core, arguments.parallel_depth,
+        arguments.pseudo_count_amount);
     trees.push_back(tree);
   }
 
