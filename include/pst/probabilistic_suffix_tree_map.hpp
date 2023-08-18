@@ -26,7 +26,7 @@
 #include "seqan3/alphabet/nucleotide/dna4.hpp"
 #include "seqan3/alphabet/nucleotide/dna5.hpp"
 #include "seqan3/alphabet/views/all.hpp"
-#include "seqan3/std/filesystem"
+#include <filesystem>
 #include "seqan3/std/ranges"
 #include "seqan3/utility/views/convert.hpp"
 

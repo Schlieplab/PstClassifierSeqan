@@ -15,7 +15,7 @@
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/alphabet/views/to_char.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
-#include <seqan3/std/filesystem>
+#include <filesystem>
 #include <seqan3/std/ranges>
 
 class ProbabilisticSuffixTreeTestMap : public ::testing::Test {

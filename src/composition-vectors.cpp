@@ -7,8 +7,7 @@
 #include <seqan3/argument_parser/argument_parser.hpp>
 #include <string>
 #include <thread>
-
-#include <seqan3/std/filesystem>
+#include <filesystem>
 
 #include "pst/distances/composition_vectors.hpp"
 #include "pst/distances/cv.hpp"

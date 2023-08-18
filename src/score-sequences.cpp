@@ -14,7 +14,7 @@
 #include <seqan3/argument_parser/argument_parser.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 
-#include <seqan3/std/filesystem>
+#include <filesystem>
 
 #include "pst/distances/composition_vectors.hpp"
 #include "pst/distances/negative_log_likelihood.hpp"

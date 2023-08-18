@@ -2,14 +2,13 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 #include <seqan3/alphabet/all.hpp>
 #include <seqan3/argument_parser/argument_parser.hpp>
 #include <seqan3/argument_parser/exceptions.hpp>
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
-
-#include <seqan3/std/filesystem>
 
 #include <vlmc_from_kmers/build_vlmc.hpp>
 #include <vlmc_from_kmers/kmer_container.hpp>

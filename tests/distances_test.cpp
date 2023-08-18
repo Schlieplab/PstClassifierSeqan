@@ -7,7 +7,7 @@
 #include <vector>
 
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
-#include <seqan3/std/filesystem>
+#include <filesystem>
 
 #include "pst/distances/cv.hpp"
 #include "pst/distances/d2.hpp"
