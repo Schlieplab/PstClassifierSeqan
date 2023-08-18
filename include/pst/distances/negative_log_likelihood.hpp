@@ -171,8 +171,8 @@ log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 template <seqan3::alphabet alphabet_t>
 double
 log_likelihood_part_dna(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                        const std::vector<alphabet_t> &sequence_dna, size_t start,
-                        size_t end,
+                        const std::vector<alphabet_t> &sequence_dna,
+                        size_t start, size_t end,
                         const scoring::score_signature<alphabet_t> &score_fun) {
   return std::get<0>(
       log_likelihood_part(tree, sequence_dna, start, end, score_fun));
@@ -468,14 +468,26 @@ negative_log_likelihood_symmetric(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 }
 
 template <seqan3::alphabet alphabet_t>
-double
-negative_log_likelihood_symmetric_string(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
-                                  const std::string &sequence) {
+double negative_log_likelihood_symmetric_string(
+    ProbabilisticSuffixTreeMap<alphabet_t> &tree, const std::string &sequence) {
   auto reverse_sequence = details::get_reverse_complement(sequence);
 
+  return std::min(negative_log_likelihood<alphabet_t>(tree, sequence),
+                  negative_log_likelihood<alphabet_t>(tree, reverse_sequence));
+}
+
+template <seqan3::alphabet alphabet_t>
+double negative_log_likelihood_symmetric_background_string(
+    ProbabilisticSuffixTreeMap<alphabet_t> &tree, const std::string &sequence) {
+  auto reverse_sequence = details::get_reverse_complement(sequence);
+
+  auto transition_fun =
+      details::scoring::specialise_background_log_transition_prob<alphabet_t>(
+          0);
   return std::min(
-      negative_log_likelihood<alphabet_t>(tree, sequence),
-      negative_log_likelihood<alphabet_t>(tree, reverse_sequence));
+      negative_log_likelihood<alphabet_t>(tree, sequence, transition_fun),
+      negative_log_likelihood<alphabet_t>(tree, reverse_sequence,
+                                          transition_fun));
 }
 
 template <seqan3::alphabet alphabet_t>

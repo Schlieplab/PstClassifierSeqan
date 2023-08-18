@@ -112,15 +112,14 @@ score_sequences(std::vector<tree_t> &trees,
   std::vector<std::vector<double>> scores(sequences.size(),
                                           std::vector<double>(trees.size()));
 
-
-  auto fun =
-      [&](size_t start_index, size_t stop_index,
-          indicators::DynamicProgress<indicators::BlockProgressBar> &bars) {
-        score_trees_slice_with_progress(
-            start_index, stop_index, scores, trees, sequences,
-            pst::distances::negative_log_likelihood_symmetric_string<seqan3::dna5>,
-            bars);
-      };
+  auto fun = [&](size_t start_index, size_t stop_index,
+                 indicators::DynamicProgress<indicators::BlockProgressBar>
+                     &bars) {
+    score_trees_slice_with_progress(
+        start_index, stop_index, scores, trees, sequences,
+        pst::distances::negative_log_likelihood_symmetric_string<seqan3::dna5>,
+        bars);
+  };
 
   pst::parallelize::parallelize_with_progress(trees.size(), fun);
 
@@ -139,6 +138,37 @@ score_cpp(const std::vector<std::string> &tree_strings,
                  });
 
   auto scores = score_sequences(trees, sequences, 0);
+
+  return scores;
+}
+
+static std::vector<std::vector<double>>
+score_background_cpp(const std::vector<std::string> &tree_strings,
+                     const std::vector<std::string> &sequences) {
+  std::vector<tree_t> trees{};
+
+  std::transform(tree_strings.begin(), tree_strings.end(),
+                 std::back_inserter(trees),
+                 [](const std::string &tree) -> tree_t {
+                   return tree_t{tree, 1.0};
+                 });
+
+  std::vector<std::vector<double>> scores(sequences.size(),
+                                          std::vector<double>(trees.size()));
+
+  auto fun =
+      [&](size_t start_index, size_t stop_index,
+          indicators::DynamicProgress<indicators::BlockProgressBar> &bars) {
+        score_trees_slice_with_progress(
+            start_index, stop_index, scores, trees, sequences,
+            pst::distances::negative_log_likelihood_symmetric_background_string<
+                seqan3::dna5>,
+            bars);
+      };
+
+  pst::parallelize::parallelize_with_progress(trees.size(), fun);
+
+  return scores;
 
   return scores;
 }

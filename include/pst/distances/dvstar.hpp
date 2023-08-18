@@ -144,7 +144,6 @@ inline double
 core_missing_nearest_dvstar(ProbabilisticSuffixTreeMap<alphabet_t> &left,
                             ProbabilisticSuffixTreeMap<alphabet_t> &right,
                             size_t background_order) {
-
   double dot_product = 0.0;
   double missing_dot_product = 0.0;
 
