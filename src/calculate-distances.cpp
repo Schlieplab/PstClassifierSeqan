@@ -8,7 +8,7 @@
 
 #include <Eigen/Dense>
 
-#include <highfive/H5File.hpp>
+#include <highfive/H5Easy.hpp>
 
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/argument_parser/argument_parser.hpp>
@@ -337,34 +337,15 @@ int main(int argc, char *argv[]) {
   } else if (arguments.scores.extension() == ".h5" ||
              arguments.scores.extension() == ".hdf5") {
     std::cout << "Writing to file..." << std::endl;
-    HighFive::File file{arguments.scores, HighFive::File::OpenOrCreate};
+    H5Easy::File file{arguments.scores, HighFive::File::OpenOrCreate};
 
-    if (!file.exist("ids")) {
-      file.createDataSet<std::string>("ids", HighFive::DataSpace::From(ids));
-    }
-    auto ids_dataset = file.getDataSet("ids");
-    ids_dataset.write(ids);
+    H5Easy::dump(file, "/distances/" + distance_name_with_args, distances,
+                 H5Easy::DumpMode::Overwrite);
+    H5Easy::dump(file, "/ids", ids, H5Easy::DumpMode::Overwrite);
+    H5Easy::dump(file, "/ids_to", ids_to, H5Easy::DumpMode::Overwrite);
 
-    if (!file.exist("ids_to")) {
-      file.createDataSet<std::string>("ids_to",
-                                      HighFive::DataSpace::From(ids_to));
-    }
-    auto ids_to_dataset = file.getDataSet("ids_to");
-    ids_to_dataset.write(ids_to);
-
-    if (!file.exist("distances")) {
-      file.createGroup("distances");
-    }
-    auto distance_group = file.getGroup("distances");
-
-    if (!distance_group.exist(distance_name_with_args)) {
-      std::vector<size_t> dims{trees.size(), trees_to.size()};
-      distance_group.createDataSet<double>(distance_name_with_args,
-                                           HighFive::DataSpace(dims));
-    }
-
-    auto distance_data_set = distance_group.getDataSet(distance_name_with_args);
-    distance_data_set.write(distances);
+    std::cout << "Wrote distances to: " << arguments.scores.string()
+              << std::endl;
   }
 
   return EXIT_SUCCESS;
