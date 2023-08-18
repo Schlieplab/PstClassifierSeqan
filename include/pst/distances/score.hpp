@@ -38,17 +38,17 @@ void score_trees_slice_with_progress(
                                    indicators::option::ShowElapsedTime{true},
                                    indicators::option::ShowRemainingTime{true}};
 
-//  auto bars_i = bars.push_back(bar);
+  //  auto bars_i = bars.push_back(bar);
 
   for (size_t j = 0; j < sequences.size(); j++) {
     for (size_t i = start_index; i < stop_index; i++) {
       scores[j][i] = fun(trees[i], sequences[j]);
     }
-//    double progress = double(j) / double(sequences.size());
-//    bars[bars_i].set_progress(progress * 100);
+    //    double progress = double(j) / double(sequences.size());
+    //    bars[bars_i].set_progress(progress * 100);
   }
 
-//  bars[bars_i].mark_as_completed();
+  //  bars[bars_i].mark_as_completed();
 }
 
 void score_trees_slice(

@@ -124,7 +124,6 @@ parse_sliding_window_function(size_t n_sequences, bool background_adjusted,
           tree, reverse_seq, window_size);
 
       for (int i = 0; i < windows.size(); i++) {
-        std::cout << windows[i] << " " << reverse_windows[reverse_windows.size() - 1 - i] << std::endl;
         windows[i] = std::min(windows[i],
                               reverse_windows[reverse_windows.size() - 1 - i]);
       }

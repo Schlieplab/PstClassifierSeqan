@@ -4,7 +4,7 @@
 #include <vector>
 
 #include <seqan3/alphabet/all.hpp>
-#include <seqan3/argument_parser/argument_parser.hpp>
+#include <seqan3/argument_parser/all.hpp>
 #include <seqan3/argument_parser/exceptions.hpp>
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
