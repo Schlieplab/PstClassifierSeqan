@@ -19,14 +19,7 @@
 #include <indicators/dynamic_progress.hpp>
 #include <indicators/progress_bar.hpp>
 
-#include "pst/distances/cv.hpp"
-#include "pst/distances/d2.hpp"
-#include "pst/distances/d2star.hpp"
-#include "pst/distances/dvstar.hpp"
-#include "pst/distances/kl_divergence.hpp"
-#include "pst/distances/other_distances.hpp"
-#include "pst/distances/parallelize.hpp"
-#include "pst/probabilistic_suffix_tree_map.hpp"
+#include "pst/distances/all.hpp"
 
 #include "io_utils.hpp"
 
@@ -66,7 +59,7 @@ input_arguments parse_cli_arguments(int argc, char *argv[]) {
 
   parser.add_option(
       arguments.distance_name, 'n', "distance-name",
-      "Name of distance function.  Must be one of 'd2', "
+      "Name of distance function.  Must be one of 'dv', "
       "'d2star', 'dvstar', 'nearest-dvstar', 'penalized-dvstar', 'kl', "
       "'kl-both', 'nll', 'nll-background', 'cv' and 'cv-estimation'");
   parser.add_option(arguments.order, 'o', "order",
@@ -190,6 +183,11 @@ parse_distance_function(input_arguments &arguments) {
       return pst::distances::d2<seqan3::dna5>(left, right);
     };
     return {fun, "d2"};
+  } else if (arguments.distance_name == "dv") {
+    auto fun = [&](auto &left, auto &right) {
+      return pst::distances::dv<seqan3::dna5>(left, right);
+    };
+    return {fun, "dv"};
   } else if (arguments.distance_name == "kl") {
     auto fun = [&](auto &left, auto &right) {
       return pst::distances::symmetric_kl_divergence<seqan3::dna5>(
