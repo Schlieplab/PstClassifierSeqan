@@ -18,7 +18,7 @@ except ImportError:
 if __name__ == "__main__":
     setup(
         name="libvlmc",
-        version="0.2.5",
+        version="0.2.6",
         description="Genomic signatures and related distance measures for genomic sequences.",
         packages=find_packages(),
         install_requires=['cython', 'numpy'],

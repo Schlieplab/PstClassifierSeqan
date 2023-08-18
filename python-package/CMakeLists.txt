@@ -2,12 +2,12 @@ cmake_minimum_required (VERSION 3.4...3.12)
 project(pst-classifier)
 
 list(APPEND CMAKE_MODULE_PATH "/usr/share/cmake/Modules/") # For debian in singularity
+list(APPEND CMAKE_MODULE_PATH "/usr/lib/python3.11/site-packages/skbuild/resources/cmake/") # For skbuild
 
 find_package(PythonExtensions REQUIRED)
 find_package(Cython REQUIRED)
 find_package(Threads REQUIRED)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 set(SeqAn3_DIR "${CMAKE_SOURCE_DIR}/../seqan3/build_system")

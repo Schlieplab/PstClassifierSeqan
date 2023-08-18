@@ -116,8 +116,8 @@ FROM python:3.10-bullseye
 
 WORKDIR /artifacts/dist/
 
-COPY --from=python310 /PstClassifierSeqan/python-package/dist/libvlmc-0.2-cp310-cp310-linux_x86_64.whl /artifacts/dist/
-COPY --from=python39 /PstClassifierSeqan/python-package/dist/libvlmc-0.2-cp39-cp39-linux_x86_64.whl /artifacts/dist/
+COPY --from=python310 /PstClassifierSeqan/python-package/dist/libvlmc-* /artifacts/dist/
+COPY --from=python39 /PstClassifierSeqan/python-package/dist/libvlmc-* /artifacts/dist/
 COPY --from=python38 /PstClassifierSeqan/python-package/dist/libvlmc-0.2-cp38-cp38-linux_x86_64.whl /artifacts/dist/
 COPY --from=python37 /PstClassifierSeqan/python-package/dist/libvlmc-0.2-cp37-cp37m-linux_x86_64.whl /artifacts/dist/
 COPY --from=python36 /PstClassifierSeqan/python-package/dist/libvlmc-0.2-cp36-cp36m-linux_x86_64.whl /artifacts/dist/

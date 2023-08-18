@@ -60,6 +60,7 @@ cpdef str train(str name, str sequence, int max_depth, int min_count, int thresh
 
 cdef extern from "../../include/pst/distances/score.hpp" namespace "pst":
     vector[vector[double]] score_cpp(const vector[string]& tree_strings, const vector[string]& sequence_list)
+    vector[vector[double]] score_background_cpp(const vector[string]& tree_strings, const vector[string]& sequence_list)
 
 cdef extern from "../../include/pst/distances/sliding-windows.hpp" namespace "pst":
     vector[vector[double]] sliding_windows_cpp(string tree_string, string sequence, vector[int] window_sizes)
@@ -70,6 +71,12 @@ cpdef vector[vector[double]] score_sequences_cython(list trees, list sequence_li
     cdef vector[string] arr = [s.encode() for s in sequence_list]
 
     return score_cpp(trees_, arr)
+
+cpdef vector[vector[double]] score_sequences_background_cython(list trees, list sequence_list):
+    cdef vector[string] trees_ = [tree.encode() for tree in trees]
+    cdef vector[string] arr = [s.encode() for s in sequence_list]
+
+    return score_background_cpp(trees_, arr)
 
 cpdef vector[vector[double]] sliding_windows_cython(str tree, str sequence, list window_sizes):
     cdef string tree_ = tree.encode()
@@ -91,6 +98,12 @@ cpdef score_sequences(trees, sequence_list):
     import numpy as np
 
     return np.array(score_sequences_cython(trees, sequence_list))
+
+
+cpdef score_sequences_background(trees, sequence_list):
+    import numpy as np
+
+    return np.array(score_sequences_background_cython(trees, sequence_list))
 
 
 cpdef sliding_windows(tree, sequence, window_sizes):

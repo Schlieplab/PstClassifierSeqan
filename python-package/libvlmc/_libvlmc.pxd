@@ -15,6 +15,7 @@ cdef vector[vector[double]] score_cpp(const vector[string]& tree_strings, const 
 
 cpdef vector[vector[double]] score_sequences_cython(list trees, list sequence_list)
 cpdef score_sequences(trees, sequence_list)
+cpdef score_sequences_background(trees, sequence_list)
 
 cpdef vector[vector[double]] sliding_windows_cython(str tree, str sequence, list window_sizes)
 cpdef vector[vector[double]] sliding_windows_background_cython(str tree, str sequence, list window_sizes, int background_order)
