@@ -27,8 +27,8 @@ std::vector<tree_t> get_trees(HighFive::File &file,
       indicators::option::ShowRemainingTime{true}};
 
   std::vector<tree_t> trees{};
-  ulong n_trees = dataset.getDimensions()[0];
-  for (ulong i = 0; i < n_trees; i++) {
+  int n_trees = dataset.getDimensions()[0];
+  for (int i = 0; i < n_trees; i++) {
     dataset.select(HighFive::ElementSet({i})).read(result_string_list);
     //    std::cout << result_string_list[0] << std::endl;
     trees.push_back(tree_t{result_string_list[0], pseudo_count_amount});
