@@ -81,16 +81,17 @@ See [the SeqAn3 quick-setup](https://docs.seqan.de/seqan/3-master-user/setup.htm
 for the SeqAn3 specific dependencies and build instructions.
 
 We also provide [singularity](https://sylabs.io/singularity/) and [docker](https://www.docker.com/) files, for easy
-reproducibility and usage.
+reproducibility and usage. The [`build_artifacts.sh`](build_artifacts.sh) script uses docker to build the binaries on debian 18.04 and outputs them in the `artifacts` folder.
 
 ### Linux
 
 Dependencies (debian packages in parentheses):
 
-- GCC >= 7 (g++)
-- CMake (cmake)
-- HDF5 (libhdf5-dev), optional, needed for `pst-batch-training` and `pst-score-sequences`
-- Eigen (libeigen3-dev), optional, needed for `pst-batch-training` and `pst-score-sequences`
+- GCC >= 7 (g++) (__I've recently only been able to compile with GCC12__)
+- CMake (`cmake`)
+- HDF5 (`libhdf5-dev`)
+- Eigen (`libeigen3-dev`)
+- tbb (`libtbb-dev`)
 
 Fetch the source code via git, or download the latest release.
 
@@ -135,12 +136,16 @@ make
 
 Dependencies (homebrew packages in parentheses):
 
-- GCC >= 7 (gcc)
+- GCC >= 7 (gcc) (__I've recently only been able to compile with GCC12__)
 - CMake (cmake)
-- HDF5 (hdf5), optional, needed for `pst-batch-training` and `pst-score-sequences`
-- Eigen (eigen), optional, needed for `pst-batch-training` and `pst-score-sequences`
+- HDF5 (hdf5)
+- Eigen (eigen)
+- tbb (tbb)
 
-Other than the different packages, the instructions for Linux should work.
+Other than the different packages, the instructions for Linux should work, but you may need to provide the paths to the installed gcc and g++ when you configure the cmake project, e.g.:
+```shell
+CC=/opt/homebrew/bin/gcc-12 CXX=/opt/homebrew/bin/g++-12 cmake -DCMAKE_BUILD_TYPE=Release ..
+```
 
 ### Windows
 
@@ -158,5 +163,7 @@ After ensuring the c++ package builds, the python package can be installed throu
 ```shell script
 python -m pip install -r dev-requirements.txt
 python setup.py bdist_wheel
-python install --user dist/libvlmc-0.2-{Python_Version}-{Python_Version}-linux_x86_64.whl
+pip install --user dist/libvlmc-0.2-{Python_Version}-{Python_Version}-linux_x86_64.whl
 ```
+
+Running the shell script [`python-cross-compile.sh`](python-cross-compile.sh) will use docker to build a version of the python package that runs on debian.
