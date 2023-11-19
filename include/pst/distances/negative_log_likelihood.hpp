@@ -137,14 +137,19 @@ log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
     }
 
     char char_ = sequence_dna[i].to_char();
+    if (char_ == 'N') {
+      continue;
+    }
+
     auto [context, val] = tree.get_closest_state(subsequence);
 
     double score = score_fun(tree, context, val, char_);
 
-    log_likelihood += score;
-    length += 1;
+    if (score != 0) {
+      log_likelihood += score;
+      length += 1;
+    }
   }
-
   return {log_likelihood, length};
 }
 
@@ -169,13 +174,12 @@ log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 }
 
 template <seqan3::alphabet alphabet_t>
-double
+std::tuple<double, size_t>
 log_likelihood_part_dna(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
                         const std::vector<alphabet_t> &sequence_dna,
                         size_t start, size_t end,
                         const scoring::score_signature<alphabet_t> &score_fun) {
-  return std::get<0>(
-      log_likelihood_part(tree, sequence_dna, start, end, score_fun));
+  return log_likelihood_part(tree, sequence_dna, start, end, score_fun);
 }
 
 template <seqan3::alphabet alphabet_t>
@@ -201,12 +205,17 @@ log_likelihood_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
         sequence_view.substr(start_index, end_index - start_index);
 
     char char_ = sequence[i];
+    if (char_ == 'N') {
+      continue;
+    }
+
     auto [context, val] = tree.get_closest_state(subsequence);
 
     double score = score_fun(tree, context, val, char_);
-
-    log_likelihood += score;
-    length += 1;
+    if (score != 0.0) {
+      log_likelihood += score;
+      length += 1;
+    }
   }
 
   return {log_likelihood, length};
@@ -291,7 +300,7 @@ double max_adjusted_likelihood_s(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 }
 
 template <seqan3::alphabet alphabet_t>
-double log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
+std::tuple<double, size_t> log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
                       const std::string &sequence) {
   size_t order_max = tree.get_max_order();
 
@@ -310,20 +319,22 @@ double log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
   }
 
   double log_likelihood = 0.0;
+  size_t length = 0;
   for (auto &f : part_futures) {
     auto [log_lik, len] = f.get();
     log_likelihood += log_lik;
+    length += len;
   }
-  return log_likelihood;
+  return {log_likelihood, length};
 }
 
 template <seqan3::alphabet alphabet_t>
-double
+std::tuple<double, size_t>
 log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
                const std::vector<alphabet_t> &sequence_dna,
                const details::scoring::score_signature<alphabet_t> &score_fun) {
   auto bounds = pst::parallelize::get_bounds(sequence_dna.size());
-  std::vector<std::future<double>> part_futures{};
+  std::vector<std::future<std::tuple<double, size_t>>> part_futures{};
 
   for (auto &[start_index, stop_index] : bounds) {
     part_futures.push_back(
@@ -333,14 +344,17 @@ log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
   }
 
   double log_likelihood = 0.0;
+  size_t length = 0;
   for (auto &f : part_futures) {
-    log_likelihood += f.get();
+    auto [ll, length_] = f.get();
+    log_likelihood += ll;
+    length += length_;
   }
-  return log_likelihood;
+  return {log_likelihood, length};
 }
 
 template <seqan3::alphabet alphabet_t>
-double log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
+std::tuple<double, size_t> log_likelihood(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
                       std::vector<alphabet_t> &sequence_dna) {
   return log_likelihood(tree, sequence_dna,
                         details::scoring::log_transition_prob<alphabet_t>);
@@ -351,7 +365,9 @@ double negative_log_likelihood_p(
     ProbabilisticSuffixTreeMap<alphabet_t> &tree,
     std::vector<alphabet_t> &sequence_dna,
     const details::scoring::score_signature<alphabet_t> &score_fun) {
-  return -log_likelihood(tree, sequence_dna, score_fun) / sequence_dna.size();
+  auto [ll, length] = log_likelihood(tree, sequence_dna, score_fun);
+
+  return -ll / double(length);
 }
 
 template <seqan3::alphabet alphabet_t>

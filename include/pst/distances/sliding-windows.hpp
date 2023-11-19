@@ -64,10 +64,15 @@ sliding_window_part(ProbabilisticSuffixTreeMap<alphabet_t> &tree,
 
       double log_likelihood =
           std::accumulate(start_iterator, scores.end(), 0.0);
-      double nll =
-          -log_likelihood / double(std::distance(start_iterator, scores.end()));
+      double length = std::count_if(start_iterator, scores.end(),
+                                 [](double i) { return i != 0.0; });
+      if (length == 0.0) {
+        log_likelihoods[j].push_back(-1.0);
 
-      log_likelihoods[j].push_back(nll);
+      } else {
+        double nll = -log_likelihood / length;
+        log_likelihoods[j].push_back(nll);
+      }
     }
   }
 

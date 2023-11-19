@@ -244,10 +244,10 @@ TEST_F(DistancesTest, LogLikelighoodGrowth) {
       "TEST", sequence, max_depth_7, min_count, threshold, false, 1};
   tree_complex.construct_tree();
 
-  auto log_likelihood_simple = pst::distances::log_likelihood(tree_simple, seq);
-  auto log_likelihood_medium = pst::distances::log_likelihood(tree_medium, seq);
+  auto log_likelihood_simple = std::get<0>(pst::distances::log_likelihood(tree_simple, seq));
+  auto log_likelihood_medium = std::get<0>(pst::distances::log_likelihood(tree_medium, seq));
   auto log_likelihood_complex =
-      pst::distances::log_likelihood(tree_complex, seq);
+      std::get<0>(pst::distances::log_likelihood(tree_complex, seq));
 
   EXPECT_GT(log_likelihood_medium, log_likelihood_simple);
   EXPECT_GT(log_likelihood_complex, log_likelihood_medium);
@@ -272,7 +272,7 @@ TEST_F(DistancesTest, LogLikelighoodHandCrafted1Order) {
   tree.counts["A"] = {3, {0.9, 0.0, 0.0, 0.0, 0.1}, true};
   tree.counts["T"] = {5, {1.0, 0.0, 0.0, 0.0, 0.0}, true};
 
-  double log_likelihood = pst::distances::log_likelihood(tree, binary_seq);
+  double log_likelihood = std::get<0>(pst::distances::log_likelihood(tree, binary_seq));
 
   double log_likelihood_manual =
       391 * std::log(0.9) + 42 * std::log(0.1) + 42 * std::log(1) + std::log(0.8);
@@ -291,7 +291,7 @@ TEST_F(DistancesTest, LogLikelighoodParallelAndNotParallel) {
   std::string sequence =
       seq | seqan3::views::to_char | seqan3::views::to<std::string>;
 
-  double log_likelihood = pst::distances::log_likelihood(tree, sequence);
+  double log_likelihood = std::get<0>(pst::distances::log_likelihood(tree, sequence));
   auto [log_likelihood_no_p, len] =
       pst::distances::details::log_likelihood_part(tree, sequence);
 
@@ -329,7 +329,7 @@ TEST_F(DistancesTest, LogLikelighoodHandCrafted1OrderLong) {
 
   auto counted_2_mers = count_2_mers(sequence);
 
-  auto log_likelihood = pst::distances::log_likelihood(tree, sequence);
+  auto log_likelihood = std::get<0>(pst::distances::log_likelihood(tree, sequence));
 
   double log_likelihood_manual =
       counted_2_mers["AA"] *

@@ -218,7 +218,7 @@ int main(int argc, char *argv[]) {
 
   if (arguments.outpath.empty()) {
     for (int i = 0; i < trees.size(); i++) {
-      for (int j = 0; j < trees.size(); j++) {
+      for (int j = 0; j < sequence_list.size(); j++) {
         std::cout << scores[i][j] << " ";
       }
       std::cout << std::endl;

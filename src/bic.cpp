@@ -166,7 +166,7 @@ get_min_count_max_depth(pst::ProbabilisticSuffixTreeMap<seqan3::dna5> &tree) {
 Result bic_score(pst::KullbackLieblerTreeMap<seqan3::dna5> &tree,
                  lst::details::sequence_t<seqan3::dna5> &sequence,
                  int min_count, int max_depth, double threshold) {
-  double log_likelihood = pst::distances::log_likelihood(tree, sequence);
+  double log_likelihood = std::get<0>(pst::distances::log_likelihood(tree, sequence));
 
   double n_parameters = 3 * tree.count_terminal_nodes();
 
